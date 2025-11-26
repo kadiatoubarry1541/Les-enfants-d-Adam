@@ -167,6 +167,7 @@ Ce projet a été développé pour participer à des hackathons en ligne et loca
 
 ## 📝 Documentation
 
+- [🚀 Guide de Déploiement (15 min)](./README_DEPLOIEMENT.md) - **Déployez votre projet en ligne pour le hackathon**
 - [Candidature Hackathon](./CANDIDATURE_HACKATHON.md)
 - [Présentation Hackathon](./PRESENTATION_HACKATHON.md)
 - [Pitch Attractif](./PITCH_ATTRACTIF_PROJET.md)
