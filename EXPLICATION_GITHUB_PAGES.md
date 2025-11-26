@@ -29,7 +29,7 @@ React (code source) → npm run build → Fichiers HTML/CSS/JS statiques
 ### 3. Le workflow GitHub Actions fait tout automatiquement
 
 Quand vous poussez du code :
-1. ✅ GitHub Actions installe Node.js
+1. ✅ GitHub Actions installe N!ode.js
 2. ✅ Installe les dépendances (`npm ci`)
 3. ✅ Compile React en fichiers statiques (`npm run build`)
 4. ✅ Prend le dossier `dist` (qui contient les fichiers statiques)

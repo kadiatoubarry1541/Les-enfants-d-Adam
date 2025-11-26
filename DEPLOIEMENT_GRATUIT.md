@@ -205,15 +205,17 @@
 
 ---
 
-## ✅ Résumé - TOUT EST GRATUIT
+## ✅ Résumé - Services Gratuits (avec limitations)
 
-| Service | Coût | Limite |
-|---------|------|--------|
-| **GitHub Pages** | 🆓 GRATUIT | Illimité |
-| **Supabase** | 🆓 GRATUIT | 500 MB (suffisant) |
-| **Render** | 🆓 GRATUIT | 750h/mois (suffisant) |
+| Service | Coût | Limite | Risque suspension |
+|---------|------|--------|-------------------|
+| **GitHub Pages** | 🆓 GRATUIT | 1 GB/mois | ❌ NON (juste ralenti) |
+| **Supabase** | 🆓 GRATUIT | 500 MB | ⚠️ OUI (si dépassé) |
+| **Render** | 🆓 GRATUIT | 750h/mois | ❌ NON (mise en veille) |
 
-**AUCUN PAIEMENT REQUIS !**
+**Pour un hackathon : Ces limites sont largement suffisantes !**
+
+⚠️ **IMPORTANT** : Aucun service n'est 100% illimité gratuit. Mais pour un hackathon, ces limites sont suffisantes. Voir `VERITE_SERVICES_GRATUITS.md` pour plus de détails.
 
 ---
 
