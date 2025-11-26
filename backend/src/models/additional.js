@@ -1,0 +1,431 @@
+import { DataTypes } from 'sequelize';
+import { sequelize } from '../config/database.js';
+
+// Modèle pour les sections historiques
+export const HistorySection = sequelize.define('HistorySection', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  images: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  videos: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  documents: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  category: {
+    type: DataTypes.STRING // ENUM converti en STRING ('prehistoire', 'antiquite', 'moyen-age', 'moderne', 'contemporain'),
+    allowNull: false
+  },
+  period: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  location: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  importance: {
+    type: DataTypes.STRING // ENUM converti en STRING ('low', 'medium', 'high'),
+    defaultValue: 'medium'
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  createdBy: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+}, {
+  tableName: 'history_sections',
+  timestamps: true
+});
+
+// Modèle pour les membres de la famille
+export const FamilyMember = sequelize.define('FamilyMember', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  numeroH: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  prenom: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  nomFamille: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  relation: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  phone: {
+    type: DataTypes.STRING
+  },
+  email: {
+    type: DataTypes.STRING
+  },
+  address: {
+    type: DataTypes.STRING
+  },
+  birthDate: {
+    type: DataTypes.DATE
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+}, {
+  tableName: 'family_members',
+  timestamps: true
+});
+
+// Modèle pour l'arbre généalogique
+export const FamilyTree = sequelize.define('FamilyTree', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  rootMember: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment: 'NumeroH du membre racine de l\'arbre'
+  },
+  // Identifiants uniques pour former l'arbre automatiquement
+  numeroHPere: {
+    type: DataTypes.STRING,
+    comment: 'NumeroH du père (pour regrouper les arbres)'
+  },
+  numeroHMere: {
+    type: DataTypes.STRING,
+    comment: 'NumeroH de la mère (pour regrouper les arbres)'
+  },
+  // Chefs de famille (2 par arbre)
+  chefFamille1: {
+    type: DataTypes.STRING,
+    comment: 'NumeroH du premier chef de famille'
+  },
+  chefFamille2: {
+    type: DataTypes.STRING,
+    comment: 'NumeroH du deuxième chef de famille'
+  },
+  members: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Liste des membres de l\'arbre (NumeroH)'
+  },
+  deceasedMembers: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Liste des décédés dans l\'arbre (NumeroHD)'
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+}, {
+  tableName: 'family_trees',
+  timestamps: true
+});
+
+// Modèle pour les documents
+export const Document = sequelize.define('Document', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  type: {
+    type: DataTypes.STRING // ENUM converti en STRING ('birth_certificate', 'marriage_certificate', 'death_certificate', 'identity_card', 'passport', 'other'),
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  fileUrl: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  fileName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  fileSize: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  uploadedBy: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  uploadedByName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  recipient: {
+    type: DataTypes.STRING
+  },
+  recipientName: {
+    type: DataTypes.STRING
+  },
+  status: {
+    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'approved', 'rejected'),
+    defaultValue: 'pending'
+  },
+  isPublic: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  category: {
+    type: DataTypes.STRING // ENUM converti en STRING ('civil', 'administrative', 'legal', 'other'),
+    allowNull: false
+  },
+  tags: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  }
+}, {
+  tableName: 'documents',
+  timestamps: true
+});
+
+// Modèle pour les appels d'urgence
+export const EmergencyCall = sequelize.define('EmergencyCall', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  caller: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  callerName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  location: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  coordinates: {
+    type: DataTypes.JSON,
+    defaultValue: {}
+  },
+  emergencyType: {
+    type: DataTypes.STRING // ENUM converti en STRING ('medical', 'fire', 'police', 'other'),
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  status: {
+    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'in_progress', 'resolved'),
+    defaultValue: 'pending'
+  },
+  assignedAgent: {
+    type: DataTypes.STRING
+  },
+  resolvedAt: {
+    type: DataTypes.DATE
+  }
+}, {
+  tableName: 'emergency_calls',
+  timestamps: true
+});
+
+// Modèle pour les vérifications de localisation
+export const LocationCheck = sequelize.define('LocationCheck', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  user: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  userName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  destination: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  coordinates: {
+    type: DataTypes.JSON,
+    defaultValue: {}
+  },
+  safetyLevel: {
+    type: DataTypes.STRING // ENUM converti en STRING ('safe', 'moderate', 'risky', 'dangerous'),
+    allowNull: false
+  },
+  recommendations: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  checkedAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  }
+}, {
+  tableName: 'location_checks',
+  timestamps: true
+});
+
+// Modèle pour les dons
+export const Donation = sequelize.define('Donation', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  donor: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  donorName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  recipient: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  recipientName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false
+  },
+  currency: {
+    type: DataTypes.STRING,
+    defaultValue: 'FG'
+  },
+  type: {
+    type: DataTypes.STRING // ENUM converti en STRING ('money', 'food', 'clothing', 'medicine', 'other'),
+    allowNull: false
+  },
+  donationType: {
+    type: DataTypes.STRING, // 'zakat' ou 'sadaqah'
+    defaultValue: 'sadaqah',
+    comment: 'Type de don : zakat (aumône obligatoire pour musulmans) ou sadaqah (aumône facultative)'
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  status: {
+    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'completed', 'cancelled'),
+    defaultValue: 'pending'
+  },
+  completedAt: {
+    type: DataTypes.DATE
+  }
+}, {
+  tableName: 'donations',
+  timestamps: true
+});
+
+// Modèle pour les calculs de zakat
+export const ZakatCalculation = sequelize.define('ZakatCalculation', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  user: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  userName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  totalWealth: {
+    type: DataTypes.DECIMAL(15, 2),
+    allowNull: false
+  },
+  currency: {
+    type: DataTypes.STRING,
+    defaultValue: 'FG'
+  },
+  zakatAmount: {
+    type: DataTypes.DECIMAL(15, 2),
+    allowNull: false
+  },
+  calculatedAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  isPaid: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  paidAt: {
+    type: DataTypes.DATE
+  }
+}, {
+  tableName: 'zakat_calculations',
+  timestamps: true
+});
+
+// Relations
+FamilyTree.hasMany(FamilyMember, { as: 'familyMembers', foreignKey: 'treeId' });
+FamilyMember.belongsTo(FamilyTree, { as: 'tree', foreignKey: 'treeId' });
+
+export default {
+  HistorySection,
+  FamilyMember,
+  FamilyTree,
+  Document,
+  EmergencyCall,
+  LocationCheck,
+  Donation,
+  ZakatCalculation
+};
+
+
+
+
+
+
+
+
+
+

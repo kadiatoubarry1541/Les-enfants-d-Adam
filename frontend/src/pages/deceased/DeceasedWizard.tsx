@@ -1,0 +1,236 @@
+import { useMemo, useState } from 'react'
+import { Route, Routes, useNavigate } from 'react-router-dom'
+import { FAMILLES, ETHNIES, REGIONS, CONTINENT_CODE, PAYS, REGION_CODES, ETHNIE_CODES, FAMILLE_CODES } from '../../utils/constants'
+import { Field, FilePicker, Select, SelectCode } from '../../components/inputs'
+import { useI18n } from '../../i18n/useI18n'
+import { anneesEcoulees } from '../../utils/calculs'
+import { computeDecetCode, computeGenerationCode, buildNumeroHD } from '../../utils/codes'
+import { DeceasedFamilyCheck } from './DeceasedFamilyCheck'
+import { DeceasedChoice } from './DeceasedChoice'
+import { DeceasedVideoRegistration } from './DeceasedVideoRegistration'
+import { DeceasedWrittenForm } from './DeceasedWrittenForm'
+import { api } from '../../utils/api'
+
+type EtatDefunt = {
+  // page 1
+  famillePere?: string
+  prenomPere?: string
+  pereStatut?: 'Vivant' | 'Mort'
+  numeroHPere?: string
+  familleMere?: string
+  prenomMere?: string
+  mereStatut?: 'Vivant' | 'Mort'
+  numeroHMere?: string
+  nom?: string
+  prenom?: string
+  genre?: string
+  dateNaissance?: string
+  anneesAvantNaissance?: number | null
+  lieuNaissance?: string
+  rangNaissance?: string
+  anneeDeces?: string
+  ageObtenu?: number | null
+  anneesDepuisDeces?: number | null
+  lieuDeces?: string
+
+  // page 2
+  ethnie?: string
+  lieu1?: string
+  lieu2?: string
+  lieu3?: string
+  religion?: string
+  statutSocial?: string
+  origine?: string
+  pays?: string
+  regionOrigine?: string
+
+  // page 3
+  nbFreresMere?: number
+  nbSoeursMere?: number
+  nbFreresPere?: number
+  nbSoeursPere?: number
+  nbFilles?: number
+  nbGarcons?: number
+  preuve?: File
+  video?: File
+  generation?: string
+  decet?: string
+  numeroHD?: string
+}
+
+const initial: EtatDefunt = {}
+
+export function DeceasedWizard() {
+  const [state, setState] = useState<EtatDefunt>(initial)
+  const navigate = useNavigate()
+  const { t } = useI18n()
+
+  const generation = useMemo(() => state.dateNaissance ? computeGenerationCode(state.dateNaissance) : '', [state.dateNaissance])
+  const decet = useMemo(() => state.anneeDeces ? computeDecetCode(`${state.anneeDeces}-01-01`) : '', [state.anneeDeces])
+  const ageObtenu = useMemo(() => (state.dateNaissance && state.anneeDeces) ? anneesEcoulees(state.dateNaissance, `${state.anneeDeces}-01-01`) : null, [state.dateNaissance, state.anneeDeces])
+  const anneesAvantNaissance = useMemo(() => state.dateNaissance ? anneesEcoulees('-3869-01-01', state.dateNaissance) : null, [state.dateNaissance])
+  const anneesDepuisDeces = useMemo(() => state.anneeDeces ? anneesEcoulees(`${state.anneeDeces}-01-01`) : null, [state.anneeDeces])
+
+  const set = (patch: Partial<EtatDefunt>) => setState(s => ({ ...s, ...patch }))
+
+  const submitFinal = async () => {
+    const paysCode = state.pays || 'P2'
+    const regionCode = REGION_CODES.find(r=>r.label===state.regionOrigine)?.code || 'R1'
+    const ethnieCode = ETHNIE_CODES.find(e=>e.label===state.ethnie)?.code || 'E1'
+    const familleCode = FAMILLE_CODES.find(f=>f.label.toLowerCase() === (state.nom||'').toLowerCase())?.code || 'F1'
+    const numero = buildNumeroHD({
+      decet: decet as `D${number}`,
+      generation: generation as `G${number}`,
+      continent: CONTINENT_CODE.Afrique,
+      pays: paysCode,
+      region: regionCode,
+      ethnie: ethnieCode,
+      famille: familleCode
+    })
+    
+    // ✅ Données complètes pour le défunt
+    const complet = { 
+      ...state, 
+      generation, 
+      decet, 
+      ageObtenu, 
+      anneesAvantNaissance, 
+      anneesDepuisDeces, 
+      numeroHD: numero,
+      numeroH: numero, // Pour la compatibilité avec le système de connexion
+      password: 'defunt123',  // ✅ MOT DE PASSE PAR DÉFAUT
+      confirmPassword: 'defunt123',
+      type: 'defunt' as const,
+      isDeceased: true,
+      prenom: state.prenom || 'Défunt',
+      nomFamille: state.nom || 'Inconnu',
+      email: `${numero}@defunt.genealogie`
+    }
+    
+    try {
+      // Essayer d'enregistrer dans le backend
+      const result = await api.registerDeceased(complet)
+      
+      if (result.success) {
+        console.log('✅ Défunt enregistré dans le backend:', result.user)
+      }
+    } catch (error) {
+      console.warn('⚠️ Erreur backend, sauvegarde locale uniquement:', error)
+    }
+    
+    // Toujours sauvegarder en localStorage comme backup
+    localStorage.setItem('dernier_defunt', JSON.stringify(complet))
+    
+    alert(`✅ Défunt enregistré avec succès !
+
+NumeroHD: ${numero}
+Mot de passe: defunt123
+
+Ces informations permettront de consulter ses données dans l'arbre généalogique familial.
+
+Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre généalogique.`)
+    
+    navigate('/')
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<DeceasedFamilyCheck />} />
+      <Route path="/choix" element={<DeceasedChoice />} />
+      <Route path="/video" element={<DeceasedVideoRegistration />} />
+      <Route path="/formulaire" element={<DeceasedWrittenForm />} />
+      <Route path="/ancien" element={
+        <div className="stack">
+          <h2>{t('wiz.dec.title1')}</h2>
+          <div className="card stack">
+            <div className="row">
+              <div className="col-6"><Field label={t('label.family_father')}><Select value={state.famillePere} onChange={(v)=>set({ famillePere: v })} options={FAMILLES} /></Field></div>
+              <div className="col-6"><Field label={t('label.father_firstname')}><input value={state.prenomPere||''} onChange={e=>set({ prenomPere: e.target.value })} /></Field></div>
+              <div className="col-6"><Field label={t('label.father_status')}><Select value={state.pereStatut} onChange={(v)=>set({ pereStatut: v as any })} options={[ 'Vivant','Mort' ]} /></Field></div>
+              <div className="col-6"><Field label={t('label.father_numeroh')}><input value={state.numeroHPere||''} onChange={e=>set({ numeroHPere: e.target.value })} /></Field></div>
+              <div className="col-6"><Field label={t('label.family_mother')}><Select value={state.familleMere} onChange={(v)=>set({ familleMere: v })} options={FAMILLES} /></Field></div>
+              <div className="col-6"><Field label={t('label.mother_firstname')}><input value={state.prenomMere||''} onChange={e=>set({ prenomMere: e.target.value })} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-4"><Field label={t('label.name')}><input value={state.nom||''} onChange={e=>set({ nom: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.firstname_any')}><input value={state.prenom||''} onChange={e=>set({ prenom: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.gender')}><Select value={state.genre} onChange={(v)=>set({ genre: v })} options={[ 'FEMME','HOMME','AUTRE' ]} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-4"><Field label={t('label.birthdate')}><input type="date" value={state.dateNaissance||''} onChange={e=>set({ dateNaissance: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.years_before_birth')}><input value={anneesAvantNaissance ?? ''} readOnly /></Field></div>
+              <div className="col-4"><Field label={t('label.birthplace')}><input value={state.lieuNaissance||''} onChange={e=>set({ lieuNaissance: e.target.value })} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-4"><Field label={t('label.birth_rank')}><select value={state.rangNaissance||''} onChange={e=>set({ rangNaissance: e.target.value })}><option value="">Sélectionner</option>{Array.from({length:20},(_,i)=>i+1).map(n=> <option key={n} value={String(n)}>{n}</option>)}</select></Field></div>
+              <div className="col-4"><Field label={t('label.death_year')}><input type="number" value={state.anneeDeces||''} onChange={e=>set({ anneeDeces: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.age_obtained')}><input value={ageObtenu ?? ''} readOnly /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-6"><Field label={t('label.years_since_death')}><input value={anneesDepuisDeces ?? ''} readOnly /></Field></div>
+              <div className="col-6"><Field label={t('label.death_place')}><input value={state.lieuDeces||''} onChange={e=>set({ lieuDeces: e.target.value })} /></Field></div>
+            </div>
+            <div className="actions">
+              <button className="btn" onClick={()=>{ localStorage.setItem('defunt', JSON.stringify(state)); navigate('page-2') }}>{t('btn.next')}</button>
+            </div>
+          </div>
+        </div>
+      }/>
+      <Route path="page-2" element={
+        <div className="stack">
+          <h2>{t('wiz.dec.title2')}</h2>
+          <div className="card stack">
+            <div className="row">
+              <div className="col-4"><Field label={t('label.ethnie')}><Select value={state.ethnie} onChange={(v)=>set({ ethnie: v })} options={ETHNIES} /></Field></div>
+              <div className="col-4"><Field label={t('label.res1')}><input value={state.lieu1||''} onChange={e=>set({ lieu1: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.res2')}><input value={state.lieu2||''} onChange={e=>set({ lieu2: e.target.value })} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-4"><Field label={t('label.res3')}><input value={state.lieu3||''} onChange={e=>set({ lieu3: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.religion')}><input value={state.religion||''} onChange={e=>set({ religion: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.social_status')}><input value={state.statutSocial||''} onChange={e=>set({ statutSocial: e.target.value })} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-4"><Field label={t('label.origin')}><input value={state.origine||''} onChange={e=>set({ origine: e.target.value })} /></Field></div>
+              <div className="col-4"><Field label={t('label.country')}><SelectCode value={state.pays} onChange={(v)=>set({ pays: v })} options={PAYS as any} /></Field></div>
+              <div className="col-4"><Field label={t('label.region_origin_select')}><Select value={state.regionOrigine} onChange={(v)=>set({ regionOrigine: v })} options={REGIONS} /></Field></div>
+            </div>
+            <div className="actions">
+              <button className="btn secondary" onClick={()=>navigate(-1)}>{t('btn.back')}</button>
+              <button className="btn" onClick={()=>{ localStorage.setItem('defunt', JSON.stringify(state)); navigate('page-3') }}>{t('btn.next')}</button>
+            </div>
+          </div>
+        </div>
+      }/>
+      <Route path="page-3" element={
+        <div className="stack">
+          <h2>{t('wiz.dec.title3')}</h2>
+          <div className="card stack">
+            <div className="row">
+              <div className="col-3"><Field label={t('label.brothers_mother')}><input type="number" min={0} value={state.nbFreresMere||0} onChange={e=>set({ nbFreresMere: Number(e.target.value) })} /></Field></div>
+              <div className="col-3"><Field label={t('label.sisters_mother')}><input type="number" min={0} value={state.nbSoeursMere||0} onChange={e=>set({ nbSoeursMere: Number(e.target.value) })} /></Field></div>
+              <div className="col-3"><Field label={t('label.brothers_father')}><input type="number" min={0} value={state.nbFreresPere||0} onChange={e=>set({ nbFreresPere: Number(e.target.value) })} /></Field></div>
+              <div className="col-3"><Field label={t('label.sisters_father')}><input type="number" min={0} value={state.nbSoeursPere||0} onChange={e=>set({ nbSoeursPere: Number(e.target.value) })} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-3"><Field label={t('label.daughters')}><input type="number" min={0} value={state.nbFilles||0} onChange={e=>set({ nbFilles: Number(e.target.value) })} /></Field></div>
+              <div className="col-3"><Field label={t('label.sons')}><input type="number" min={0} value={state.nbGarcons||0} onChange={e=>set({ nbGarcons: Number(e.target.value) })} /></Field></div>
+              <div className="col-3"><Field label={t('label.proof_photo')}><FilePicker accept="image/*" onFile={(f)=>set({ preuve: f })} /></Field></div>
+              <div className="col-3"><Field label={t('label.video_1min')}><FilePicker accept="video/*" onFile={(f)=>set({ video: f })} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-6"><Field label={t('label.generation_auto')}><input value={generation} readOnly /></Field></div>
+              <div className="col-6"><Field label={t('label.death_auto')}><input value={decet} readOnly /></Field></div>
+            </div>
+            <div className="actions">
+              <button className="btn secondary" onClick={()=>navigate(-1)}>{t('btn.back')}</button>
+              <button className="btn" onClick={submitFinal}>{t('btn.submit')}</button>
+            </div>
+          </div>
+        </div>
+      }/>
+    </Routes>
+  )
+}
+
+

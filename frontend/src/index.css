@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+/* Styles personnalisés qui s'ajoutent à Tailwind */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Classes personnalisées pour compatibilité avec vos anciens composants */
+@layer components {
+  .stack {
+    @apply flex flex-col gap-6;
+  }
+
+  .row {
+    @apply flex gap-6 flex-wrap;
+  }
+
+  .col-3 { @apply flex-1 min-w-[calc(25%-1.5rem)]; }
+  .col-4 { @apply flex-1 min-w-[calc(33.333%-1.5rem)]; }
+  .col-6 { @apply flex-1 min-w-[calc(50%-1.5rem)]; }
+  .col-12 { @apply flex-1 min-w-full; }
+
+  .card {
+    @apply bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg dark:shadow-gray-900/50 transition-shadow hover:shadow-xl dark:hover:shadow-gray-800/50;
+  }
+
+  .field {
+    @apply flex flex-col gap-2;
+  }
+
+  .field label {
+    @apply font-semibold text-slate-700 dark:text-slate-300 text-sm;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    @apply px-4 py-3 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-base transition-all focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/50;
+    font-family: inherit;
+  }
+
+  .field input:disabled,
+  .field select:disabled,
+  .field textarea:disabled {
+    @apply bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-60;
+  }
+
+  .field textarea {
+    @apply min-h-[100px] resize-y;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-7 py-3 bg-emerald-600 text-white border-none rounded-lg text-base font-semibold cursor-pointer no-underline text-center transition-all shadow-md hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:shadow-md;
+  }
+
+  .btn:disabled {
+    @apply bg-gray-400 cursor-not-allowed transform-none shadow-none;
+  }
+
+  .btn.secondary {
+    @apply bg-sky-600 shadow-md hover:bg-sky-700 hover:shadow-lg;
+  }
+
+  .btn.outline {
+    @apply bg-transparent border-2 border-emerald-600 text-emerald-600 shadow-none hover:bg-emerald-600 hover:text-white hover:shadow-md;
+  }
+
+  .btn-success {
+    @apply bg-green-500 shadow-md hover:bg-green-600 hover:shadow-lg;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 shadow-md hover:bg-red-600 hover:shadow-lg;
+  }
+
+  .btn-warning {
+    @apply bg-amber-500 shadow-md hover:bg-amber-600 hover:shadow-lg;
+  }
+
+  .actions {
+    @apply flex gap-4 mt-6 flex-wrap;
+  }
+
+  .error {
+    @apply bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-4 rounded-lg border-l-4 border-red-500 dark:border-red-400 my-4;
+  }
+
+  .success {
+    @apply bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 p-4 rounded-lg border-l-4 border-green-500 dark:border-green-400 my-4;
+  }
+
+  .warning {
+    @apply bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 p-4 rounded-lg border-l-4 border-amber-400 dark:border-amber-500 my-4;
+  }
+
+  .info {
+    @apply bg-sky-50 dark:bg-sky-900/20 text-sky-800 dark:text-sky-200 p-4 rounded-lg border-l-4 border-sky-500 dark:border-sky-400 my-4;
+  }
+
+  .badge {
+    @apply inline-block px-3 py-1 rounded-full text-sm font-semibold;
+  }
+
+  .badge-primary { @apply bg-emerald-600 text-white; }
+  .badge-success { @apply bg-green-500 text-white; }
+  .badge-danger { @apply bg-red-500 text-white; }
+  .badge-warning { @apply bg-amber-400 text-white; }
+  .badge-info { @apply bg-sky-500 text-white; }
+
+  .loading {
+    @apply flex items-center justify-center p-8;
+  }
+
+  .spinner {
+    @apply border-4 border-gray-200 border-t-emerald-600 rounded-full w-10 h-10 animate-spin;
+  }
+
+  /* Avatar placeholder - Cercle coloré pour les avatars sans photo */
+  .avatar-placeholder {
+    @apply w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-2xl font-bold shadow-lg;
+    min-width: 4rem;
+    min-height: 4rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .row {
+      @apply flex-col;
+    }
+    
+    .col-3, .col-4, .col-6 {
+      @apply min-w-full;
+    }
+    
+    .actions {
+      @apply flex-col;
+    }
+    
+    .btn {
+      @apply w-full justify-center;
+    }
+  }
+}

@@ -1,0 +1,762 @@
+/* Styles pour l'Arbre Généalogique */
+.arbre-genealogique {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.arbre-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.arbre-header h3 {
+  color: #2c5530;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.arbre-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.view-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.view-btn {
+  padding: 8px 16px;
+  border: 2px solid #4CAF50;
+  background: white;
+  color: #4CAF50;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.view-btn.active {
+  background: #4CAF50;
+  color: white;
+}
+
+.view-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.add-member-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+  border-color: #667eea !important;
+}
+
+.add-member-btn:hover {
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-controls label {
+  font-weight: 600;
+  color: #2c5530;
+}
+
+.filter-controls select {
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+}
+
+/* Formulaire d'ajout de membre */
+.add-member-form {
+  background: white;
+  border: 2px solid #667eea;
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 30px;
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+}
+
+.add-member-form h4 {
+  color: #667eea;
+  margin: 0 0 20px 0;
+  font-size: 1.3rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group select {
+  padding: 10px 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+  padding-top: 15px;
+  border-top: 2px solid #E0E0E0;
+}
+
+.btn-submit {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  background: white;
+  color: #666;
+  border: 2px solid #ddd;
+  padding: 12px 30px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+  background: #f8f9fa;
+  border-color: #999;
+}
+
+/* Vue Arbre SVG */
+.tree-view-horizontal {
+  background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 15px;
+  padding: 20px;
+  overflow-x: auto;
+  min-height: 650px;
+}
+
+.tree-svg {
+  min-width: 1200px;
+}
+
+.tree-svg rect,
+.tree-svg polygon {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tree-svg rect:hover,
+.tree-svg polygon:hover {
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+  transform: translateY(-2px);
+}
+
+.tree-svg .current-user {
+  filter: drop-shadow(0 6px 16px rgba(102, 126, 234, 0.4));
+}
+
+.tree-svg line {
+  stroke-linecap: round;
+  transition: all 0.3s ease;
+}
+
+/* Vue Arbre (ancienne version pour compatibilité) */
+.tree-view {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  position: relative;
+  padding: 30px 20px;
+  background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 15px;
+}
+
+.generation-level {
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.generation-level::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 20px;
+  background: linear-gradient(180deg, #4CAF50 0%, transparent 100%);
+}
+
+.generation-level:last-child::after {
+  display: none;
+}
+
+.generation-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.generation-header h4 {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: 25px;
+  color: white;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  position: relative;
+}
+
+.generation-header h4::before {
+  content: '👥';
+  margin-right: 8px;
+}
+
+.members-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  position: relative;
+}
+
+.member-card {
+  background: white;
+  border: 3px solid #4CAF50;
+  border-radius: 15px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  min-width: 200px;
+  max-width: 220px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.member-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4CAF50, #45a049);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.member-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(76, 175, 80, 0.3);
+}
+
+.member-card:hover::before {
+  opacity: 1;
+}
+
+.member-card.selected {
+  border-color: #FF9800;
+  background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+  box-shadow: 0 8px 24px rgba(255, 152, 0, 0.4);
+}
+
+.member-card.selected::before {
+  background: linear-gradient(90deg, #FF9800, #F57C00);
+  opacity: 1;
+}
+
+.member-card.deceased {
+  opacity: 0.75;
+  border-color: #9E9E9E;
+  background: linear-gradient(135deg, #F5F5F5 0%, #E0E0E0 100%);
+  position: relative;
+}
+
+.member-card.deceased::after {
+  content: '🕊️';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 1.5rem;
+  opacity: 0.6;
+}
+
+.member-photo {
+  position: relative;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: center;
+}
+
+.member-photo img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #4CAF50;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+
+.member-card:hover .member-photo img {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 0 auto;
+  border: 4px solid #4CAF50;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+
+.member-card:hover .avatar-placeholder {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+}
+
+.deceased-overlay {
+  position: absolute;
+  top: -5px;
+  right: 40%;
+  transform: translateX(50%);
+  background: rgba(0,0,0,0.85);
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.member-info h5 {
+  margin: 0 0 8px 0;
+  color: #2c5530;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.member-info p {
+  margin: 5px 0;
+  font-size: 0.875rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.numero-h {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  color: #4CAF50;
+  background: rgba(76, 175, 80, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+  margin: 3px 0;
+}
+
+.relation {
+  color: #FF9800;
+  font-weight: 600;
+  background: rgba(255, 152, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+  margin: 3px 0;
+}
+
+.dates {
+  color: #666;
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-top: 5px;
+}
+
+/* Vue Liste */
+.list-view {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.list-member {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border: 2px solid #E0E0E0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.list-member:hover {
+  border-color: #4CAF50;
+  background: #F8F9FA;
+}
+
+.list-member.deceased {
+  opacity: 0.7;
+  background: #F5F5F5;
+}
+
+.member-avatar {
+  margin-right: 15px;
+}
+
+.member-avatar img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.member-details {
+  flex: 1;
+}
+
+.member-details h4 {
+  margin: 0 0 5px 0;
+  color: #2c5530;
+}
+
+.member-details p {
+  margin: 2px 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.member-status {
+  margin-left: 15px;
+}
+
+.status {
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status.alive {
+  background: #E8F5E8;
+  color: #2E7D32;
+}
+
+.status.deceased {
+  background: #F3E5F5;
+  color: #7B1FA2;
+}
+
+/* Modal des détails */
+.member-details-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #E0E0E0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c5530;
+}
+
+.modal-header button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-body {
+  display: flex;
+  gap: 20px;
+}
+
+.detail-photo {
+  flex-shrink: 0;
+}
+
+.detail-photo img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #4CAF50;
+}
+
+.avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #4CAF50;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  border: 3px solid #4CAF50;
+}
+
+.detail-info {
+  flex: 1;
+}
+
+.info-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.info-item .label {
+  font-weight: 600;
+  color: #2c5530;
+}
+
+.info-item .value {
+  color: #666;
+  text-align: right;
+}
+
+/* Statistiques */
+.arbre-stats {
+  margin-top: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  padding: 30px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(76, 175, 80, 0.3);
+  min-width: 300px;
+}
+
+.stat-card h4 {
+  margin: 0 0 20px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.stat-card p {
+  margin: 10px 0;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.stat-card p strong {
+  font-weight: 700;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .arbre-header h3 {
+    font-size: 1.3rem;
+  }
+
+  .arbre-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .view-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .view-btn {
+    flex: 1;
+    min-width: 130px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .members-row {
+    justify-content: center;
+  }
+  
+  .member-card {
+    min-width: 160px;
+    max-width: 180px;
+  }
+
+  .member-photo img,
+  .avatar-placeholder {
+    width: 70px;
+    height: 70px;
+    font-size: 28px;
+  }
+  
+  .list-member {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .member-avatar {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+  
+  .member-status {
+    margin-left: 0;
+    margin-top: 10px;
+  }
+  
+  .modal-body {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .info-item {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .info-item .value {
+    text-align: center;
+  }
+
+  .stat-card {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .generation-level::after {
+    display: none;
+  }
+}
+
+
+
+
+

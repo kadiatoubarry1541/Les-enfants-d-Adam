@@ -1,0 +1,603 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { VideoRecorder } from '../../components/VideoRecorder'
+
+interface DeceasedFormData {
+  // Page 1 - Ô Dieu, pardonne-lui, fais-lui miséricorde et efface ses fautes.
+  famillePere: string
+  prenomPere: string
+  pereStatut: string
+  numeroHPere: string
+  familleMere: string
+  prenomMere: string
+  numeroHMere: string
+  mereStatut: string
+  nomFamille: string
+  prenom: string
+  genre: string
+  dateNaissance: string
+  lieuNaissance: string
+  rangNaissance: string
+  dateDeces: string
+  lieuDeces: string
+  
+  // Page 2 - Ô Dieu, fais de sa tombe une lumière et un jardin du Paradis.
+  ethnie: string
+  lieuResidence1: string
+  lieuResidence2: string
+  lieuResidence3: string
+  religion: string
+  statutSocial: string
+  origine: string
+  pays: string
+  region: string
+  
+  // Page 3 - Ô Dieu, réunis-le avec sa famille dans le Firdaws
+  nbFreresMere: number
+  nbSoeursMere: number
+  nbFreresPere: number
+  nbSoeursPere: number
+  nbFilles: number
+  nbGarcons: number
+  photo: File | null
+  video: Blob | null
+  decet: string
+  generation: string
+}
+
+const FAMILLES = [
+  'Diallo', 'Barry', 'Sow', 'Bah', 'Balde', 'Camara', 'Keita', 'Bangoura', 
+  'Koroma', 'Kamano', 'Fofana', 'Traoré', 'Cissé', 'Konaté', 'Kourouma', 
+  'Soumah', 'Touré', 'Conté', 'Kissi', 'Sangaré', 'Sidibé', 'Koulibaly', 
+  'Kaba', 'Gbanamou', 'Manons', 'Lelehée', 'Kpelle', 'Doumbouya'
+]
+
+const ETHNIES = ['Peuls', 'Malinkés', 'Soussous', 'Tomas / Loma', 'Kissi']
+const REGIONS = ['Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière']
+const RELIGIONS = ['Islam', 'Christianisme', 'Animisme', 'Autre']
+const STATUTS_SOCIAUX = ['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf / Veuve', 'Autre']
+const GENRES = ['Homme', 'Femme', 'Autre']
+
+export function DeceasedWrittenForm() {
+  const [formData, setFormData] = useState<DeceasedFormData>({
+    famillePere: '',
+    prenomPere: '',
+    pereStatut: '',
+    numeroHPere: '',
+    familleMere: '',
+    prenomMere: '',
+    numeroHMere: '',
+    mereStatut: '',
+    nomFamille: '',
+    prenom: '',
+    genre: '',
+    dateNaissance: '',
+    lieuNaissance: '',
+    rangNaissance: '',
+    dateDeces: '',
+    lieuDeces: '',
+    ethnie: '',
+    lieuResidence1: '',
+    lieuResidence2: '',
+    lieuResidence3: '',
+    religion: '',
+    statutSocial: '',
+    origine: '',
+    pays: '',
+    region: '',
+    nbFreresMere: 0,
+    nbSoeursMere: 0,
+    nbFreresPere: 0,
+    nbSoeursPere: 0,
+    nbFilles: 0,
+    nbGarcons: 0,
+    photo: null,
+    video: null,
+    decet: '',
+    generation: ''
+  })
+  
+  const [currentPage, setCurrentPage] = useState(1)
+  const navigate = useNavigate()
+
+  const calculateDecet = (dateDeces: string): string => {
+    if (!dateDeces) return ''
+    const deathDate = new Date(dateDeces)
+    const deathYear = deathDate.getFullYear()
+    const anneeDepart = -3869 // 3870 av. J.-C.
+    const ecart = deathYear - anneeDepart
+    const decetIndex = Math.floor(ecart / 63) + 1
+    const decetNumber = Math.max(1, Math.min(200, decetIndex))
+    return `D${decetNumber}`
+  }
+
+  const calculateGeneration = (dateNaissance: string): string => {
+    if (!dateNaissance) return ''
+    const birthDate = new Date(dateNaissance)
+    const birthYear = birthDate.getFullYear()
+    const anneeDepart = -4003
+    const ecart = birthYear - anneeDepart
+    const generationIndex = Math.floor(ecart / 63) + 1
+    const generationNumber = Math.max(1, Math.min(200, generationIndex))
+    return `G${generationNumber}`
+  }
+
+  const calculateAge = (dateNaissance: string, dateDeces: string): number => {
+    if (!dateNaissance || !dateDeces) return 0
+    const birth = new Date(dateNaissance)
+    const death = new Date(dateDeces)
+    let age = death.getFullYear() - birth.getFullYear()
+    const monthDiff = death.getMonth() - birth.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && death.getDate() < birth.getDate())) {
+      age--
+    }
+    return age
+  }
+
+  const calculateYearsSinceDeath = (dateDeces: string): number => {
+    if (!dateDeces) return 0
+    const death = new Date(dateDeces)
+    const now = new Date()
+    let years = now.getFullYear() - death.getFullYear()
+    const monthDiff = now.getMonth() - death.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < death.getDate())) {
+      years--
+    }
+    return years
+  }
+
+  const generateNumeroHD = (data: DeceasedFormData): string => {
+    const decet = calculateDecet(data.dateDeces)
+    const generation = calculateGeneration(data.dateNaissance)
+    const continent = 'C1'
+    const pays = data.pays === 'Guinée' ? 'P2' : 'P1'
+    
+    const regionCodes: { [key: string]: string } = {
+      'Basse-Guinée': 'R1', 'Fouta-Djallon': 'R2', 'Haute-Guinée': 'R3', 'Guinée forestière': 'R4'
+    }
+    const ethnieCodes: { [key: string]: string } = {
+      'Peuls': 'E1', 'Malinkés': 'E2', 'Soussous': 'E3', 'Kissi': 'E4', 'Toma': 'E5'
+    }
+    const familleCodes: { [key: string]: string } = {
+      'Barry': 'F1', 'Diallo': 'F2', 'Sow': 'F3', 'Bah': 'F4', 'Balde': 'F5', 'Camara': 'F6', 'Keita': 'F7'
+    }
+    
+    const regionCode = regionCodes[data.region] || 'R1'
+    const ethnieCode = ethnieCodes[data.ethnie] || 'E1'
+    const familleCode = familleCodes[data.nomFamille] || 'F1'
+    
+    const counter = localStorage.getItem('numeroHD_counter') || '0'
+    const nextNumber = parseInt(counter) + 1
+    localStorage.setItem('numeroHD_counter', nextNumber.toString())
+    
+    return `${decet}${generation}${continent}${pays}${regionCode}${ethnieCode}${familleCode} ${nextNumber}`
+  }
+
+  const handleVideoRecorded = (videoBlob: Blob) => {
+    setFormData(prev => ({ ...prev, video: videoBlob }))
+  }
+
+  const handleSubmit = () => {
+    const numeroHD = generateNumeroHD(formData)
+    const completeData = { 
+      ...formData, 
+      numeroHD,
+      decet: calculateDecet(formData.dateDeces),
+      generation: calculateGeneration(formData.dateNaissance),
+      age: calculateAge(formData.dateNaissance, formData.dateDeces),
+      yearsSinceDeath: calculateYearsSinceDeath(formData.dateDeces)
+    }
+    
+    localStorage.setItem('defunt_ecrit', JSON.stringify(completeData))
+    
+    // Afficher le succès
+    alert(`Enregistrement terminé ! Votre NumeroHD est : ${numeroHD}`)
+    navigate('/')
+  }
+
+  const updateField = (field: keyof DeceasedFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  if (currentPage === 1) {
+    return (
+      <div className="stack">
+        <h2>Ô Dieu, pardonne-lui, fais-lui miséricorde et efface ses fautes.</h2>
+        <div className="card">
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Famille (nom père)</label>
+                <select value={formData.famillePere} onChange={(e) => updateField('famillePere', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {FAMILLES.map(famille => <option key={famille} value={famille}>{famille}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Prénom du père</label>
+                <input value={formData.prenomPere} onChange={(e) => updateField('prenomPere', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Père Vivant ou Mort</label>
+                <select value={formData.pereStatut} onChange={(e) => updateField('pereStatut', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  <option value="Vivant">Vivant</option>
+                  <option value="Mort">Mort</option>
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>NuméroH (père)</label>
+                <input value={formData.numeroHPere} onChange={(e) => updateField('numeroHPere', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Nom de mère (famille)</label>
+                <select value={formData.familleMere} onChange={(e) => updateField('familleMere', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {FAMILLES.map(famille => <option key={famille} value={famille}>{famille}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Prénom de mère</label>
+                <input value={formData.prenomMere} onChange={(e) => updateField('prenomMere', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Mère Vivant ou Mort</label>
+                <select value={formData.mereStatut} onChange={(e) => updateField('mereStatut', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  <option value="Vivant">Vivant</option>
+                  <option value="Mort">Mort</option>
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>NuméroH/HD (mère)</label>
+                <input value={formData.numeroHMere} onChange={(e) => updateField('numeroHMere', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Famille (Nom)</label>
+                <input value={formData.nomFamille} onChange={(e) => updateField('nomFamille', e.target.value)} />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Prénom</label>
+                <input value={formData.prenom} onChange={(e) => updateField('prenom', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Genre</label>
+                <select value={formData.genre} onChange={(e) => updateField('genre', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {GENRES.map(genre => <option key={genre} value={genre}>{genre}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Date de naissance</label>
+                <input 
+                  type="date" 
+                  value={formData.dateNaissance} 
+                  onChange={(e) => {
+                    updateField('dateNaissance', e.target.value)
+                    updateField('generation', calculateGeneration(e.target.value))
+                  }} 
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Lieu de naissance</label>
+                <input value={formData.lieuNaissance} onChange={(e) => updateField('lieuNaissance', e.target.value)} />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Rang de naissance</label>
+                <select value={formData.rangNaissance} onChange={(e) => updateField('rangNaissance', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {Array.from({length:20},(_,i)=>i+1).map(n=> <option key={n} value={String(n)}>{n}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Année de décès</label>
+                <input 
+                  type="date" 
+                  value={formData.dateDeces} 
+                  onChange={(e) => {
+                    updateField('dateDeces', e.target.value)
+                    updateField('decet', calculateDecet(e.target.value))
+                  }} 
+                />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Lieu de décès</label>
+                <input value={formData.lieuDeces} onChange={(e) => updateField('lieuDeces', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Génération (auto)</label>
+                <input value={formData.generation} readOnly className="readonly" />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Décet (auto)</label>
+                <input value={formData.decet} readOnly className="readonly" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="actions">
+            <button className="btn" onClick={() => setCurrentPage(2)}>
+              Page suivante
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (currentPage === 2) {
+    return (
+      <div className="stack">
+        <h2>Ô Dieu, fais de sa tombe une lumière et un jardin du Paradis.</h2>
+        <div className="card">
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Ethnies</label>
+                <select value={formData.ethnie} onChange={(e) => updateField('ethnie', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {ETHNIES.map(ethnie => <option key={ethnie} value={ethnie}>{ethnie}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Religion</label>
+                <select value={formData.religion} onChange={(e) => updateField('religion', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {RELIGIONS.map(religion => <option key={religion} value={religion}>{religion}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-4">
+              <div className="field">
+                <label>Lieu de résidence 1</label>
+                <input value={formData.lieuResidence1} onChange={(e) => updateField('lieuResidence1', e.target.value)} />
+              </div>
+            </div>
+            <div className="col-4">
+              <div className="field">
+                <label>Lieu de résidence 2</label>
+                <input value={formData.lieuResidence2} onChange={(e) => updateField('lieuResidence2', e.target.value)} />
+              </div>
+            </div>
+            <div className="col-4">
+              <div className="field">
+                <label>Lieu de résidence 3</label>
+                <input value={formData.lieuResidence3} onChange={(e) => updateField('lieuResidence3', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Statut social</label>
+                <select value={formData.statutSocial} onChange={(e) => updateField('statutSocial', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {STATUTS_SOCIAUX.map(statut => <option key={statut} value={statut}>{statut}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Origine</label>
+                <input value={formData.origine} onChange={(e) => updateField('origine', e.target.value)} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Pays (nationalité)</label>
+                <select value={formData.pays} onChange={(e) => updateField('pays', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  <option value="Égypte">Égypte</option>
+                  <option value="Guinée">Guinée</option>
+                </select>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Région (Origine)</label>
+                <select value={formData.region} onChange={(e) => updateField('region', e.target.value)}>
+                  <option value="">Sélectionner</option>
+                  {REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div className="actions">
+            <button className="btn secondary" onClick={() => setCurrentPage(1)}>
+              Page précédente
+            </button>
+            <button className="btn" onClick={() => setCurrentPage(3)}>
+              Page suivante
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (currentPage === 3) {
+    return (
+      <div className="stack">
+        <h2>Ô Dieu, réunis-le avec sa famille dans le Firdaws (le Paradis suprême), comme Tu les avais réunis dans cette vie.</h2>
+        <div className="card">
+          <div className="row">
+            <div className="col-3">
+              <div className="field">
+                <label>Frères même mère</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  value={formData.nbFreresMere} 
+                  onChange={(e) => updateField('nbFreresMere', Number(e.target.value))} 
+                />
+              </div>
+            </div>
+            <div className="col-3">
+              <div className="field">
+                <label>Sœurs même mère</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  value={formData.nbSoeursMere} 
+                  onChange={(e) => updateField('nbSoeursMere', Number(e.target.value))} 
+                />
+              </div>
+            </div>
+            <div className="col-3">
+              <div className="field">
+                <label>Frères même père</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  value={formData.nbFreresPere} 
+                  onChange={(e) => updateField('nbFreresPere', Number(e.target.value))} 
+                />
+              </div>
+            </div>
+            <div className="col-3">
+              <div className="field">
+                <label>Sœurs même père</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  value={formData.nbSoeursPere} 
+                  onChange={(e) => updateField('nbSoeursPere', Number(e.target.value))} 
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Filles</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  value={formData.nbFilles} 
+                  onChange={(e) => updateField('nbFilles', Number(e.target.value))} 
+                />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Garçons</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  value={formData.nbGarcons} 
+                  onChange={(e) => updateField('nbGarcons', Number(e.target.value))} 
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Photo de preuve d'existence</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="user"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) updateField('photo', file)
+                  }}
+                />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Vidéo (1 minute)</label>
+                <VideoRecorder 
+                  onVideoRecorded={handleVideoRecorded}
+                  maxDuration={1}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="actions">
+            <button className="btn secondary" onClick={() => setCurrentPage(2)}>
+              Page précédente
+            </button>
+            <button className="btn" onClick={handleSubmit}>
+              Soumettre
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
