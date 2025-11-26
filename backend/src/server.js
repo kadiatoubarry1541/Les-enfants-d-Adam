@@ -80,7 +80,7 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) return callback(null, true);
     // En développement, être plus strict
     if (process.env.NODE_ENV === 'development') {
-      return callback(new Error('Not allowed by CORS'));
+    return callback(new Error('Not allowed by CORS'));
     }
     // En production, autoriser si l'origine correspond au pattern
     return callback(null, true);
