@@ -1,17 +1,27 @@
 # 🚀 Guide de Déploiement - Plateforme Communautaire Guinéenne
 
-## 📖 Deux guides disponibles
+## 🆓 Guide 100% GRATUIT - RECOMMANDÉ
 
-### ⚡ Guide Rapide (15 minutes) - RECOMMANDÉ
+**Tout est GRATUIT : GitHub Pages + Supabase + Render**
+
+👉 **[Lisez DEPLOIEMENT_GRATUIT.md](./DEPLOIEMENT_GRATUIT.md)** ⭐
+
+Ce guide vous explique comment déployer avec :
+- ✅ **GitHub Pages** : Frontend GRATUIT (inclus avec GitHub)
+- ✅ **Supabase** : Base de données PostgreSQL GRATUITE (500 MB)
+- ✅ **Render** : Backend GRATUIT (750h/mois)
+- **AUCUN PAIEMENT REQUIS !**
+
+---
+
+## 📖 Autres guides disponibles
+
+### ⚡ Guide Rapide (15 minutes)
 **Pour déployer rapidement pour le hackathon**
 
 👉 **[Lisez DEPLOIEMENT_RAPIDE.md](./DEPLOIEMENT_RAPIDE.md)**
 
-Ce guide vous explique étape par étape comment :
-- Créer une base de données PostgreSQL en ligne (Supabase - gratuit)
-- Déployer le backend sur Render (gratuit)
-- Déployer le frontend sur Vercel (gratuit)
-- Configurer tout en 15 minutes
+Ce guide utilise Vercel (gratuit aussi) si vous préférez cette option.
 
 ### 📚 Guide Complet (détaillé)
 **Pour comprendre tous les détails**

@@ -19,10 +19,13 @@ initTestAccount();
 ensureTestAccountsExist();
 console.log("✅ Comptes de test initialisés");
 
+// Configuration du basename pour GitHub Pages
+const basename = import.meta.env.PROD ? '/Les-enfants-d-Adam' : '';
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <ThemeProvider>
           <I18nProvider>
             <App />
