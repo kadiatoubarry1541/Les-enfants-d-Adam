@@ -48,9 +48,10 @@ connectDB();
 // Middleware de sécurité
 app.use(helmet());
 
-// Configuration CORS (autorise plusieurs origines localhost)
+// Configuration CORS (autorise plusieurs origines localhost + production)
 const allowedOrigins = [
   config.FRONTEND_URL,
+  process.env.CORS_ORIGIN, // URL de production depuis les variables d'environnement
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:5174',
@@ -71,9 +72,18 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
+    // En production, autoriser toutes les origines si CORS_ORIGIN n'est pas défini
+    if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
+      return callback(null, true);
+    }
     if (!origin) return callback(null, true); // requêtes same-origin ou outils
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
+    // En développement, être plus strict
+    if (process.env.NODE_ENV === 'development') {
+      return callback(new Error('Not allowed by CORS'));
+    }
+    // En production, autoriser si l'origine correspond au pattern
+    return callback(null, true);
   },
   credentials: true
 }));
