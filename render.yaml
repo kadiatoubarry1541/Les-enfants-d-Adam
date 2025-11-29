@@ -2,6 +2,7 @@ services:
   - type: web
     name: enfants-adam-backend
     env: node
+    plan: free
     buildCommand: cd backend && npm install
     startCommand: cd backend && npm start
     envVars:
@@ -9,22 +10,16 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-        # Alternative: vous pouvez utiliser les variables individuelles si vous préférez
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
-        sync: false
-      - key: DB_NAME
-        sync: false
-      - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
+        # À configurer manuellement dans Render avec: postgresql://neondb_owner:npg_rx6VLIQSZz2T@ep-shiny-cherry-aduc0wl1-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
       - key: JWT_SECRET
         sync: false
+        # À configurer manuellement dans Render
       - key: JWT_EXPIRE
         value: 7d
       - key: CORS_ORIGIN
         sync: false
+        # À configurer manuellement dans Render avec: https://kadiatoubarry1541.github.io
+      - key: PORT
+        value: 10000
     healthCheckPath: /api/health
 
