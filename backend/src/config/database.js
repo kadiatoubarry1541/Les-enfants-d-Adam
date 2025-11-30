@@ -93,6 +93,11 @@ const connectDB = async () => {
     return sequelize;
   } catch (error) {
     console.error('❌ Erreur de connexion PostgreSQL:', error.message);
+    console.error('Détails:', error);
+    // En production, on peut continuer sans base de données pour certaines routes
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('⚠️ Mode production: Le serveur continue sans base de données');
+    }
     throw error; // Ne pas passer en mode mémoire locale
   }
 };

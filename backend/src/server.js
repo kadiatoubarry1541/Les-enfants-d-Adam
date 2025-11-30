@@ -42,8 +42,12 @@ dotenv.config({ path: path.join(path.dirname(__dirname), 'config.env') });
 const app = express();
 const PORT = process.env.PORT || config.PORT || 5002;
 
-// Connexion à la base de données
-connectDB();
+// Connexion à la base de données (async)
+connectDB().catch(error => {
+  console.error('❌ Erreur lors de la connexion à la base de données:', error);
+  console.error('⚠️ Le serveur démarre quand même, mais certaines fonctionnalités peuvent ne pas fonctionner');
+  // Le serveur démarre quand même pour permettre les tests
+});
 
 // Middleware de sécurité
 app.use(helmet());
