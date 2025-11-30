@@ -46,7 +46,7 @@ FormationRegistration.init({
     }
   },
   status: {
-    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'approved', 'rejected', 'completed', 'dropped'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'approved', 'rejected', 'completed', 'dropped')
     defaultValue: 'pending'
   },
   registeredAt: {

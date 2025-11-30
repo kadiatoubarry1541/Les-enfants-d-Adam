@@ -64,7 +64,7 @@ HealthProduct.init({
     type: DataTypes.TEXT
   },
   category: {
-    type: DataTypes.STRING // ENUM converti en STRING ('médicament', 'équipement', 'supplément', 'produit de soin', 'autre'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('médicament', 'équipement', 'supplément', 'produit de soin', 'autre')
     allowNull: false
   },
   brand: {
@@ -84,7 +84,7 @@ HealthProduct.init({
     defaultValue: 'GNF'
   },
   availability: {
-    type: DataTypes.STRING // ENUM converti en STRING ('disponible', 'rupture de stock', 'indisponible'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('disponible', 'rupture de stock', 'indisponible')
     defaultValue: 'disponible'
   },
   pharmacy: {

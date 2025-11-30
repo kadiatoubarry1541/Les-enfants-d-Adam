@@ -46,7 +46,7 @@ Supplier.init({
     comment: 'Nom de l\'entreprise'
   },
   businessType: {
-    type: DataTypes.STRING // ENUM converti en STRING ('individuel', 'entreprise', 'coopérative', 'association'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('individuel', 'entreprise', 'coopérative', 'association')
     allowNull: false
   },
   description: {

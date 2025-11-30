@@ -46,7 +46,7 @@ ProfessorRequest.init({
     }
   },
   status: {
-    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'approved', 'rejected', 'completed'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'approved', 'rejected', 'completed')
     defaultValue: 'pending'
   },
   requestMessage: {

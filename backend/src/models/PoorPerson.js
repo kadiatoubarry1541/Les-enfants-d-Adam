@@ -64,11 +64,11 @@ PoorPerson.init({
     type: DataTypes.INTEGER
   },
   gender: {
-    type: DataTypes.STRING // ENUM converti en STRING ('HOMME', 'FEMME', 'AUTRE'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('HOMME', 'FEMME', 'AUTRE')
     defaultValue: 'AUTRE'
   },
   region: {
-    type: DataTypes.STRING // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière')
     allowNull: false
   },
   city: {
@@ -97,7 +97,7 @@ PoorPerson.init({
     comment: 'Besoins identifiés (nourriture, vêtements, médicaments, etc.)'
   },
   urgency: {
-    type: DataTypes.STRING // ENUM converti en STRING ('faible', 'moyenne', 'élevée', 'critique'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('faible', 'moyenne', 'élevée', 'critique')
     defaultValue: 'moyenne'
   },
   familySize: {

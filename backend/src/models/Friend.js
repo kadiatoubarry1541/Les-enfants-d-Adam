@@ -34,7 +34,7 @@ Friend.init({
     comment: 'NumeroH de l\'ami'
   },
   status: {
-    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'accepted', 'blocked'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'accepted', 'blocked')
     defaultValue: 'pending'
   },
   requestedAt: {
