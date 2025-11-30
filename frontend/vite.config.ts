@@ -5,8 +5,8 @@ import tailwindcss from "@tailwindcss/postcss";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Base path pour GitHub Pages (nom du dépôt)
-  base: process.env.NODE_ENV === 'production' ? '/Les-enfants-d-Adam/' : '/',
+  // Base path - vide pour Render (ou GitHub Pages si nécessaire)
+  base: '/',
   css: {
     postcss: {
       plugins: [tailwindcss],
