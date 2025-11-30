@@ -33,7 +33,7 @@ export const HistorySection = sequelize.define('HistorySection', {
     defaultValue: []
   },
   category: {
-    type: DataTypes.STRING // ENUM converti en STRING ('prehistoire', 'antiquite', 'moyen-age', 'moderne', 'contemporain'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('prehistoire', 'antiquite', 'moyen-age', 'moderne', 'contemporain')
     allowNull: false
   },
   period: {
@@ -45,7 +45,7 @@ export const HistorySection = sequelize.define('HistorySection', {
     allowNull: false
   },
   importance: {
-    type: DataTypes.STRING // ENUM converti en STRING ('low', 'medium', 'high'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('low', 'medium', 'high')
     defaultValue: 'medium'
   },
   isActive: {
@@ -166,7 +166,7 @@ export const Document = sequelize.define('Document', {
     allowNull: false
   },
   type: {
-    type: DataTypes.STRING // ENUM converti en STRING ('birth_certificate', 'marriage_certificate', 'death_certificate', 'identity_card', 'passport', 'other'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('birth_certificate', 'marriage_certificate', 'death_certificate', 'identity_card', 'passport', 'other')
     allowNull: false
   },
   description: {
@@ -200,7 +200,7 @@ export const Document = sequelize.define('Document', {
     type: DataTypes.STRING
   },
   status: {
-    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'approved', 'rejected'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'approved', 'rejected')
     defaultValue: 'pending'
   },
   isPublic: {
@@ -208,7 +208,7 @@ export const Document = sequelize.define('Document', {
     defaultValue: false
   },
   category: {
-    type: DataTypes.STRING // ENUM converti en STRING ('civil', 'administrative', 'legal', 'other'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('civil', 'administrative', 'legal', 'other')
     allowNull: false
   },
   tags: {
@@ -244,7 +244,7 @@ export const EmergencyCall = sequelize.define('EmergencyCall', {
     defaultValue: {}
   },
   emergencyType: {
-    type: DataTypes.STRING // ENUM converti en STRING ('medical', 'fire', 'police', 'other'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('medical', 'fire', 'police', 'other')
     allowNull: false
   },
   description: {
@@ -252,7 +252,7 @@ export const EmergencyCall = sequelize.define('EmergencyCall', {
     allowNull: false
   },
   status: {
-    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'in_progress', 'resolved'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'in_progress', 'resolved')
     defaultValue: 'pending'
   },
   assignedAgent: {
@@ -290,7 +290,7 @@ export const LocationCheck = sequelize.define('LocationCheck', {
     defaultValue: {}
   },
   safetyLevel: {
-    type: DataTypes.STRING // ENUM converti en STRING ('safe', 'moderate', 'risky', 'dangerous'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('safe', 'moderate', 'risky', 'dangerous')
     allowNull: false
   },
   recommendations: {
@@ -338,7 +338,7 @@ export const Donation = sequelize.define('Donation', {
     defaultValue: 'FG'
   },
   type: {
-    type: DataTypes.STRING // ENUM converti en STRING ('money', 'food', 'clothing', 'medicine', 'other'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('money', 'food', 'clothing', 'medicine', 'other')
     allowNull: false
   },
   donationType: {
@@ -351,7 +351,7 @@ export const Donation = sequelize.define('Donation', {
     allowNull: false
   },
   status: {
-    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'completed', 'cancelled'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'completed', 'cancelled')
     defaultValue: 'pending'
   },
   completedAt: {
