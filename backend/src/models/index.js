@@ -51,6 +51,8 @@ export { default as SciencePost } from './SciencePost.js';
 export { default as SciencePermission } from './SciencePermission.js';
 export { default as RealityPost } from './RealityPost.js';
 export { default as StateMessage } from './StateMessage.js';
+export { default as Logo } from './Logo.js';
+export { default as UserLogo } from './UserLogo.js';
 
 // Export des modèles supplémentaires
 export * from './additional.js';
