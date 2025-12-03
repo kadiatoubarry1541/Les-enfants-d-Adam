@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ButtonDonZaka } from '../components/ButtonDonZaka';
 
 interface UserData {
   numeroH: string;
@@ -50,14 +49,32 @@ interface Donation {
   completedAt?: string;
 }
 
+interface HolyBook {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  content: string;
+  language: string;
+  category: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  reflexions?: string; // Réflexions spécifiques à ce livre
+}
+
 export default function Solidarite() {
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState<'pauvres' | 'dons'>('pauvres');
+  const [activeTab, setActiveTab] = useState<'dons' | 'zaka' | 'livres'>('dons');
+  const [donsSubTab, setDonsSubTab] = useState<'pauvres' | 'mes-dons'>('pauvres');
   const [poorPeople, setPoorPeople] = useState<PoorPerson[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
+  const [holyBooks, setHolyBooks] = useState<HolyBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDonationForm, setShowDonationForm] = useState(false);
   const [selectedPoorPerson, setSelectedPoorPerson] = useState<PoorPerson | null>(null);
+  const [showReflexionsModal, setShowReflexionsModal] = useState(false);
+  const [selectedBookForReflexions, setSelectedBookForReflexions] = useState<HolyBook | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUrgency, setSelectedUrgency] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
@@ -70,85 +87,6 @@ export default function Solidarite() {
     description: '',
     recipient: ''
   });
-
-  useEffect(() => {
-    const session = localStorage.getItem("session_user");
-    if (!session) {
-      navigate("/login");
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(session);
-      const user = parsed.userData || parsed;
-      if (!user || !user.numeroH) {
-        navigate("/login");
-        return;
-      }
-      
-      setUserData(user);
-      loadData();
-    } catch {
-      navigate("/login");
-    }
-  }, [navigate]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      await Promise.all([
-        loadPoorPeople(),
-        loadDonations()
-      ]);
-    } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadPoorPeople = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('/api/zakat/poor-people', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setPoorPeople(data.poorPeople || []);
-      } else {
-        setPoorPeople(getDefaultPoorPeople());
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des pauvres:', error);
-      setPoorPeople(getDefaultPoorPeople());
-    }
-  };
-
-  const loadDonations = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('/api/zakat/donations', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Filtrer uniquement les dons (sadaqah), pas la zakat
-        const allDonations = data.donations || [];
-        setDonations(allDonations.filter((d: any) => !d.donationType || d.donationType === 'sadaqah'));
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des dons:', error);
-    }
-  };
 
   const getDefaultPoorPeople = (): PoorPerson[] => [
     {
@@ -196,76 +134,128 @@ export default function Solidarite() {
       familySize: 4,
       occupation: 'Vendeur ambulant',
       healthCondition: 'Handicap physique'
+    }
+  ];
+
+  const getDefaultHolyBooks = (): HolyBook[] => [
+    {
+      id: '1',
+      title: 'Le Coran',
+      author: 'Révélation Divine',
+      description: 'Livre sacré de l\'Islam',
+      content: 'Contenu du Coran...',
+      language: 'Arabe',
+      category: 'Livre Sacré',
+      isActive: true,
+      createdBy: 'admin',
+      createdAt: '2024-01-01T00:00:00Z',
+      reflexions: `📖 Points de réflexion sur le Coran :
+
+1. La miséricorde divine
+   "Au nom d'Allah, le Tout Miséricordieux, le Très Miséricordieux"
+   - Réfléchissez sur la place centrale de la miséricorde dans l'Islam
+   - Comment cette miséricorde se manifeste-t-elle dans votre vie quotidienne ?
+
+2. L'unicité de Dieu (Tawhid)
+   "Dis : Il est Allah, Unique. Allah, Le Seul à être imploré pour ce que nous désirons."
+   - Méditez sur le concept d'unicité divine
+   - Comment cette unicité influence-t-elle votre relation avec le Créateur ?
+
+3. La justice et l'équité
+   "Ô vous qui croyez ! Soyez stricts (dans vos devoirs) envers Allah et (soyez) des témoins équitables."
+   - Réfléchissez sur l'importance de la justice dans la société
+   - Comment pouvez-vous contribuer à une société plus juste ?`
+    },
+    {
+      id: '2',
+      title: 'La Bible',
+      author: 'Révélation Divine',
+      description: 'Livre sacré du Christianisme',
+      content: 'Contenu de la Bible...',
+      language: 'Français',
+      category: 'Livre Sacré',
+      isActive: true,
+      createdBy: 'admin',
+      createdAt: '2024-01-01T00:00:00Z',
+      reflexions: `📖 Points de réflexion sur la Bible :
+
+1. L'amour du prochain
+   "Tu aimeras ton prochain comme toi-même."
+   - Réfléchissez sur la portée de cet amour inconditionnel
+   - Comment cet amour se manifeste-t-il dans vos relations quotidiennes ?
+
+2. Le pardon
+   "Pardonne-nous nos offenses, comme nous aussi nous pardonnons à ceux qui nous ont offensés."
+   - Méditez sur la puissance du pardon
+   - Quels sont les obstacles qui vous empêchent de pardonner ?`
     },
     {
       id: '3',
-      numeroH: 'POOR003',
-      prenom: 'Mariama',
-      nomFamille: 'Bah',
-      age: 35,
-      location: 'Kankan',
-      situation: 'Mère célibataire avec 4 enfants',
-      needs: ['Nourriture', 'Vêtements enfants', 'Loyer'],
-      urgency: 'medium',
-      contactInfo: {
-        phone: '+224 555 123 456',
-        address: 'Quartier populaire, Kankan'
-      },
-      verifiedBy: 'admin',
-      verifiedAt: '2024-01-05T09:15:00Z',
+      title: 'Les Traditions Guinéennes',
+      author: 'Ancêtres Guinéens',
+      description: 'Sagesse et traditions des ancêtres',
+      content: 'Contenu des traditions...',
+      language: 'Français',
+      category: 'Sagesse Traditionnelle',
       isActive: true,
-      donations: [],
-      totalDonations: 0,
-      familySize: 5,
-      occupation: 'Femme de ménage',
-      healthCondition: 'Bon'
-    },
-    {
-      id: '4',
-      numeroH: 'POOR004',
-      prenom: 'Ousmane',
-      nomFamille: 'Barry',
-      age: 70,
-      location: 'Labé',
-      situation: 'Vieux sans famille',
-      needs: ['Nourriture', 'Médicaments', 'Soins médicaux'],
-      urgency: 'high',
-      contactInfo: {
-        address: 'Vieux quartier, Labé'
-      },
-      verifiedBy: 'admin',
-      verifiedAt: '2024-01-12T16:45:00Z',
-      isActive: true,
-      donations: [],
-      totalDonations: 0,
-      familySize: 1,
-      occupation: 'Sans emploi',
-      healthCondition: 'Problèmes de vue'
-    },
-    {
-      id: '5',
-      numeroH: 'POOR005',
-      prenom: 'Aminata',
-      nomFamille: 'Sow',
-      age: 28,
-      location: 'N\'Zérékoré',
-      situation: 'Famille nombreuse, père malade',
-      needs: ['Nourriture', 'Frais médicaux', 'Éducation'],
-      urgency: 'medium',
-      contactInfo: {
-        phone: '+224 777 888 999',
-        address: 'Banlieue, N\'Zérékoré'
-      },
-      verifiedBy: 'admin',
-      verifiedAt: '2024-01-08T11:20:00Z',
-      isActive: true,
-      donations: [],
-      totalDonations: 0,
-      familySize: 8,
-      occupation: 'Étudiante',
-      healthCondition: 'Bon'
+      createdBy: 'admin',
+      createdAt: '2024-01-01T00:00:00Z',
+      reflexions: `📖 Points de réflexion sur les Traditions Guinéennes :
+
+1. Le respect des ancêtres
+   "Les ancêtres sont les piliers de notre société"
+   - Réfléchissez sur l'importance de la mémoire et de l'héritage
+   - Comment honorez-vous la sagesse de vos ancêtres ?
+
+2. L'unité communautaire
+   "Un seul doigt ne peut pas ramasser la farine"
+   - Méditez sur la force de la communauté
+   - Comment contribuez-vous à l'harmonie de votre communauté ?`
     }
   ];
+
+  const loadPoorPeople = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('/api/zakat/poor-people', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPoorPeople(data.poorPeople || []);
+      } else {
+        setPoorPeople(getDefaultPoorPeople());
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des pauvres:', error);
+      setPoorPeople(getDefaultPoorPeople());
+    }
+  };
+
+  const loadDonations = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('/api/zakat/donations', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filtrer uniquement les dons (sadaqah), pas la zakat
+        const allDonations = data.donations || [];
+        setDonations(allDonations.filter((d: any) => !d.donationType || d.donationType === 'sadaqah'));
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des dons:', error);
+    }
+  };
 
   const handleDonation = (poorPerson: PoorPerson) => {
     setSelectedPoorPerson(poorPerson);
@@ -346,12 +336,71 @@ export default function Solidarite() {
     }
   };
 
+  const loadHolyBooks = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('/api/faith/books', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setHolyBooks(data.books || []);
+      } else {
+        setHolyBooks(getDefaultHolyBooks());
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des livres:', error);
+      setHolyBooks(getDefaultHolyBooks());
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        loadPoorPeople(),
+        loadDonations(),
+        loadHolyBooks()
+      ]);
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const session = localStorage.getItem("session_user");
+    if (!session) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(session);
+      const user = parsed.userData || parsed;
+      if (!user || !user.numeroH) {
+        navigate("/login");
+        return;
+      }
+      
+      setUserData(user);
+      loadData();
+    } catch {
+      navigate("/login");
+    }
+  }, [navigate]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement des données de dons...</p>
+          <p className="mt-4 text-gray-600">Chargement...</p>
         </div>
       </div>
     );
@@ -359,9 +408,6 @@ export default function Solidarite() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Bouton Don Zaka - TRÈS VISIBLE EN HAUT */}
-      <ButtonDonZaka />
-
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -387,15 +433,16 @@ export default function Solidarite() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
-              { id: 'pauvres', label: 'Liste des Pauvres', icon: '👥' },
-              { id: 'dons', label: 'Mes Dons', icon: '💝' }
+              { id: 'dons', label: 'Dons', icon: '🤝' },
+              { id: 'zaka', label: 'Zaka (Musulmans)', icon: '🤲' },
+              { id: 'livres', label: 'Les Livres de Dieu Unique', icon: '📖' }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
+                    ? (tab.id === 'zaka' || tab.id === 'dons') ? 'border-green-500 text-green-600' : 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -409,195 +456,282 @@ export default function Solidarite() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'pauvres' && (
+        
+        {activeTab === 'dons' && (
           <div className="space-y-6">
-            {/* Search and Filters */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                    placeholder="Rechercher par nom ou localisation..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <select
-                value={selectedUrgency}
-                onChange={(e) => setSelectedUrgency(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Toutes les urgences</option>
-                  <option value="critical">Critique</option>
-                  <option value="high">Élevée</option>
-                  <option value="medium">Moyenne</option>
-                  <option value="low">Faible</option>
-                </select>
-                <select
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Toutes les villes</option>
-                  <option value="Conakry">Conakry</option>
-                  <option value="Kindia">Kindia</option>
-                  <option value="Kankan">Kankan</option>
-                  <option value="Labé">Labé</option>
-                  <option value="N\'Zérékoré">N'Zérékoré</option>
-              </select>
+            {/* Navigation sous-onglets pour Dons */}
+            <div className="bg-white border-b">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav className="flex space-x-8">
+                  {[
+                    { id: 'pauvres', label: 'Liste des Pauvres', icon: '👥' },
+                    { id: 'mes-dons', label: 'Mes Dons', icon: '💝' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setDonsSubTab(tab.id as any)}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        donsSubTab === tab.id
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="mr-2">{tab.icon}</span>
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
               </div>
             </div>
 
-            {/* Liste des pauvres */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">👥 Liste des Pauvres</h2>
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-700">
-                  <strong>Note importante :</strong> Cette page est destinée aux <strong>dons généraux (Sadaqah)</strong> qui peuvent être donnés à tous les pauvres, quelle que soit leur religion. Pour les dons spécifiques aux musulmans (Zakat), veuillez utiliser la page <strong>Zaka (Musulman)</strong>.
-                </p>
-              </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPoorPeople.map((person) => (
-                  <div key={person.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {person.prenom} {person.nomFamille}
-                      </h3>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getUrgencyColor(person.urgency)}`}>
-                        {getUrgencyLabel(person.urgency)}
-                      </span>
+            {donsSubTab === 'pauvres' && (
+              <div className="space-y-6">
+                {/* Search and Filters */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Rechercher par nom ou localisation..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <span className="mr-2">🎂</span>
-                        <span>{person.age} ans</span>
-                    </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <span className="mr-2">📍</span>
-                        <span>{person.location}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <span className="mr-2">👥</span>
-                        <span>{person.familySize} personnes</span>
-                      </div>
-                      {person.occupation && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <span className="mr-2">💼</span>
-                          <span>{person.occupation}</span>
-                        </div>
-                      )}
-                  </div>
-                  
-                  <div className="mb-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Situation:</h4>
-                      <p className="text-sm text-gray-600">{person.situation}</p>
-                  </div>
-                  
-                  <div className="mb-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Besoins:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {person.needs.map((need, index) => (
-                          <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                          {need}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  
-                    {person.healthCondition && (
-                  <div className="mb-4">
-                        <h4 className="font-medium text-gray-900 mb-1">État de santé:</h4>
-                        <p className="text-sm text-gray-600">{person.healthCondition}</p>
-                  </div>
-                    )}
-
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-900 mb-1">Contact:</h4>
-                      {person.contactInfo.phone && (
-                        <p className="text-sm text-gray-600">📞 {person.contactInfo.phone}</p>
-                      )}
-                      <p className="text-sm text-gray-600">📍 {person.contactInfo.address}</p>
-                    </div>
-
-                    <div className="flex space-x-2">
-                    <button
-                        onClick={() => handleDonation(person)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-                      >
-                        💝 Aider
-                    </button>
-                      <button className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors">
-                        📞 Contacter
-                    </button>
+                    <select
+                      value={selectedUrgency}
+                      onChange={(e) => setSelectedUrgency(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Toutes les urgences</option>
+                      <option value="critical">Critique</option>
+                      <option value="high">Élevée</option>
+                      <option value="medium">Moyenne</option>
+                      <option value="low">Faible</option>
+                    </select>
+                    <select
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Toutes les villes</option>
+                      <option value="Conakry">Conakry</option>
+                      <option value="Kindia">Kindia</option>
+                      <option value="Kankan">Kankan</option>
+                      <option value="Labé">Labé</option>
+                      <option value="N\'Zérékoré">N'Zérékoré</option>
+                    </select>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Liste des pauvres */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">👥 Liste des Pauvres</h2>
+                  <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      <strong>Note importante :</strong> Cette page est destinée aux <strong>dons généraux (Sadaqah)</strong> qui peuvent être donnés à tous les pauvres, quelle que soit leur religion. Pour les dons spécifiques aux musulmans (Zakat), veuillez utiliser la page <strong>Zaka (Musulman)</strong>.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredPoorPeople.map((person) => (
+                      <div key={person.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {person.prenom} {person.nomFamille}
+                          </h3>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getUrgencyColor(person.urgency)}`}>
+                            {getUrgencyLabel(person.urgency)}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span className="mr-2">🎂</span>
+                            <span>{person.age} ans</span>
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span className="mr-2">📍</span>
+                            <span>{person.location}</span>
+                          </div>
+                          {person.familySize && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <span className="mr-2">👥</span>
+                              <span>{person.familySize} personnes</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-900 mb-2">Situation:</h4>
+                          <p className="text-sm text-gray-600">{person.situation}</p>
+                        </div>
+
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-900 mb-2">Besoins:</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {person.needs.map((need, index) => (
+                              <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                {need}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleDonation(person)}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                        >
+                          💝 Faire un Don
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {filteredPoorPeople.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Aucune personne trouvée</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {donsSubTab === 'mes-dons' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">💝 Mes Dons</h2>
+                  <div className="space-y-4">
+                    {donations.map((donation) => (
+                      <div key={donation.id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              Don à {donation.recipientName}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              Montant: {donation.amount.toLocaleString()} {donation.currency}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Type: {donation.type === 'money' ? 'Argent' :
+                                     donation.type === 'food' ? 'Nourriture' :
+                                     donation.type === 'clothing' ? 'Vêtements' :
+                                     donation.type === 'medicine' ? 'Médicaments' : 'Autre'}
+                            </p>
+                            {donation.description && (
+                              <p className="text-sm text-gray-600">Description: {donation.description}</p>
+                            )}
+                            <p className="text-sm text-gray-600">
+                              Date: {new Date(donation.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            donation.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            donation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {donation.status === 'completed' ? 'Effectué' :
+                             donation.status === 'pending' ? 'En attente' : 'Annulé'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {donations.length === 0 && (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">Aucun don effectué</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'zaka' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">🤲 Zaka (Musulmans)</h2>
+              <p className="text-gray-600 mb-6">Aumône obligatoire pour les musulmans uniquement</p>
+              <button
+                onClick={() => navigate('/zaka')}
+                className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              >
+                Accéder à la page Zaka
+              </button>
             </div>
           </div>
         )}
 
-        {activeTab === 'dons' && (
+        {activeTab === 'livres' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">💝 Mes Dons</h2>
-              <div className="space-y-4">
-                {donations.map((donation) => (
-                  <div key={donation.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                    <div>
-                        <h3 className="font-semibold text-gray-900">
-                          Don à {donation.recipientName}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Montant: {donation.amount.toLocaleString()} {donation.currency}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Type: {donation.type === 'money' ? 'Argent' :
-                                 donation.type === 'food' ? 'Nourriture' :
-                                 donation.type === 'clothing' ? 'Vêtements' :
-                                 donation.type === 'medicine' ? 'Médicaments' : 'Autre'}
-                        </p>
-                        {donation.description && (
-                          <p className="text-sm text-gray-600">Description: {donation.description}</p>
-                        )}
-                        <p className="text-sm text-gray-600">
-                          Date: {new Date(donation.createdAt).toLocaleDateString()}
-                        </p>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">📖 Les Livres de Dieu Unique</h2>
+              </div>
+              
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                <p className="text-sm text-blue-800">
+                  <strong>💡 Réfléchissons ensemble :</strong> Prenez le temps de méditer sur les passages qui vous marquent dans chaque livre sacré. La réflexion nous aide à mieux comprendre et à grandir spirituellement.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {holyBooks.map((book) => (
+                  <div key={book.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{book.title}</h3>
+                    <p className="text-gray-600 mb-4">{book.description}</p>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <span className="mr-2">✍️</span>
+                        <span>{book.author}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <span className="mr-2">🌍</span>
+                        <span>{book.language}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <span className="mr-2">📚</span>
+                        <span>{book.category}</span>
+                      </div>
                     </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        donation.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        donation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {donation.status === 'completed' ? 'Effectué' :
-                         donation.status === 'pending' ? 'En attente' : 'Annulé'}
-                      </span>
+                    
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex space-x-2">
+                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
+                          📖 Lire
+                        </button>
+                        <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">
+                          📥 Télécharger
+                        </button>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setSelectedBookForReflexions(book);
+                          setShowReflexionsModal(true);
+                        }}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        🤔 Réflexions
+                      </button>
                     </div>
                   </div>
                 ))}
-                {donations.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">Aucun don effectué</p>
-                  </div>
-                )}
-                  </div>
-                </div>
+              </div>
+            </div>
           </div>
         )}
+
       </div>
 
       {/* Modal de don */}
       {showDonationForm && selectedPoorPerson && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-xl font-bold text-gray-900 mb-4">
               💝 Faire un Don à {selectedPoorPerson.prenom} {selectedPoorPerson.nomFamille}
-              </h3>
-              <div className="space-y-4">
-                <div>
+            </h3>
+            <div className="space-y-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Type de don
                 </label>
@@ -612,8 +746,8 @@ export default function Solidarite() {
                   <option value="medicine">Médicaments</option>
                   <option value="other">Autre</option>
                 </select>
-                </div>
-                <div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Montant/Valeur
                 </label>
@@ -624,8 +758,8 @@ export default function Solidarite() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Montant en FG"
                 />
-                </div>
-                <div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Devise
                 </label>
@@ -638,8 +772,8 @@ export default function Solidarite() {
                   <option value="USD">Dollar US (USD)</option>
                   <option value="EUR">Euro (EUR)</option>
                 </select>
-                  </div>
-                  <div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description (optionnel)
                 </label>
@@ -650,25 +784,81 @@ export default function Solidarite() {
                   rows={3}
                   placeholder="Description du don..."
                 />
-                  </div>
               </div>
+            </div>
             <div className="flex space-x-3 mt-6">
-                <button
+              <button
                 onClick={() => setShowDonationForm(false)}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
               >
                 Annuler
-                </button>
-                <button
+              </button>
+              <button
                 onClick={submitDonation}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-                >
+                disabled={!donationForm.amount || parseFloat(donationForm.amount) <= 0}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg transition-colors"
+              >
                 Effectuer le don
-                </button>
-              </div>
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Modal de Réflexions pour un livre */}
+      {showReflexionsModal && selectedBookForReflexions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                🤔 Réflexions sur "{selectedBookForReflexions.title}"
+              </h3>
+              <button
+                onClick={() => {
+                  setShowReflexionsModal(false);
+                  setSelectedBookForReflexions(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+              <p className="text-sm text-blue-800">
+                <strong>💡 Invitation à la réflexion :</strong> Prenez le temps de méditer sur ces passages et points importants de ce livre sacré. Réfléchissez sur les passages qui vous marquent et notez vos pensées.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {selectedBookForReflexions.reflexions ? (
+                <div className="prose max-w-none">
+                  <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                    {selectedBookForReflexions.reflexions}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="mb-4">Aucune réflexion n'a encore été ajoutée pour ce livre.</p>
+                  <p className="text-sm">Les réflexions vous aideront à méditer sur les passages importants et les enseignements de ce livre sacré.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowReflexionsModal(false);
+                  setSelectedBookForReflexions(null);
+                }}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

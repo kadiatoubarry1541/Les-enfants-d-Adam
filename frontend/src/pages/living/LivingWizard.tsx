@@ -9,13 +9,15 @@ import { buildNumeroH, computeGenerationCode } from '../../utils/codes'
 import { LivingChoice } from './LivingChoice'
 import { VideoRegistration } from './VideoRegistration'
 import { api } from '../../utils/api'
-import { 
-  getRegions, 
-  getPrefecturesByRegion, 
-  getSousPrefecturesByPrefecture, 
-  getDistrictsBySousPrefecture,
-  getAllDistrictsAndQuartiers 
-} from '../../utils/guineaGeography'
+import {
+  getContinents,
+  getCountriesByContinent,
+  getRegionsByCountry,
+  getPrefecturesByRegion,
+  getSousPrefecturesByPrefecture,
+  getQuartiersBySousPrefecture,
+  type GeographicLocation
+} from '../../utils/worldGeography'
 
 type EtatVivant = {
   // Page 1
@@ -28,9 +30,19 @@ type EtatVivant = {
   mereStatut?: 'Vivant' | 'Mort'
   numeroHMere?: string
   ethnie?: string
+  // Nouveaux champs géographiques mondiaux
+  continent?: string
+  continentCode?: string
+  pays?: string
+  paysCode?: string
   regionOrigine?: string
+  regionCode?: string
   prefecture?: string
+  prefectureCode?: string
   sousPrefecture?: string
+  sousPrefectureCode?: string
+  quartier?: string
+  quartierCode?: string
   prenom?: string  // ✅ Votre prénom
 
   // Page 2
@@ -44,7 +56,6 @@ type EtatVivant = {
   lieu2?: string
   lieu3?: string
   nationalite?: string
-  pays?: string
   genre?: 'FEMME' | 'HOMME' | 'AUTRE'
   statutSocial?: 'Célibataire' | 'Marié(e)' | 'Divorcé(e)' | 'Veuf / Veuve' | 'Autre'
   nbFemmes?: number
@@ -93,21 +104,28 @@ export function LivingWizard() {
   const ageCalcule = useMemo(() => state.dateNaissance ? calculerAge(state.dateNaissance) : null, [state.dateNaissance])
   const generation = useMemo(() => state.dateNaissance ? computeGenerationCode(state.dateNaissance) : '', [state.dateNaissance])
 
-  // Logique hiérarchique pour les données géographiques
-  const regions = useMemo(() => getRegions(), [])
+  // Logique hiérarchique pour les données géographiques mondiales
+  const continents = useMemo(() => getContinents(), [])
+  const countries = useMemo(() => 
+    state.continentCode ? getCountriesByContinent(state.continentCode) : [], 
+    [state.continentCode]
+  )
+  const regions = useMemo(() => 
+    state.paysCode && state.continentCode ? getRegionsByCountry(state.paysCode, state.continentCode) : [], 
+    [state.paysCode, state.continentCode]
+  )
   const prefectures = useMemo(() => 
-    state.regionOrigine ? getPrefecturesByRegion(state.regionOrigine) : [], 
-    [state.regionOrigine]
+    state.regionCode && state.paysCode && state.continentCode ? getPrefecturesByRegion(state.regionCode, state.paysCode, state.continentCode) : [], 
+    [state.regionCode, state.paysCode, state.continentCode]
   )
   const sousPrefectures = useMemo(() => 
-    state.prefecture ? getSousPrefecturesByPrefecture(state.prefecture) : [], 
-    [state.prefecture]
+    state.prefectureCode && state.regionCode && state.paysCode && state.continentCode ? getSousPrefecturesByPrefecture(state.prefectureCode, state.regionCode, state.paysCode, state.continentCode) : [], 
+    [state.prefectureCode, state.regionCode, state.paysCode, state.continentCode]
   )
-  const districts = useMemo(() => 
-    state.sousPrefecture ? getDistrictsBySousPrefecture(state.sousPrefecture) : [], 
-    [state.sousPrefecture]
+  const quartiers = useMemo(() => 
+    state.sousPrefectureCode && state.prefectureCode && state.regionCode && state.paysCode && state.continentCode ? getQuartiersBySousPrefecture(state.sousPrefectureCode, state.prefectureCode, state.regionCode, state.paysCode, state.continentCode) : [], 
+    [state.sousPrefectureCode, state.prefectureCode, state.regionCode, state.paysCode, state.continentCode]
   )
-  const allDistricts = useMemo(() => getAllDistrictsAndQuartiers(), [])
 
   const set = (patch: Partial<EtatVivant>) => {
     setState(s => {
@@ -131,6 +149,32 @@ export function LivingWizard() {
   const submitFinal = async () => {
     if (!state.password || state.password !== state.confirm) {
       alert('Les mots de passe ne correspondent pas.')
+      return
+    }
+    
+    // ✅ Vérifier les champs obligatoires géographiques
+    if (!state.continentCode) {
+      alert('Veuillez sélectionner un continent.')
+      return
+    }
+    if (!state.paysCode) {
+      alert('Veuillez sélectionner un pays.')
+      return
+    }
+    if (!state.regionCode) {
+      alert('Veuillez sélectionner une région.')
+      return
+    }
+    if (!state.prefectureCode) {
+      alert('Veuillez sélectionner une préfecture.')
+      return
+    }
+    if (!state.sousPrefectureCode) {
+      alert('Veuillez sélectionner une sous-préfecture.')
+      return
+    }
+    if (!state.quartierCode) {
+      alert('Veuillez sélectionner un quartier.')
       return
     }
     
@@ -174,18 +218,47 @@ export function LivingWizard() {
       }
     }
     
-    const paysCode = state.pays || 'P2'
-    const regionCode = REGION_CODES.find(r=>r.label===state.regionOrigine)?.code || 'R1'
-    const ethnieCode = ETHNIE_CODES.find(e=>e.label===state.ethnie)?.code || 'E1'
-    const familleCode = FAMILLE_CODES.find(f=>f.label.toLowerCase() === (state.nomFamille||'').toLowerCase())?.code || 'F1'
-    const numero = buildNumeroH({
-      generation: generation as `G${number}`,
-      continent: CONTINENT_CODE.Afrique,
-      pays: paysCode,
-      region: regionCode,
-      ethnie: ethnieCode,
-      famille: familleCode
-    })
+    // Utiliser les codes géographiques sélectionnés (déjà validés ci-dessus)
+    const continentCode = state.continentCode
+    const paysCode = state.paysCode
+    const regionCode = state.regionCode
+    
+    // Codes pour les ethnies
+    const ethnieCodes: { [key: string]: string } = {
+      'Peuls': 'E1',
+      'Malinkés': 'E2',
+      'Soussous': 'E3',
+      'Kissi': 'E4',
+      'Toma': 'E5',
+      'Guerzés': 'E6',
+      'Kpelle': 'E7'
+    }
+    
+    // Codes pour les familles
+    const familleCodes: { [key: string]: string } = {
+      'Barry': 'F1',
+      'Diallo': 'F2',
+      'Sow': 'F3',
+      'Bah': 'F4',
+      'Balde': 'F5',
+      'Camara': 'F6',
+      'Keita': 'F7',
+      'Touré': 'F8',
+      'Sylla': 'F9',
+      'Kouyaté': 'F10'
+    }
+    
+    const ethnieCode = ethnieCodes[state.ethnie || ''] || ETHNIE_CODES.find(e=>e.label===state.ethnie)?.code || 'E1'
+    const familleCode = familleCodes[(state.nomFamille || '').toLowerCase()] || FAMILLE_CODES.find(f=>f.label.toLowerCase() === (state.nomFamille||'').toLowerCase())?.code || 'F1'
+    
+    // Générer un numéro unique basé sur le préfixe complet
+    const prefix = `${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
+    const counterKey = `numeroH_counter_${prefix}`
+    const counter = parseInt(localStorage.getItem(counterKey) || '0', 10) || 0
+    const nextNumber = counter + 1
+    localStorage.setItem(counterKey, String(nextNumber))
+    
+    const numero = `${prefix} ${nextNumber}`
     
     const userData = { 
       ...state, 
@@ -262,10 +335,12 @@ export function LivingWizard() {
           })
         }
         
-        alert(`✅ Enregistrement réussi ! Votre NumeroH est: ${numero}.\n\n${pereData ? `✅ Vous avez été ajouté à l'arbre généalogique de ${pereData.prenom} ${pereData.nomFamille}` : '⚠️ Aucun père trouvé - vous êtes le premier de votre lignée'}\n\nVous êtes maintenant connecté !`)
-        // Attendre un peu pour que l'utilisateur voie le message
+        // Afficher le numeroH généré et rediriger vers la page d'accueil
+        alert(`✅ Enregistrement réussi !\n\nVotre NumeroH : ${numero}\n\n${pereData ? `✅ Vous avez été ajouté à l'arbre généalogique de ${pereData.prenom} ${pereData.nomFamille}` : '⚠️ Aucun père trouvé - vous êtes le premier de votre lignée'}\n\nVous êtes maintenant connecté automatiquement !`)
+        
+        // Rediriger vers la page d'accueil après 2 secondes
         setTimeout(() => {
-          navigate('/compte')
+          navigate('/moi')
         }, 2000)
       } else {
         alert(`❌ Erreur: ${result.message}`)
@@ -295,11 +370,13 @@ export function LivingWizard() {
         passwordLength: dataWithClearPassword.password?.length
       })
       
-      alert(`✅ Enregistrement sauvegardé localement ! Votre NumeroH est: ${numero}. Vous êtes maintenant connecté !`)
-      // Attendre un peu pour que l'utilisateur voie le message
+      // Afficher le numeroH généré et rediriger vers la page d'accueil
+      alert(`⚠️ Sauvegardé localement.\n\nVotre NumeroH : ${numero}\n\nVous êtes maintenant connecté automatiquement !`)
+      
+      // Rediriger vers la page d'accueil après 2 secondes
       setTimeout(() => {
-        navigate('/compte')
-      }, 1000)
+        navigate('/moi')
+      }, 2000)
     }
   }
 
@@ -444,15 +521,15 @@ export function LivingWizard() {
             </div>
             <div className="row">
               <div className="col-4">
-                <Field label="Lieu de résidence 1 (District/Quartier)">
+                <Field label="Lieu de résidence 1 (Quartier)">
                   <select 
-                    value={state.lieu1} 
+                    value={state.lieu1 || state.quartierCode || ''} 
                     onChange={(e)=>set({ lieu1: e.target.value })} 
-                    disabled={!state.sousPrefecture}
+                    disabled={!state.sousPrefectureCode || quartiers.length === 0}
                   >
-                    <option value="">Sélectionner un district/quartier</option>
-                    {districts.map(d => (
-                      <option key={d.code} value={d.code}>{d.name}</option>
+                    <option value="">Sélectionner un quartier</option>
+                    {quartiers.map(q => (
+                      <option key={q.code} value={q.code}>{q.name}</option>
                     ))}
                   </select>
                   <small className="text-muted">
@@ -461,34 +538,34 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-4">
-                <Field label="Lieu de résidence 2 (District/Quartier)">
+                <Field label="Lieu de résidence 2 (Quartier)">
                   <select 
-                    value={state.lieu2} 
+                    value={state.lieu2 || ''} 
                     onChange={(e)=>set({ lieu2: e.target.value })} 
                   >
-                    <option value="">Sélectionner un district/quartier</option>
-                    {allDistricts.map(d => (
-                      <option key={d.code} value={d.code}>{d.name}</option>
+                    <option value="">Sélectionner un quartier (optionnel)</option>
+                    {quartiers.map(q => (
+                      <option key={q.code} value={q.code}>{q.name}</option>
                     ))}
                   </select>
                   <small className="text-muted">
-                    Tous les districts et quartiers de Guinée
+                    Quartier optionnel
                   </small>
                 </Field>
               </div>
               <div className="col-4">
-                <Field label="Lieu de résidence 3 (District/Quartier)">
+                <Field label="Lieu de résidence 3 (Quartier)">
                   <select 
-                    value={state.lieu3} 
+                    value={state.lieu3 || ''} 
                     onChange={(e)=>set({ lieu3: e.target.value })} 
                   >
-                    <option value="">Sélectionner un district/quartier</option>
-                    {allDistricts.map(d => (
-                      <option key={d.code} value={d.code}>{d.name}</option>
+                    <option value="">Sélectionner un quartier (optionnel)</option>
+                    {quartiers.map(q => (
+                      <option key={q.code} value={q.code}>{q.name}</option>
                     ))}
                   </select>
                   <small className="text-muted">
-                    Tous les districts et quartiers de Guinée
+                    Quartier optionnel
                   </small>
                 </Field>
               </div>

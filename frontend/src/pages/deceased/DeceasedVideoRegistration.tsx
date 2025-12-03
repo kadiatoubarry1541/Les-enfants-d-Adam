@@ -381,7 +381,9 @@ export function DeceasedVideoRegistration() {
             <div className="numero-h-display">
               <h4>NumeroHD :</h4>
               <div className="numero-h-value">{numeroHD}</div>
-              <p>Ce numéro vous permettra de retrouver les informations du défunt</p>
+              <p><strong>⚠️ IMPORTANT :</strong> Les défunts n'ont pas de compte de connexion.</p>
+              <p>Ils existent uniquement dans l'arbre généalogique familial pour consultation.</p>
+              <p>Ce numéro permet de retrouver les informations du défunt dans l'arbre généalogique.</p>
             </div>
             <div className="deceased-info">
               <h4>Informations calculées :</h4>

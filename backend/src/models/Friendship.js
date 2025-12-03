@@ -72,7 +72,7 @@ Friendship.init({
     }
   },
   status: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'accepted', 'rejected', 'blocked')
+    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'accepted', 'rejected', 'blocked'),
     defaultValue: 'pending'
   },
   message: {

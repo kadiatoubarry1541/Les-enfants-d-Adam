@@ -50,7 +50,7 @@ interface Donation {
   completedAt?: string;
 }
 
-export default function Dons() {
+export default function Solidarite() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [activeTab, setActiveTab] = useState<'pauvres' | 'dons'>('pauvres');
   const [poorPeople, setPoorPeople] = useState<PoorPerson[]>([]);
@@ -367,8 +367,8 @@ export default function Dons() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">💝 Dons (Tous)</h1>
-              <p className="mt-2 text-gray-600">Aide aux pauvres - Dons pour tous, toutes religions confondues</p>
+              <h1 className="text-3xl font-bold text-gray-900">🤝 Solidarité</h1>
+              <p className="mt-2 text-gray-600">Aide aux pauvres - Solidarité pour tous, toutes religions confondues</p>
             </div>
             <div className="flex space-x-4">
               <button

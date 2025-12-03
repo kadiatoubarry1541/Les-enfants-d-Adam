@@ -29,7 +29,7 @@ RegionGroup.init({
     type: DataTypes.TEXT
   },
   region: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière', 'Guinée')
+    type: DataTypes.STRING // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière', 'Guinée'),
     allowNull: false
   },
   members: {

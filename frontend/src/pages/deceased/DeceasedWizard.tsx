@@ -4,12 +4,21 @@ import { FAMILLES, ETHNIES, REGIONS, CONTINENT_CODE, PAYS, REGION_CODES, ETHNIE_
 import { Field, FilePicker, Select, SelectCode } from '../../components/inputs'
 import { useI18n } from '../../i18n/useI18n'
 import { anneesEcoulees } from '../../utils/calculs'
-import { computeDecetCode, computeGenerationCode, buildNumeroHD } from '../../utils/codes'
+import { computeDecetCode, computeGenerationCode } from '../../utils/codes'
 import { DeceasedFamilyCheck } from './DeceasedFamilyCheck'
 import { DeceasedChoice } from './DeceasedChoice'
 import { DeceasedVideoRegistration } from './DeceasedVideoRegistration'
 import { DeceasedWrittenForm } from './DeceasedWrittenForm'
 import { api } from '../../utils/api'
+import {
+  getContinents,
+  getCountriesByContinent,
+  getRegionsByCountry,
+  getPrefecturesByRegion,
+  getSousPrefecturesByPrefecture,
+  getQuartiersBySousPrefecture,
+  type GeographicLocation
+} from '../../utils/worldGeography'
 
 type EtatDefunt = {
   // page 1
@@ -41,8 +50,19 @@ type EtatDefunt = {
   religion?: string
   statutSocial?: string
   origine?: string
+  // Nouveaux champs géographiques mondiaux
+  continent?: string
+  continentCode?: string
   pays?: string
+  paysCode?: string
   regionOrigine?: string
+  regionCode?: string
+  prefecture?: string
+  prefectureCode?: string
+  sousPrefecture?: string
+  sousPrefectureCode?: string
+  quartier?: string
+  quartierCode?: string
 
   // page 3
   nbFreresMere?: number
@@ -74,19 +94,47 @@ export function DeceasedWizard() {
   const set = (patch: Partial<EtatDefunt>) => setState(s => ({ ...s, ...patch }))
 
   const submitFinal = async () => {
-    const paysCode = state.pays || 'P2'
-    const regionCode = REGION_CODES.find(r=>r.label===state.regionOrigine)?.code || 'R1'
-    const ethnieCode = ETHNIE_CODES.find(e=>e.label===state.ethnie)?.code || 'E1'
-    const familleCode = FAMILLE_CODES.find(f=>f.label.toLowerCase() === (state.nom||'').toLowerCase())?.code || 'F1'
-    const numero = buildNumeroHD({
-      decet: decet as `D${number}`,
-      generation: generation as `G${number}`,
-      continent: CONTINENT_CODE.Afrique,
-      pays: paysCode,
-      region: regionCode,
-      ethnie: ethnieCode,
-      famille: familleCode
-    })
+    // Utiliser les codes géographiques sélectionnés ou valeurs par défaut
+    const continentCode = state.continentCode || 'C1'
+    const paysCode = state.paysCode || 'P1'
+    const regionCode = state.regionCode || 'R1'
+    
+    // Codes pour les ethnies
+    const ethnieCodes: { [key: string]: string } = {
+      'Peuls': 'E1',
+      'Malinkés': 'E2',
+      'Soussous': 'E3',
+      'Kissi': 'E4',
+      'Toma': 'E5',
+      'Guerzés': 'E6',
+      'Kpelle': 'E7'
+    }
+    
+    // Codes pour les familles
+    const familleCodes: { [key: string]: string } = {
+      'Barry': 'F1',
+      'Diallo': 'F2',
+      'Sow': 'F3',
+      'Bah': 'F4',
+      'Balde': 'F5',
+      'Camara': 'F6',
+      'Keita': 'F7',
+      'Touré': 'F8',
+      'Sylla': 'F9',
+      'Kouyaté': 'F10'
+    }
+    
+    const ethnieCode = ethnieCodes[state.ethnie || ''] || ETHNIE_CODES.find(e=>e.label===state.ethnie)?.code || 'E1'
+    const familleCode = familleCodes[(state.nom || '').toLowerCase()] || FAMILLE_CODES.find(f=>f.label.toLowerCase() === (state.nom||'').toLowerCase())?.code || 'F1'
+    
+    // Générer un numéro unique basé sur le préfixe complet pour défunt
+    const prefix = `${decet}${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
+    const counterKey = `numeroHD_counter_${prefix}`
+    const counter = parseInt(localStorage.getItem(counterKey) || '0', 10) || 0
+    const nextNumber = counter + 1
+    localStorage.setItem(counterKey, String(nextNumber))
+    
+    const numero = `${prefix} ${nextNumber}`
     
     // ✅ Données complètes pour le défunt
     const complet = { 
@@ -118,19 +166,27 @@ export function DeceasedWizard() {
       console.warn('⚠️ Erreur backend, sauvegarde locale uniquement:', error)
     }
     
+    // ✅ IMPORTANT : Les défunts n'ont PAS de compte, ils existent uniquement dans l'arbre généalogique
     // Toujours sauvegarder en localStorage comme backup
     localStorage.setItem('dernier_defunt', JSON.stringify(complet))
     
-    alert(`✅ Défunt enregistré avec succès !
+    // ❌ NE PAS créer de session - les défunts ne peuvent pas se connecter
+    // Les défunts existent uniquement dans l'arbre généalogique pour consultation
+    
+    // Afficher le numeroHD généré
+    alert(`✅ Défunt enregistré avec succès dans l'arbre généalogique !
 
-NumeroHD: ${numero}
-Mot de passe: defunt123
+NumeroHD généré automatiquement : ${numero}
 
-Ces informations permettront de consulter ses données dans l'arbre généalogique familial.
+⚠️ IMPORTANT : Les défunts n'ont pas de compte de connexion.
+Ils existent uniquement dans l'arbre généalogique familial pour consultation.
 
 Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre généalogique.`)
     
-    navigate('/')
+    // Rediriger vers la page d'accueil
+    setTimeout(() => {
+      navigate('/')
+    }, 2000)
   }
 
   return (

@@ -38,7 +38,7 @@ Course.init({
     type: DataTypes.TEXT
   },
   type: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('audio', 'video', 'written', 'library')
+    type: DataTypes.STRING // ENUM converti en STRING ('audio', 'video', 'written', 'library'),
     allowNull: false
   },
   content: {
@@ -51,7 +51,7 @@ Course.init({
     comment: 'Durée en minutes'
   },
   level: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('débutant', 'intermédiaire', 'avancé')
+    type: DataTypes.STRING // ENUM converti en STRING ('débutant', 'intermédiaire', 'avancé'),
     defaultValue: 'débutant'
   },
   category: {

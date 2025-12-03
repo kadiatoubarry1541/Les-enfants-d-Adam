@@ -2,23 +2,32 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { VideoRecorder } from '../../components/VideoRecorder'
 import { api } from '../../utils/api'
-import { 
-  getRegions, 
-  getPrefecturesByRegion, 
-  getSousPrefecturesByPrefecture, 
-  getDistrictsBySousPrefecture,
-  getAllDistrictsAndQuartiers 
-} from '../../utils/guineaGeography'
+import {
+  getContinents,
+  getCountriesByContinent,
+  getRegionsByCountry,
+  getPrefecturesByRegion,
+  getSousPrefecturesByPrefecture,
+  getQuartiersBySousPrefecture,
+  type GeographicLocation
+} from '../../utils/worldGeography'
 
 interface VideoData {
   numeroHPere: string
   numeroHMere: string
   continent: string
+  continentCode: string
   dateNaissance: string
   pays: string
+  paysCode: string
   region: string
+  regionCode: string
   prefecture: string
+  prefectureCode: string
   sousPrefecture: string
+  sousPrefectureCode: string
+  quartier: string
+  quartierCode: string
   ethnie: string
   famille: string
   prenom: string
@@ -46,12 +55,19 @@ export function VideoRegistration() {
   const [videoData, setVideoData] = useState<VideoData>({
     numeroHPere: '',
     numeroHMere: '',
-    continent: 'Afrique',
+    continent: '',
+    continentCode: '',
     dateNaissance: '',
-    pays: 'Guinée',
+    pays: '',
+    paysCode: '',
     region: '',
+    regionCode: '',
     prefecture: '',
+    prefectureCode: '',
     sousPrefecture: '',
+    sousPrefectureCode: '',
+    quartier: '',
+    quartierCode: '',
     ethnie: '',
     famille: '',
     prenom: '',
@@ -78,21 +94,28 @@ export function VideoRegistration() {
   
   const navigate = useNavigate()
 
-  // Logique hiérarchique pour les données géographiques
-  const regions = useMemo(() => getRegions(), [])
+  // Logique hiérarchique pour les données géographiques mondiales
+  const continents = useMemo(() => getContinents(), [])
+  const countries = useMemo(() => 
+    videoData.continentCode ? getCountriesByContinent(videoData.continentCode) : [], 
+    [videoData.continentCode]
+  )
+  const regions = useMemo(() => 
+    videoData.paysCode && videoData.continentCode ? getRegionsByCountry(videoData.paysCode, videoData.continentCode) : [], 
+    [videoData.paysCode, videoData.continentCode]
+  )
   const prefectures = useMemo(() => 
-    videoData.region ? getPrefecturesByRegion(videoData.region) : [], 
-    [videoData.region]
+    videoData.regionCode && videoData.paysCode && videoData.continentCode ? getPrefecturesByRegion(videoData.regionCode, videoData.paysCode, videoData.continentCode) : [], 
+    [videoData.regionCode, videoData.paysCode, videoData.continentCode]
   )
   const sousPrefectures = useMemo(() => 
-    videoData.prefecture ? getSousPrefecturesByPrefecture(videoData.prefecture) : [], 
-    [videoData.prefecture]
+    videoData.prefectureCode && videoData.regionCode && videoData.paysCode && videoData.continentCode ? getSousPrefecturesByPrefecture(videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode) : [], 
+    [videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode]
   )
-  const districts = useMemo(() => 
-    videoData.sousPrefecture ? getDistrictsBySousPrefecture(videoData.sousPrefecture) : [], 
-    [videoData.sousPrefecture]
+  const quartiers = useMemo(() => 
+    videoData.sousPrefectureCode && videoData.prefectureCode && videoData.regionCode && videoData.paysCode && videoData.continentCode ? getQuartiersBySousPrefecture(videoData.sousPrefectureCode, videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode) : [], 
+    [videoData.sousPrefectureCode, videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode]
   )
-  const allDistricts = useMemo(() => getAllDistrictsAndQuartiers(), [])
 
   const handleVideoRecorded = (videoBlob: Blob) => {
     setVideoData(prev => ({ ...prev, video: videoBlob }))
@@ -152,16 +175,11 @@ export function VideoRegistration() {
 
   const generateNumeroH = (data: VideoData): string => {
     const generation = calculateGeneration(data.dateNaissance)
-    const continent = 'C1' // Afrique
-    const pays = data.pays === 'Guinée' ? 'P2' : 'P1'
     
-    // Codes pour les régions
-    const regionCodes: { [key: string]: string } = {
-      'Basse-Guinée': 'R1',
-      'Fouta-Djallon': 'R2',
-      'Haute-Guinée': 'R3',
-      'Guinée forestière': 'R4'
-    }
+    // Utiliser les codes géographiques sélectionnés
+    const continentCode = data.continentCode || 'C1'
+    const paysCode = data.paysCode || 'P1'
+    const regionCode = data.regionCode || 'R1'
     
     // Codes pour les ethnies
     const ethnieCodes: { [key: string]: string } = {
@@ -169,7 +187,9 @@ export function VideoRegistration() {
       'Malinkés': 'E2',
       'Soussous': 'E3',
       'Kissi': 'E4',
-      'Toma': 'E5'
+      'Toma': 'E5',
+      'Guerzés': 'E6',
+      'Kpelle': 'E7'
     }
     
     // Codes pour les familles
@@ -178,19 +198,25 @@ export function VideoRegistration() {
       'Diallo': 'F2',
       'Sow': 'F3',
       'Bah': 'F4',
-      'Balde': 'F5'
+      'Balde': 'F5',
+      'Camara': 'F6',
+      'Keita': 'F7',
+      'Touré': 'F8',
+      'Sylla': 'F9',
+      'Kouyaté': 'F10'
     }
     
-    const regionCode = regionCodes[data.region] || 'R1'
     const ethnieCode = ethnieCodes[data.ethnie] || 'E1'
     const familleCode = familleCodes[data.famille] || 'F1'
     
-    // Générer un numéro unique
-    const counter = localStorage.getItem('numeroH_counter') || '0'
+    // Générer un numéro unique basé sur le préfixe complet
+    const prefix = `${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
+    const counterKey = `numeroH_counter_${prefix}`
+    const counter = localStorage.getItem(counterKey) || '0'
     const nextNumber = parseInt(counter) + 1
-    localStorage.setItem('numeroH_counter', nextNumber.toString())
+    localStorage.setItem(counterKey, nextNumber.toString())
     
-    return `${generation}${continent}${pays}${regionCode}${ethnieCode}${familleCode} ${nextNumber}`
+    return `${prefix} ${nextNumber}`
   }
 
   const handleSubmit = async () => {
@@ -210,7 +236,31 @@ export function VideoRegistration() {
       return
     }
 
-    // Vérifier le champ obligatoire
+    // Vérifier les champs obligatoires géographiques
+    if (!videoData.continentCode) {
+      alert('Veuillez sélectionner un continent.')
+      return
+    }
+    if (!videoData.paysCode) {
+      alert('Veuillez sélectionner un pays.')
+      return
+    }
+    if (!videoData.regionCode) {
+      alert('Veuillez sélectionner une région.')
+      return
+    }
+    if (!videoData.prefectureCode) {
+      alert('Veuillez sélectionner une préfecture.')
+      return
+    }
+    if (!videoData.sousPrefectureCode) {
+      alert('Veuillez sélectionner une sous-préfecture.')
+      return
+    }
+    if (!videoData.quartierCode) {
+      alert('Veuillez sélectionner un quartier.')
+      return
+    }
     if (!videoData.lieu1) {
       alert('Le lieu de résidence 1 est obligatoire.')
       return
@@ -229,7 +279,9 @@ export function VideoRegistration() {
       genre: videoData.genre, // Utilise la valeur sélectionnée
       // Inclure la photo de profil (en base64 pour localStorage)
       photo: videoData.photoPreview, // Sauvegarder la version base64, pas l'objet File
-      photoPreview: videoData.photoPreview
+      photoPreview: videoData.photoPreview,
+      // Utiliser le quartier comme lieu1 par défaut si non renseigné
+      lieu1: videoData.lieu1 || videoData.quartier || ''
     }
     
     console.log('💾 Sauvegarde des données:', completeData)
@@ -267,7 +319,14 @@ export function VideoRegistration() {
           passwordLength: userDataWithPassword.password?.length
         })
         
-        alert(`✅ Enregistrement vidéo réussi ! Votre NumeroH est: ${numeroH}\n\nVous êtes maintenant connecté !`)
+        // Afficher le numeroH généré et rediriger vers la page d'accueil
+        alert(`✅ Enregistrement réussi !\n\nVotre NumeroH : ${numeroH}\n\nVous êtes maintenant connecté automatiquement !`)
+        
+        // Rediriger vers la page d'accueil après 2 secondes
+        setTimeout(() => {
+          navigate('/moi')
+        }, 2000)
+        
         setCurrentStep('complete')
       } else {
         alert(`❌ Erreur: ${result.message}`)
@@ -300,7 +359,14 @@ export function VideoRegistration() {
         passwordLength: dataWithClearPassword.password?.length
       })
       
-      alert(`⚠️ Sauvegardé localement. Votre NumeroH est: ${numeroH}\n\nVous êtes maintenant connecté !`)
+      // Afficher le numeroH généré et rediriger vers la page d'accueil
+      alert(`⚠️ Sauvegardé localement.\n\nVotre NumeroH : ${numeroH}\n\nVous êtes maintenant connecté automatiquement !`)
+      
+      // Rediriger vers la page d'accueil après 2 secondes
+      setTimeout(() => {
+        navigate('/moi')
+      }, 2000)
+      
       setCurrentStep('complete')
     }
   }
@@ -349,61 +415,268 @@ export function VideoRegistration() {
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Région</label>
+                <label>Continent * {videoData.continentCode && <span className="text-blue-600 font-semibold">({videoData.continentCode})</span>}</label>
                 <select 
-                  value={videoData.region} 
+                  value={videoData.continentCode} 
                   onChange={(e) => {
-                    const regionCode = e.target.value
+                    const selectedContinent = continents.find(c => c.code === e.target.value)
                     setVideoData(prev => ({ 
                       ...prev, 
-                      region: regionCode,
-                      prefecture: '', // Réinitialiser la préfecture
-                      sousPrefecture: '' // Réinitialiser la sous-préfecture
+                      continent: selectedContinent?.name || '',
+                      continentCode: e.target.value,
+                      pays: '',
+                      paysCode: '',
+                      region: '',
+                      regionCode: '',
+                      prefecture: '',
+                      prefectureCode: '',
+                      sousPrefecture: '',
+                      sousPrefectureCode: '',
+                      quartier: '',
+                      quartierCode: ''
                     }))
                   }}
+                  required
+                  className={videoData.continentCode ? 'border-green-500' : ''}
                 >
-                  <option value="">Sélectionner</option>
+                  <option value="">🌍 Sélectionner un continent</option>
+                  {continents.map(continent => (
+                    <option key={continent.code} value={continent.code}>
+                      {continent.name} ({continent.code})
+                    </option>
+                  ))}
+                </select>
+                {videoData.continentCode && (
+                  <small className="text-green-600">✓ Continent sélectionné : {videoData.continent}</small>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Pays * {videoData.paysCode && <span className="text-blue-600 font-semibold">({videoData.paysCode})</span>}</label>
+                <select 
+                  value={videoData.paysCode} 
+                  onChange={(e) => {
+                    const selectedCountry = countries.find(c => c.code === e.target.value)
+                    setVideoData(prev => ({ 
+                      ...prev, 
+                      pays: selectedCountry?.name || '',
+                      paysCode: e.target.value,
+                      region: '',
+                      regionCode: '',
+                      prefecture: '',
+                      prefectureCode: '',
+                      sousPrefecture: '',
+                      sousPrefectureCode: '',
+                      quartier: '',
+                      quartierCode: ''
+                    }))
+                  }}
+                  disabled={!videoData.continentCode}
+                  required
+                  className={videoData.paysCode ? 'border-green-500' : ''}
+                >
+                  <option value="">🌐 {videoData.continentCode ? 'Sélectionner un pays' : 'Sélectionnez d\'abord un continent'}</option>
+                  {countries.map(country => (
+                    <option key={country.code} value={country.code}>
+                      {country.name} ({country.code})
+                    </option>
+                  ))}
+                </select>
+                {!videoData.continentCode && (
+                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner un continent</small>
+                )}
+                {videoData.paysCode && (
+                  <small className="text-green-600">✓ Pays sélectionné : {videoData.pays}</small>
+                )}
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Région * {videoData.regionCode && <span className="text-blue-600 font-semibold">({videoData.regionCode})</span>}</label>
+                <select 
+                  value={videoData.regionCode} 
+                  onChange={(e) => {
+                    const selectedRegion = regions.find(r => r.code === e.target.value)
+                    setVideoData(prev => ({ 
+                      ...prev, 
+                      region: selectedRegion?.name || '',
+                      regionCode: e.target.value,
+                      prefecture: '',
+                      prefectureCode: '',
+                      sousPrefecture: '',
+                      sousPrefectureCode: '',
+                      quartier: '',
+                      quartierCode: ''
+                    }))
+                  }}
+                  disabled={!videoData.paysCode}
+                  required
+                  className={videoData.regionCode ? 'border-green-500' : ''}
+                >
+                  <option value="">🗺️ {videoData.paysCode ? 'Sélectionner une région' : 'Sélectionnez d\'abord un pays'}</option>
                   {regions.map(region => (
-                    <option key={region.code} value={region.code}>{region.name}</option>
+                    <option key={region.code} value={region.code}>
+                      {region.name} ({region.code})
+                    </option>
                   ))}
                 </select>
+                {!videoData.paysCode && (
+                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner un pays</small>
+                )}
+                {videoData.regionCode && (
+                  <small className="text-green-600">✓ Région sélectionnée : {videoData.region}</small>
+                )}
+                {videoData.paysCode && regions.length === 0 && (
+                  <small className="text-orange-600">⚠️ Aucune région disponible pour ce pays</small>
+                )}
               </div>
             </div>
+          </div>
+          
+          <div className="row">
             <div className="col-6">
               <div className="field">
-                <label>Préfecture</label>
+                <label>Préfecture * {videoData.prefectureCode && <span className="text-blue-600 font-semibold">({videoData.prefectureCode})</span>}</label>
                 <select 
-                  value={videoData.prefecture} 
+                  value={videoData.prefectureCode} 
                   onChange={(e) => {
-                    const prefectureCode = e.target.value
+                    const selectedPrefecture = prefectures.find(p => p.code === e.target.value)
                     setVideoData(prev => ({ 
                       ...prev, 
-                      prefecture: prefectureCode,
-                      sousPrefecture: '' // Réinitialiser la sous-préfecture
+                      prefecture: selectedPrefecture?.name || '',
+                      prefectureCode: e.target.value,
+                      sousPrefecture: '',
+                      sousPrefectureCode: '',
+                      quartier: '',
+                      quartierCode: ''
                     }))
                   }}
-                  disabled={!videoData.region}
+                  disabled={!videoData.regionCode}
+                  required
+                  className={videoData.prefectureCode ? 'border-green-500' : ''}
                 >
-                  <option value="">Sélectionner une préfecture</option>
+                  <option value="">🏛️ {videoData.regionCode ? 'Sélectionner une préfecture' : 'Sélectionnez d\'abord une région'}</option>
                   {prefectures.map(prefecture => (
-                    <option key={prefecture.code} value={prefecture.code}>{prefecture.name}</option>
+                    <option key={prefecture.code} value={prefecture.code}>
+                      {prefecture.name} ({prefecture.code})
+                    </option>
                   ))}
                 </select>
+                {!videoData.regionCode && (
+                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une région</small>
+                )}
+                {videoData.prefectureCode && (
+                  <small className="text-green-600">✓ Préfecture sélectionnée : {videoData.prefecture}</small>
+                )}
+                {videoData.regionCode && prefectures.length === 0 && (
+                  <small className="text-orange-600">⚠️ Aucune préfecture disponible pour cette région</small>
+                )}
               </div>
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Sous-préfecture</label>
+                <label>Sous-préfecture * {videoData.sousPrefectureCode && <span className="text-blue-600 font-semibold">({videoData.sousPrefectureCode})</span>}</label>
                 <select 
-                  value={videoData.sousPrefecture} 
-                  onChange={(e) => setVideoData(prev => ({ ...prev, sousPrefecture: e.target.value }))}
-                  disabled={!videoData.prefecture}
+                  value={videoData.sousPrefectureCode} 
+                  onChange={(e) => {
+                    const selectedSousPrefecture = sousPrefectures.find(sp => sp.code === e.target.value)
+                    setVideoData(prev => ({ 
+                      ...prev, 
+                      sousPrefecture: selectedSousPrefecture?.name || '',
+                      sousPrefectureCode: e.target.value,
+                      quartier: '',
+                      quartierCode: ''
+                    }))
+                  }}
+                  disabled={!videoData.prefectureCode}
+                  required
+                  className={videoData.sousPrefectureCode ? 'border-green-500' : ''}
                 >
-                  <option value="">Sélectionner une sous-préfecture</option>
+                  <option value="">📍 {videoData.prefectureCode ? 'Sélectionner une sous-préfecture' : 'Sélectionnez d\'abord une préfecture'}</option>
                   {sousPrefectures.map(sousPrefecture => (
-                    <option key={sousPrefecture.code} value={sousPrefecture.code}>{sousPrefecture.name}</option>
+                    <option key={sousPrefecture.code} value={sousPrefecture.code}>
+                      {sousPrefecture.name} ({sousPrefecture.code})
+                    </option>
                   ))}
                 </select>
+                {!videoData.prefectureCode && (
+                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une préfecture</small>
+                )}
+                {videoData.sousPrefectureCode && (
+                  <small className="text-green-600">✓ Sous-préfecture sélectionnée : {videoData.sousPrefecture}</small>
+                )}
+                {videoData.prefectureCode && sousPrefectures.length === 0 && (
+                  <small className="text-orange-600">⚠️ Aucune sous-préfecture disponible pour cette préfecture</small>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Quartier * {videoData.quartierCode && <span className="text-blue-600 font-semibold">({videoData.quartierCode})</span>}</label>
+                <select 
+                  value={videoData.quartierCode} 
+                  onChange={(e) => {
+                    const selectedQuartier = quartiers.find(q => q.code === e.target.value)
+                    setVideoData(prev => ({ 
+                      ...prev, 
+                      quartier: selectedQuartier?.name || '',
+                      quartierCode: e.target.value
+                    }))
+                  }}
+                  disabled={!videoData.sousPrefectureCode}
+                  required
+                  className={videoData.quartierCode ? 'border-green-500' : ''}
+                >
+                  <option value="">🏘️ {videoData.sousPrefectureCode ? 'Sélectionner un quartier' : 'Sélectionnez d\'abord une sous-préfecture'}</option>
+                  {quartiers.map(quartier => (
+                    <option key={quartier.code} value={quartier.code}>
+                      {quartier.name} ({quartier.code})
+                    </option>
+                  ))}
+                </select>
+                {!videoData.sousPrefectureCode && (
+                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une sous-préfecture</small>
+                )}
+                {videoData.quartierCode && (
+                  <small className="text-green-600">✓ Quartier sélectionné : {videoData.quartier}</small>
+                )}
+                {videoData.sousPrefectureCode && quartiers.length === 0 && (
+                  <small className="text-orange-600">⚠️ Aucun quartier disponible pour cette sous-préfecture</small>
+                )}
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>📍 Localisation complète</label>
+                <div className="p-3 bg-gray-50 rounded border">
+                  {videoData.continentCode && videoData.paysCode && videoData.regionCode && videoData.prefectureCode && videoData.sousPrefectureCode && videoData.quartierCode ? (
+                    <div className="text-sm">
+                      <div className="font-semibold text-green-600 mb-2">✓ Localisation complète :</div>
+                      <div className="space-y-1">
+                        <div><strong>Continent:</strong> {videoData.continent} ({videoData.continentCode})</div>
+                        <div><strong>Pays:</strong> {videoData.pays} ({videoData.paysCode})</div>
+                        <div><strong>Région:</strong> {videoData.region} ({videoData.regionCode})</div>
+                        <div><strong>Préfecture:</strong> {videoData.prefecture} ({videoData.prefectureCode})</div>
+                        <div><strong>Sous-préfecture:</strong> {videoData.sousPrefecture} ({videoData.sousPrefectureCode})</div>
+                        <div><strong>Quartier:</strong> {videoData.quartier} ({videoData.quartierCode})</div>
+                        <div className="mt-2 pt-2 border-t">
+                          <strong className="text-blue-600">Code complet:</strong> {videoData.continentCode}{videoData.paysCode}{videoData.regionCode}{videoData.prefectureCode}{videoData.sousPrefectureCode}{videoData.quartierCode}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">
+                      Sélectionnez tous les niveaux géographiques pour voir la localisation complète
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -647,60 +920,41 @@ export function VideoRegistration() {
           </div>
           
           <div className="row">
-            <div className="col-12">
+            <div className="col-6">
               <div className="field">
-                <label>Lieu de résidence 1 (District/Quartier) *</label>
-                <select 
-                  value={videoData.lieu1}
+                <label>Lieu de résidence 1 (Quartier) *</label>
+                <input
+                  type="text"
+                  value={videoData.lieu1 || videoData.quartier}
                   onChange={(e) => setVideoData(prev => ({ ...prev, lieu1: e.target.value }))}
-                  disabled={!videoData.sousPrefecture}
+                  placeholder={videoData.quartier || "Votre quartier"}
                   required
-                >
-                  <option value="">Sélectionner un district/quartier</option>
-                  {districts.map(district => (
-                    <option key={district.code} value={district.code}>{district.name}</option>
-                  ))}
-                </select>
+                />
                 <small className="text-muted">
-                  Basé sur votre sous-préfecture sélectionnée
+                  Quartier sélectionné : {videoData.quartier || 'Aucun'} (sera utilisé par défaut)
                 </small>
               </div>
             </div>
-          </div>
-          
-          <div className="row">
             <div className="col-6">
               <div className="field">
-                <label>Lieu de résidence 2 (District/Quartier)</label>
-                <select 
+                <label>Lieu de résidence 2 (Optionnel)</label>
+                <input
+                  type="text"
                   value={videoData.lieu2}
                   onChange={(e) => setVideoData(prev => ({ ...prev, lieu2: e.target.value }))}
-                >
-                  <option value="">Sélectionner un district/quartier</option>
-                  {allDistricts.map(district => (
-                    <option key={district.code} value={district.code}>{district.name}</option>
-                  ))}
-                </select>
-                <small className="text-muted">
-                  Tous les districts et quartiers de Guinée
-                </small>
+                  placeholder="Autre lieu de résidence"
+                />
               </div>
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Lieu de résidence 3 (District/Quartier)</label>
-                <select 
+                <label>Lieu de résidence 3 (Optionnel)</label>
+                <input
+                  type="text"
                   value={videoData.lieu3}
                   onChange={(e) => setVideoData(prev => ({ ...prev, lieu3: e.target.value }))}
-                >
-                  <option value="">Sélectionner un district/quartier</option>
-                  {allDistricts.map(district => (
-                    <option key={district.code} value={district.code}>{district.name}</option>
-                  ))}
-                </select>
-                <small className="text-muted">
-                  Tous les districts et quartiers de Guinée
-                </small>
+                  placeholder="Autre lieu de résidence"
+                />
               </div>
             </div>
           </div>
@@ -798,20 +1052,89 @@ export function VideoRegistration() {
     const numeroH = generateNumeroH(videoData)
     return (
       <div className="stack">
-        <h2>Enregistrement Terminé</h2>
+        <h2>✅ Enregistrement Terminé</h2>
         <div className="card success-card">
           <div className="success-content">
-            <div className="success-icon">✓</div>
-            <h3>Merci pour votre inscription !</h3>
-            <p>Attendez 3 minutes pour que votre inscription soit validée.</p>
-            <div className="numero-h-display">
-              <h4>Votre NumeroH :</h4>
-              <div className="numero-h-value">{numeroH}</div>
-              <p>Ce numéro vous permettra de vous connecter à votre compte</p>
+            <div className="success-icon" style={{ fontSize: '4rem', color: '#22c55e' }}>✓</div>
+            <h3>Félicitations ! Votre inscription est terminée</h3>
+            <div className="numero-h-display" style={{ 
+              margin: '2rem 0',
+              padding: '1.5rem',
+              backgroundColor: '#f0f9ff',
+              borderRadius: '12px',
+              border: '2px solid #3b82f6'
+            }}>
+              <h4 style={{ marginBottom: '1rem', color: '#1e40af' }}>🎯 Votre NumeroH généré automatiquement :</h4>
+              <div className="numero-h-value" style={{ 
+                fontSize: '1.8rem', 
+                fontWeight: 'bold', 
+                color: '#2563eb',
+                padding: '1rem',
+                backgroundColor: '#eff6ff',
+                borderRadius: '8px',
+                margin: '1rem 0',
+                textAlign: 'center',
+                border: '2px solid #3b82f6',
+                fontFamily: 'monospace'
+              }}>
+                {numeroH}
+              </div>
+              <div style={{ 
+                padding: '1rem',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '8px',
+                margin: '1rem 0',
+                border: '1px solid #22c55e'
+              }}>
+                <p style={{ margin: 0, color: '#166534', fontWeight: '600', fontSize: '1.1rem' }}>
+                  ✅ <strong>Vous êtes maintenant connecté automatiquement !</strong>
+                </p>
+                <p style={{ margin: '0.75rem 0 0 0', color: '#166534', fontSize: '0.95rem' }}>
+                  Ce NumeroH vous permettra de vous connecter à votre compte à tout moment.
+                </p>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
+                  <p style={{ margin: '0.25rem 0', color: '#166534', fontSize: '0.9rem' }}>
+                    <strong>🔑 Identifiant :</strong> <code style={{ backgroundColor: '#fff', padding: '2px 6px', borderRadius: '4px' }}>{numeroH}</code>
+                  </p>
+                  <p style={{ margin: '0.25rem 0', color: '#166534', fontSize: '0.9rem' }}>
+                    <strong>🔒 Mot de passe :</strong> Celui que vous avez défini lors de l'inscription
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="actions">
-            <button className="btn" onClick={() => navigate('/')}>
+          <div className="actions" style={{ marginTop: '2rem' }}>
+            <button 
+              className="btn" 
+              onClick={() => navigate('/moi')}
+              style={{
+                padding: '0.75rem 2rem',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                marginRight: '1rem'
+              }}
+            >
+              Accéder à mon compte →
+            </button>
+            <button 
+              className="btn" 
+              onClick={() => navigate('/')}
+              style={{
+                padding: '0.75rem 2rem',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
               Retour à l'accueil
             </button>
           </div>

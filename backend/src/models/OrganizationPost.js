@@ -44,7 +44,7 @@ OrganizationPost.init({
     }
   },
   postType: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('text', 'image', 'video', 'audio', 'mixed')
+    type: DataTypes.STRING // ENUM converti en STRING ('text', 'image', 'video', 'audio', 'mixed'),
     defaultValue: 'text'
   },
   content: {

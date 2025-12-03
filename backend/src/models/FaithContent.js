@@ -28,7 +28,7 @@ FaithContent.init({
     type: DataTypes.TEXT
   },
   type: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('video', 'audio', 'text')
+    type: DataTypes.STRING // ENUM converti en STRING ('video', 'audio', 'text'),
     allowNull: false
   },
   content: {

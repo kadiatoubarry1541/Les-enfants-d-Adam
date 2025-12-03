@@ -32,13 +32,13 @@ const Securite = lazy(() => import("./pages/Securite"));
 const Identite = lazy(() => import("./pages/Identite"));
 const Activite = lazy(() => import("./pages/Activite"));
 const Education = lazy(() => import("./pages/Education"));
-const Dokal = lazy(() => import("./pages/Dokal"));
 const Solidarite = lazy(() => import("./pages/Solidarite"));
 const Zaka = lazy(() => import("./pages/Zaka"));
+const ZakaEtDons = lazy(() => import("./pages/ZakaEtDons"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
 const AdminGovernments = lazy(() => import("./pages/AdminGovernments"));
-const Pays = lazy(() => import("./pages/Pays"));
+const TerreAdam = lazy(() => import("./pages/TerreAdam"));
 const Histoire = lazy(() => import("./pages/Histoire"));
 const EchangesProfessionnel = lazy(() => import("./components/EchangesProfessionnel").then(m => ({ default: m.EchangesProfessionnel })));
 const EchangePrimaire = lazy(() => import("./pages/EchangePrimaire"));
@@ -135,11 +135,12 @@ function App() {
           <Route path="/identite" element={<Identite />} />
           <Route path="/activite" element={<Activite />} />
           <Route path="/education" element={<Education />} />
-          <Route path="/dokal" element={<Dokal />} />
-          <Route path="/foi" element={<Navigate to="/dokal" replace />} />
+          <Route path="/dokal" element={<Navigate to="/solidarite" replace />} />
+          <Route path="/foi" element={<Navigate to="/solidarite" replace />} />
           <Route path="/solidarite" element={<Solidarite />} />
           <Route path="/dons" element={<Navigate to="/solidarite" replace />} />
           <Route path="/zaka" element={<Zaka />} />
+          <Route path="/zaka-et-dons" element={<ZakaEtDons />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/badges" element={<AdminBadges />} />
           <Route path="/admin/logos" element={<Navigate to="/admin/badges?tab=logos" replace />} />
@@ -152,8 +153,9 @@ function App() {
           <Route path="/famille/arbre" element={<Arbre />} />
           <Route path="/famille/arbre/membres" element={<Membres />} />
           <Route path="/famille/mes-amours" element={<MesAmours />} />
-          <Route path="/lieux-residence" element={<Navigate to="/pays" replace />} />
-          <Route path="/pays" element={<Pays />} />
+          <Route path="/lieux-residence" element={<Navigate to="/terre-adam" replace />} />
+          <Route path="/pays" element={<Navigate to="/terre-adam" replace />} />
+          <Route path="/terre-adam" element={<TerreAdam />} />
           <Route path="/organisation" element={<Navigate to="/activite" replace />} />
           <Route path="/histoire" element={<Histoire />} />
           <Route path="/science" element={<Science />} />

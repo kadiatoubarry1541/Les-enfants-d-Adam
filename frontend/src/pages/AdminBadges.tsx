@@ -309,7 +309,7 @@ export default function AdminBadges() {
   const availablePages = [
     { path: '/sante', name: 'Santé' },
     { path: '/education', name: 'Éducation' },
-    { path: '/dokal', name: 'Dokal' },
+    { path: '/solidarite', name: 'Solidarité' },
     { path: '/activite', name: 'Activité' },
     { path: '/famille', name: 'Famille' },
     { path: '/histoire', name: 'Histoire' },

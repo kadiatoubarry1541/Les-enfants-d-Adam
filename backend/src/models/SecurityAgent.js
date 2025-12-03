@@ -57,7 +57,7 @@ SecurityAgent.init({
     comment: 'Numéro de badge'
   },
   region: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière')
+    type: DataTypes.STRING // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière'),
     allowNull: false
   },
   city: {

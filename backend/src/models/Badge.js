@@ -29,12 +29,12 @@ class Badge extends Model {
         defaultValue: '#FFD700'
       },
       category: {
-        type: DataTypes.STRING, // ENUM converti en STRING ('achievement', 'education', 'faith', 'family', 'health', 'social', 'special')
+        type: DataTypes.STRING // ENUM converti en STRING ('achievement', 'education', 'faith', 'family', 'health', 'social', 'special'),
         allowNull: false,
         defaultValue: 'achievement'
       },
       rarity: {
-        type: DataTypes.STRING, // ENUM converti en STRING ('common', 'rare', 'epic', 'legendary')
+        type: DataTypes.STRING // ENUM converti en STRING ('common', 'rare', 'epic', 'legendary'),
         allowNull: false,
         defaultValue: 'common'
       },

@@ -1,6 +1,15 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { VideoRecorder } from '../../components/VideoRecorder'
+import {
+  getContinents,
+  getCountriesByContinent,
+  getRegionsByCountry,
+  getPrefecturesByRegion,
+  getSousPrefecturesByPrefecture,
+  getQuartiersBySousPrefecture,
+  type GeographicLocation
+} from '../../utils/worldGeography'
 
 interface DeceasedFormData {
   // Page 1 - Ô Dieu, pardonne-lui, fais-lui miséricorde et efface ses fautes.
@@ -29,8 +38,19 @@ interface DeceasedFormData {
   religion: string
   statutSocial: string
   origine: string
+  // Nouveaux champs géographiques mondiaux
+  continent?: string
+  continentCode?: string
   pays: string
+  paysCode?: string
   region: string
+  regionCode?: string
+  prefecture?: string
+  prefectureCode?: string
+  sousPrefecture?: string
+  sousPrefectureCode?: string
+  quartier?: string
+  quartierCode?: string
   
   // Page 3 - Ô Dieu, réunis-le avec sa famille dans le Firdaws
   nbFreresMere: number
@@ -100,6 +120,29 @@ export function DeceasedWrittenForm() {
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
 
+  // Logique hiérarchique pour les données géographiques mondiales
+  const continents = useMemo(() => getContinents(), [])
+  const countries = useMemo(() => 
+    formData.continentCode ? getCountriesByContinent(formData.continentCode) : [], 
+    [formData.continentCode]
+  )
+  const regions = useMemo(() => 
+    formData.paysCode && formData.continentCode ? getRegionsByCountry(formData.paysCode, formData.continentCode) : [], 
+    [formData.paysCode, formData.continentCode]
+  )
+  const prefectures = useMemo(() => 
+    formData.regionCode && formData.paysCode && formData.continentCode ? getPrefecturesByRegion(formData.regionCode, formData.paysCode, formData.continentCode) : [], 
+    [formData.regionCode, formData.paysCode, formData.continentCode]
+  )
+  const sousPrefectures = useMemo(() => 
+    formData.prefectureCode && formData.regionCode && formData.paysCode && formData.continentCode ? getSousPrefecturesByPrefecture(formData.prefectureCode, formData.regionCode, formData.paysCode, formData.continentCode) : [], 
+    [formData.prefectureCode, formData.regionCode, formData.paysCode, formData.continentCode]
+  )
+  const quartiers = useMemo(() => 
+    formData.sousPrefectureCode && formData.prefectureCode && formData.regionCode && formData.paysCode && formData.continentCode ? getQuartiersBySousPrefecture(formData.sousPrefectureCode, formData.prefectureCode, formData.regionCode, formData.paysCode, formData.continentCode) : [], 
+    [formData.sousPrefectureCode, formData.prefectureCode, formData.regionCode, formData.paysCode, formData.continentCode]
+  )
+
   const calculateDecet = (dateDeces: string): string => {
     if (!dateDeces) return ''
     const deathDate = new Date(dateDeces)
@@ -149,28 +192,48 @@ export function DeceasedWrittenForm() {
   const generateNumeroHD = (data: DeceasedFormData): string => {
     const decet = calculateDecet(data.dateDeces)
     const generation = calculateGeneration(data.dateNaissance)
-    const continent = 'C1'
-    const pays = data.pays === 'Guinée' ? 'P2' : 'P1'
     
-    const regionCodes: { [key: string]: string } = {
-      'Basse-Guinée': 'R1', 'Fouta-Djallon': 'R2', 'Haute-Guinée': 'R3', 'Guinée forestière': 'R4'
-    }
+    // Utiliser les codes géographiques sélectionnés ou valeurs par défaut
+    const continentCode = data.continentCode || 'C1'
+    const paysCode = data.paysCode || 'P1'
+    const regionCode = data.regionCode || 'R1'
+    
+    // Codes pour les ethnies
     const ethnieCodes: { [key: string]: string } = {
-      'Peuls': 'E1', 'Malinkés': 'E2', 'Soussous': 'E3', 'Kissi': 'E4', 'Toma': 'E5'
-    }
-    const familleCodes: { [key: string]: string } = {
-      'Barry': 'F1', 'Diallo': 'F2', 'Sow': 'F3', 'Bah': 'F4', 'Balde': 'F5', 'Camara': 'F6', 'Keita': 'F7'
+      'Peuls': 'E1',
+      'Malinkés': 'E2',
+      'Soussous': 'E3',
+      'Kissi': 'E4',
+      'Toma': 'E5',
+      'Guerzés': 'E6',
+      'Kpelle': 'E7'
     }
     
-    const regionCode = regionCodes[data.region] || 'R1'
+    // Codes pour les familles
+    const familleCodes: { [key: string]: string } = {
+      'Barry': 'F1',
+      'Diallo': 'F2',
+      'Sow': 'F3',
+      'Bah': 'F4',
+      'Balde': 'F5',
+      'Camara': 'F6',
+      'Keita': 'F7',
+      'Touré': 'F8',
+      'Sylla': 'F9',
+      'Kouyaté': 'F10'
+    }
+    
     const ethnieCode = ethnieCodes[data.ethnie] || 'E1'
     const familleCode = familleCodes[data.nomFamille] || 'F1'
     
-    const counter = localStorage.getItem('numeroHD_counter') || '0'
-    const nextNumber = parseInt(counter) + 1
-    localStorage.setItem('numeroHD_counter', nextNumber.toString())
+    // Générer un numéro unique basé sur le préfixe complet pour défunt
+    const prefix = `${decet}${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
+    const counterKey = `numeroHD_counter_${prefix}`
+    const counter = parseInt(localStorage.getItem(counterKey) || '0', 10) || 0
+    const nextNumber = counter + 1
+    localStorage.setItem(counterKey, String(nextNumber))
     
-    return `${decet}${generation}${continent}${pays}${regionCode}${ethnieCode}${familleCode} ${nextNumber}`
+    return `${prefix} ${nextNumber}`
   }
 
   const handleVideoRecorded = (videoBlob: Blob) => {
@@ -188,11 +251,20 @@ export function DeceasedWrittenForm() {
       yearsSinceDeath: calculateYearsSinceDeath(formData.dateDeces)
     }
     
+    // ✅ IMPORTANT : Les défunts n'ont PAS de compte, ils existent uniquement dans l'arbre généalogique
     localStorage.setItem('defunt_ecrit', JSON.stringify(completeData))
+    localStorage.setItem('dernier_defunt', JSON.stringify(completeData))
     
-    // Afficher le succès
-    alert(`Enregistrement terminé ! Votre NumeroHD est : ${numeroHD}`)
-    navigate('/')
+    // ❌ NE PAS créer de session - les défunts ne peuvent pas se connecter
+    // Les défunts existent uniquement dans l'arbre généalogique pour consultation
+    
+    // Afficher le succès avec le numeroHD généré automatiquement
+    alert(`✅ Défunt enregistré avec succès dans l'arbre généalogique !\n\nNumeroHD généré automatiquement : ${numeroHD}\n\n⚠️ IMPORTANT : Les défunts n'ont pas de compte de connexion.\nIls existent uniquement dans l'arbre généalogique familial pour consultation.`)
+    
+    // Rediriger vers la page d'accueil après 2 secondes
+    setTimeout(() => {
+      navigate('/')
+    }, 2000)
   }
 
   const updateField = (field: keyof DeceasedFormData, value: any) => {

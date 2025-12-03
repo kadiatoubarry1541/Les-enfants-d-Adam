@@ -44,7 +44,7 @@ Document.init({
     allowNull: false
   },
   type: {
-    type: DataTypes.STRING, // ENUM converti en STRING ('birth_certificate', 'marriage_certificate', 'death_certificate', 'identity_card', 'passport', 'other')
+    type: DataTypes.STRING // ENUM converti en STRING ('birth_certificate', 'marriage_certificate', 'death_certificate', 'identity_card', 'passport', 'other'),
     allowNull: false
   },
   description: {

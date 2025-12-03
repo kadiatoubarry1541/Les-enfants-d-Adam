@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Activite from "./Activite";
 import Education from "./Education";
-import Dokal from "./Dokal";
-import Pays from "./Pays";
+import Solidarite from "./Solidarite";
+import TerreAdam from "./TerreAdam";
 import Histoire from "./Histoire";
 import { EchangesProfessionnel } from "../components/EchangesProfessionnel";
 import { ActivityIcon } from "../components/icons/ActivityIcon";
+import { EarthIcon } from "../components/icons/EarthIcon";
 import { ExchangeIcon } from "../components/icons/ExchangeIcon";
 
 interface UserData {
@@ -69,10 +70,10 @@ export function UserDashboard() {
   }, [navigate]);
 
   const tabs: Tab[] = [
-    { id: "pays", label: "Pays", icon: "🇬🇳", useSvg: false },
+    { id: "terre-adam", label: "Terre ADAM", icon: "🌍", useSvg: true, SvgIcon: EarthIcon },
     { id: "activite", label: "Activité", icon: "⚙️", useSvg: true, SvgIcon: ActivityIcon },
     { id: "education", label: "Éducation", icon: "🎓", useSvg: false },
-    { id: "dokal", label: "Dokal", icon: "📿", useSvg: false },
+    { id: "solidarite", label: "Solidarité", icon: "🤝", useSvg: false },
     { id: "histoire", label: "Histoire", icon: "📚", useSvg: false },
     { id: "echanges", label: "Échanges", icon: "🤝", useSvg: true, SvgIcon: ExchangeIcon },
   ];
@@ -203,13 +204,7 @@ export function UserDashboard() {
                   : "hover:bg-gray-100/50 dark:hover:bg-gray-700/30"
               }`}
             >
-                {tab.id === "pays" ? (
-                  <div className="w-6 h-4 sm:w-7 sm:h-5 mb-0.5 transition-transform duration-200 hover:scale-110 flex rounded-sm overflow-hidden shadow-sm border border-gray-300">
-                    <div className="w-1/3 bg-[#CE1126]"></div>
-                    <div className="w-1/3 bg-[#FCD116]"></div>
-                    <div className="w-1/3 bg-[#009460]"></div>
-                  </div>
-                ) : tab.useSvg && tab.SvgIcon ? (
+                {tab.useSvg && tab.SvgIcon ? (
                   <tab.SvgIcon 
                     className="w-5 h-5 sm:w-6 sm:h-6 mb-0.5 transition-transform duration-200 hover:scale-110 text-gray-700 dark:text-gray-300" 
                     size={18}
@@ -249,14 +244,14 @@ function renderTabContent(tab: string, userData: UserData) {
   switch (tab) {
     case "moi":
       return <MoiTab />;
-    case "pays":
-      return <Pays />;
+    case "terre-adam":
+      return <TerreAdam />;
     case "activite":
       return <Activite />;
     case "education":
       return <Education />;
-    case "dokal":
-      return <Dokal />;
+    case "solidarite":
+      return <Solidarite />;
     case "histoire":
       return <Histoire />;
     case "echanges":
