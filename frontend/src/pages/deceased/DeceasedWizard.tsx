@@ -103,17 +103,22 @@ export function DeceasedWizard() {
     const ethnieEntry = ETHNIE_CODES.find(e => e.label === state.ethnie)
     const familleEntry = FAMILLE_CODES.find(f => f.label.toLowerCase() === (state.nom || '').toLowerCase())
     
-    // Générer un code automatique si non trouvé
+    // Générer un code automatique si non trouvé (système séquentiel adaptatif)
     const generateAutoCode = (name: string, prefix: string, existingCodes: string[]): string => {
       if (!name) return prefix + '999'
-      const cleanName = name.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-      let codeNum = 1
-      let code = prefix + codeNum.toString().padStart(3, '0')
-      while (existingCodes.includes(code) && codeNum < 999) {
-        codeNum++
-        code = prefix + codeNum.toString().padStart(3, '0')
-      }
-      return code
+      // Trouver le plus grand numéro existant pour ce préfixe
+      const existingNums = existingCodes
+        .filter(c => c.startsWith(prefix))
+        .map(c => {
+          const numStr = c.substring(prefix.length)
+          const num = parseInt(numStr, 10)
+          return isNaN(num) ? 0 : num
+        })
+        .filter(n => n > 0)
+      
+      // Commencer au numéro suivant le plus grand existant
+      const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1
+      return prefix + nextNum.toString() // Pas de zéros devant : E1, E2, E10, E100, etc.
     }
     
     const ethnieCode = ethnieEntry?.code || generateAutoCode(state.ethnie || '', 'E', ETHNIE_CODES.map(e => e.code))
