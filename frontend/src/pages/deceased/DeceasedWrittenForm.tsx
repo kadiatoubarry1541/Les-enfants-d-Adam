@@ -10,6 +10,7 @@ import {
   getQuartiersBySousPrefecture,
   type GeographicLocation
 } from '../../utils/worldGeography'
+import { FAMILLES, ETHNIES, ETHNIE_CODES, FAMILLE_CODES } from '../../utils/constants'
 
 interface DeceasedFormData {
   // Page 1 - Ô Dieu, pardonne-lui, fais-lui miséricorde et efface ses fautes.
@@ -65,18 +66,11 @@ interface DeceasedFormData {
   generation: string
 }
 
-const FAMILLES = [
-  'Diallo', 'Barry', 'Sow', 'Bah', 'Balde', 'Camara', 'Keita', 'Bangoura', 
-  'Koroma', 'Kamano', 'Fofana', 'Traoré', 'Cissé', 'Konaté', 'Kourouma', 
-  'Soumah', 'Touré', 'Conté', 'Kissi', 'Sangaré', 'Sidibé', 'Koulibaly', 
-  'Kaba', 'Gbanamou', 'Manons', 'Lelehée', 'Kpelle', 'Doumbouya'
-]
-
-const ETHNIES = ['Peuls', 'Malinkés', 'Soussous', 'Tomas / Loma', 'Kissi']
+import { FAMILLES, ETHNIES, ETHNIE_CODES, FAMILLE_CODES } from '../../utils/constants'
 const REGIONS = ['Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière']
 const RELIGIONS = ['Islam', 'Christianisme', 'Animisme', 'Autre']
 const STATUTS_SOCIAUX = ['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf / Veuve', 'Autre']
-const GENRES = ['Homme', 'Femme', 'Autre']
+const GENRES = ['Homme', 'Femme']
 
 export function DeceasedWrittenForm() {
   const [formData, setFormData] = useState<DeceasedFormData>({
@@ -198,33 +192,25 @@ export function DeceasedWrittenForm() {
     const paysCode = data.paysCode || 'P1'
     const regionCode = data.regionCode || 'R1'
     
-    // Codes pour les ethnies
-    const ethnieCodes: { [key: string]: string } = {
-      'Peuls': 'E1',
-      'Malinkés': 'E2',
-      'Soussous': 'E3',
-      'Kissi': 'E4',
-      'Toma': 'E5',
-      'Guerzés': 'E6',
-      'Kpelle': 'E7'
+    // Utiliser les codes depuis constants.ts avec fallback automatique
+    const ethnieEntry = ETHNIE_CODES.find(e => e.label === data.ethnie)
+    const familleEntry = FAMILLE_CODES.find(f => f.label.toLowerCase() === (data.nomFamille || '').toLowerCase())
+    
+    // Générer un code automatique si non trouvé
+    const generateAutoCode = (name: string, prefix: string, existingCodes: string[]): string => {
+      if (!name) return prefix + '999'
+      const cleanName = name.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+      let codeNum = 1
+      let code = prefix + codeNum.toString().padStart(3, '0')
+      while (existingCodes.includes(code) && codeNum < 999) {
+        codeNum++
+        code = prefix + codeNum.toString().padStart(3, '0')
+      }
+      return code
     }
     
-    // Codes pour les familles
-    const familleCodes: { [key: string]: string } = {
-      'Barry': 'F1',
-      'Diallo': 'F2',
-      'Sow': 'F3',
-      'Bah': 'F4',
-      'Balde': 'F5',
-      'Camara': 'F6',
-      'Keita': 'F7',
-      'Touré': 'F8',
-      'Sylla': 'F9',
-      'Kouyaté': 'F10'
-    }
-    
-    const ethnieCode = ethnieCodes[data.ethnie] || 'E1'
-    const familleCode = familleCodes[data.nomFamille] || 'F1'
+    const ethnieCode = ethnieEntry?.code || generateAutoCode(data.ethnie || '', 'E', ETHNIE_CODES.map(e => e.code))
+    const familleCode = familleEntry?.code || generateAutoCode(data.nomFamille || '', 'F', FAMILLE_CODES.map(f => f.code))
     
     // Générer un numéro unique basé sur le préfixe complet pour défunt
     const prefix = `${decet}${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`

@@ -123,11 +123,34 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorde
   }
 
   const startRecording = () => {
-    if (!streamRef.current) return
+    if (!streamRef.current) {
+      setError('Aucun flux vidéo disponible. Veuillez d\'abord démarrer la caméra.')
+      return
+    }
 
     try {
+      // Essayer différents codecs selon la compatibilité du navigateur
+      let mimeType = 'video/webm;codecs=vp9,opus'
+      const codecs = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=vp8',
+        'video/webm',
+        'video/mp4'
+      ]
+      
+      // Trouver le premier codec supporté
+      for (const codec of codecs) {
+        if (MediaRecorder.isTypeSupported(codec)) {
+          mimeType = codec
+          console.log('✅ Codec sélectionné:', mimeType)
+          break
+        }
+      }
+      
+      console.log('🎬 Démarrage de l\'enregistrement avec:', mimeType)
       const mediaRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: 'video/webm;codecs=vp9,opus'
+        mimeType: mimeType
       })
       
       mediaRecorderRef.current = mediaRecorder

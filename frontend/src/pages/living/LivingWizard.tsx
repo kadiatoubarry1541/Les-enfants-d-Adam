@@ -9,12 +9,12 @@ import { buildNumeroH, computeGenerationCode } from '../../utils/codes'
 import { LivingChoice } from './LivingChoice'
 import { VideoRegistration } from './VideoRegistration'
 import { api } from '../../utils/api'
-import {
+import { 
   getContinents,
   getCountriesByContinent,
   getRegionsByCountry,
-  getPrefecturesByRegion,
-  getSousPrefecturesByPrefecture,
+  getPrefecturesByRegion, 
+  getSousPrefecturesByPrefecture, 
   getQuartiersBySousPrefecture,
   type GeographicLocation
 } from '../../utils/worldGeography'
@@ -56,7 +56,7 @@ type EtatVivant = {
   lieu2?: string
   lieu3?: string
   nationalite?: string
-  genre?: 'FEMME' | 'HOMME' | 'AUTRE'
+  genre?: 'FEMME' | 'HOMME'
   statutSocial?: 'Célibataire' | 'Marié(e)' | 'Divorcé(e)' | 'Veuf / Veuve' | 'Autre'
   nbFemmes?: number
 
@@ -219,37 +219,29 @@ export function LivingWizard() {
     }
     
     // Utiliser les codes géographiques sélectionnés (déjà validés ci-dessus)
-    const continentCode = state.continentCode
-    const paysCode = state.paysCode
-    const regionCode = state.regionCode
+    const continentCode = state.continentCode || 'C1'
+    const paysCode = state.paysCode || 'P1'
+    const regionCode = state.regionCode || state.regionOrigine || 'R1'
     
-    // Codes pour les ethnies
-    const ethnieCodes: { [key: string]: string } = {
-      'Peuls': 'E1',
-      'Malinkés': 'E2',
-      'Soussous': 'E3',
-      'Kissi': 'E4',
-      'Toma': 'E5',
-      'Guerzés': 'E6',
-      'Kpelle': 'E7'
+    // Utiliser les codes depuis constants.ts avec fallback automatique
+    const ethnieEntry = ETHNIE_CODES.find(e => e.label === state.ethnie)
+    const familleEntry = FAMILLE_CODES.find(f => f.label.toLowerCase() === (state.nomFamille || '').toLowerCase())
+    
+    // Générer un code automatique si non trouvé
+    const generateAutoCode = (name: string, prefix: string, existingCodes: string[]): string => {
+      if (!name) return prefix + '999'
+      const cleanName = name.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+      let codeNum = 1
+      let code = prefix + codeNum.toString().padStart(3, '0')
+      while (existingCodes.includes(code) && codeNum < 999) {
+        codeNum++
+        code = prefix + codeNum.toString().padStart(3, '0')
+      }
+      return code
     }
     
-    // Codes pour les familles
-    const familleCodes: { [key: string]: string } = {
-      'Barry': 'F1',
-      'Diallo': 'F2',
-      'Sow': 'F3',
-      'Bah': 'F4',
-      'Balde': 'F5',
-      'Camara': 'F6',
-      'Keita': 'F7',
-      'Touré': 'F8',
-      'Sylla': 'F9',
-      'Kouyaté': 'F10'
-    }
-    
-    const ethnieCode = ethnieCodes[state.ethnie || ''] || ETHNIE_CODES.find(e=>e.label===state.ethnie)?.code || 'E1'
-    const familleCode = familleCodes[(state.nomFamille || '').toLowerCase()] || FAMILLE_CODES.find(f=>f.label.toLowerCase() === (state.nomFamille||'').toLowerCase())?.code || 'F1'
+    const ethnieCode = ethnieEntry?.code || generateAutoCode(state.ethnie || '', 'E', ETHNIE_CODES.map(e => e.code))
+    const familleCode = familleEntry?.code || generateAutoCode(state.nomFamille || '', 'F', FAMILLE_CODES.map(f => f.code))
     
     // Générer un numéro unique basé sur le préfixe complet
     const prefix = `${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
@@ -435,44 +427,205 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-6">
-                <Field label={t('label.region_origin')}>
+                <Field label={`Continent * ${state.continentCode ? `(${state.continentCode})` : ''}`}>
                   <select 
-                    value={state.regionOrigine} 
-                    onChange={(e)=>set({ regionOrigine: e.target.value })} 
+                    value={state.continentCode || ''} 
+                    onChange={(e) => {
+                      const selectedContinent = continents.find(c => c.code === e.target.value)
+                      set({ 
+                        continent: selectedContinent?.name || '',
+                        continentCode: e.target.value,
+                        pays: '',
+                        paysCode: '',
+                        regionOrigine: '',
+                        regionCode: '',
+                        prefecture: '',
+                        prefectureCode: '',
+                        sousPrefecture: '',
+                        sousPrefectureCode: '',
+                        quartier: '',
+                        quartierCode: ''
+                      })
+                    }}
+                    required
+                    className={state.continentCode ? 'border-green-500' : ''}
                   >
-                    <option value="">Sélectionner</option>
+                    <option value="">🌍 Sélectionner un continent</option>
+                    {continents.map(continent => (
+                      <option key={continent.code} value={continent.code}>
+                        {continent.name} ({continent.code})
+                      </option>
+                    ))}
+                  </select>
+                  {state.continentCode && (
+                    <small className="text-green-600">✓ Continent sélectionné : {state.continent}</small>
+                  )}
+                </Field>
+              </div>
+              <div className="col-6">
+                <Field label={`Pays * ${state.paysCode ? `(${state.paysCode})` : ''}`}>
+                  <select 
+                    value={state.paysCode || ''} 
+                    onChange={(e) => {
+                      const selectedCountry = countries.find(c => c.code === e.target.value)
+                      set({ 
+                        pays: selectedCountry?.name || '',
+                        paysCode: e.target.value,
+                        regionOrigine: '',
+                        regionCode: '',
+                        prefecture: '',
+                        prefectureCode: '',
+                        sousPrefecture: '',
+                        sousPrefectureCode: '',
+                        quartier: '',
+                        quartierCode: ''
+                      })
+                    }}
+                    disabled={!state.continentCode}
+                    required
+                    className={state.paysCode ? 'border-green-500' : ''}
+                  >
+                    <option value="">🌐 {state.continentCode ? `Sélectionner un pays (${countries.length} disponible${countries.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un continent'}</option>
+                    {countries.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.name} ({country.code})
+                      </option>
+                    ))}
+                  </select>
+                  {!state.continentCode && (
+                    <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner un continent</small>
+                  )}
+                  {state.paysCode && (
+                    <small className="text-green-600">✓ Pays sélectionné : {state.pays}</small>
+                  )}
+                </Field>
+              </div>
+              <div className="col-6">
+                <Field label={`Région * ${state.regionCode ? `(${state.regionCode})` : ''}`}>
+                  <select 
+                    value={state.regionCode || state.regionOrigine || ''} 
+                    onChange={(e) => {
+                      const selectedRegion = regions.find(r => r.code === e.target.value)
+                      set({ 
+                        regionOrigine: e.target.value,
+                        region: selectedRegion?.name || '',
+                        regionCode: e.target.value,
+                        prefecture: '',
+                        prefectureCode: '',
+                        sousPrefecture: '',
+                        sousPrefectureCode: '',
+                        quartier: '',
+                        quartierCode: ''
+                      })
+                    }}
+                    disabled={!state.paysCode}
+                    required
+                    className={state.regionCode ? 'border-green-500' : ''}
+                  >
+                    <option value="">🗺️ {state.paysCode ? `Sélectionner une région (${regions.length} disponible${regions.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un pays'}</option>
                     {regions.map(r => (
-                      <option key={r.code} value={r.code}>{r.name}</option>
+                      <option key={r.code} value={r.code}>{r.name} ({r.code})</option>
                     ))}
                   </select>
+                  {!state.paysCode && (
+                    <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner un pays</small>
+                  )}
+                  {state.regionCode && (
+                    <small className="text-green-600">✓ Région sélectionnée : {state.region}</small>
+                  )}
                 </Field>
               </div>
               <div className="col-6">
-                <Field label="Préfecture">
+                <Field label={`Préfecture * ${state.prefectureCode ? `(${state.prefectureCode})` : ''}`}>
                   <select 
-                    value={state.prefecture} 
-                    onChange={(e)=>set({ prefecture: e.target.value })} 
-                    disabled={!state.regionOrigine}
+                    value={state.prefectureCode || state.prefecture || ''} 
+                    onChange={(e) => {
+                      const selectedPrefecture = prefectures.find(p => p.code === e.target.value)
+                      set({ 
+                        prefecture: e.target.value,
+                        prefectureName: selectedPrefecture?.name || '',
+                        prefectureCode: e.target.value,
+                        sousPrefecture: '',
+                        sousPrefectureCode: '',
+                        quartier: '',
+                        quartierCode: ''
+                      })
+                    }}
+                    disabled={!state.regionCode}
+                    required
+                    className={state.prefectureCode ? 'border-green-500' : ''}
                   >
-                    <option value="">Sélectionner une préfecture</option>
+                    <option value="">🏛️ {state.regionCode ? `Sélectionner une préfecture (${prefectures.length} disponible${prefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une région'}</option>
                     {prefectures.map(p => (
-                      <option key={p.code} value={p.code}>{p.name}</option>
+                      <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
                     ))}
                   </select>
+                  {!state.regionCode && (
+                    <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une région</small>
+                  )}
+                  {state.prefectureCode && (
+                    <small className="text-green-600">✓ Préfecture sélectionnée : {prefectures.find(p => p.code === state.prefectureCode)?.name}</small>
+                  )}
                 </Field>
               </div>
               <div className="col-6">
-                <Field label="Sous-préfecture">
+                <Field label={`Sous-préfecture * ${state.sousPrefectureCode ? `(${state.sousPrefectureCode})` : ''}`}>
                   <select 
-                    value={state.sousPrefecture} 
-                    onChange={(e)=>set({ sousPrefecture: e.target.value })} 
-                    disabled={!state.prefecture}
+                    value={state.sousPrefectureCode || state.sousPrefecture || ''} 
+                    onChange={(e) => {
+                      const selectedSousPrefecture = sousPrefectures.find(sp => sp.code === e.target.value)
+                      set({ 
+                        sousPrefecture: e.target.value,
+                        sousPrefectureName: selectedSousPrefecture?.name || '',
+                        sousPrefectureCode: e.target.value,
+                        quartier: '',
+                        quartierCode: ''
+                      })
+                    }}
+                    disabled={!state.prefectureCode}
+                    required
+                    className={state.sousPrefectureCode ? 'border-green-500' : ''}
                   >
-                    <option value="">Sélectionner une sous-préfecture</option>
+                    <option value="">📍 {state.prefectureCode ? `Sélectionner une sous-préfecture (${sousPrefectures.length} disponible${sousPrefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une préfecture'}</option>
                     {sousPrefectures.map(sp => (
-                      <option key={sp.code} value={sp.code}>{sp.name}</option>
+                      <option key={sp.code} value={sp.code}>{sp.name} ({sp.code})</option>
                     ))}
                   </select>
+                  {!state.prefectureCode && (
+                    <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une préfecture</small>
+                  )}
+                  {state.sousPrefectureCode && (
+                    <small className="text-green-600">✓ Sous-préfecture sélectionnée : {sousPrefectures.find(sp => sp.code === state.sousPrefectureCode)?.name}</small>
+                  )}
+                </Field>
+              </div>
+              <div className="col-6">
+                <Field label={`Quartier * ${state.quartierCode ? `(${state.quartierCode})` : ''}`}>
+                  <select 
+                    value={state.quartierCode || state.quartier || ''} 
+                    onChange={(e) => {
+                      const selectedQuartier = quartiers.find(q => q.code === e.target.value)
+                      set({ 
+                        quartier: e.target.value,
+                        quartierName: selectedQuartier?.name || '',
+                        quartierCode: e.target.value
+                      })
+                    }}
+                    disabled={!state.sousPrefectureCode}
+                    required
+                    className={state.quartierCode ? 'border-green-500' : ''}
+                  >
+                    <option value="">🏘️ {state.sousPrefectureCode ? `Sélectionner un quartier (${quartiers.length} disponible${quartiers.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une sous-préfecture'}</option>
+                    {quartiers.map(q => (
+                      <option key={q.code} value={q.code}>{q.name} ({q.code})</option>
+                    ))}
+                  </select>
+                  {!state.sousPrefectureCode && (
+                    <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une sous-préfecture</small>
+                  )}
+                  {state.quartierCode && (
+                    <small className="text-green-600">✓ Quartier sélectionné : {quartiers.find(q => q.code === state.quartierCode)?.name}</small>
+                  )}
                 </Field>
               </div>
             </div>
@@ -583,7 +736,7 @@ export function LivingWizard() {
               </div>
               <div className="col-4">
                 <Field label={t('label.gender')}>
-                  <Select value={state.genre} onChange={(v)=>set({ genre: v as any })} options={[ 'FEMME','HOMME','AUTRE' ]} />
+                  <Select value={state.genre} onChange={(v)=>set({ genre: v as any })} options={[ 'FEMME','HOMME' ]} />
                 </Field>
               </div>
             </div>

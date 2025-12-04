@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { VideoRecorder } from '../../components/VideoRecorder'
+import { FAMILLES, ETHNIES, ETHNIE_CODES, FAMILLE_CODES } from '../../utils/constants'
 
 interface DeceasedVideoData {
   numeroHPere: string
@@ -119,29 +120,26 @@ export function DeceasedVideoRegistration() {
       'Guinée forestière': 'R4'
     }
     
-    // Codes pour les ethnies
-    const ethnieCodes: { [key: string]: string } = {
-      'Peuls': 'E1',
-      'Malinkés': 'E2',
-      'Soussous': 'E3',
-      'Kissi': 'E4',
-      'Toma': 'E5'
-    }
+    // Utiliser les codes depuis constants.ts avec fallback automatique
+    const ethnieEntry = ETHNIE_CODES.find(e => e.label === data.ethnie)
+    const familleEntry = FAMILLE_CODES.find(f => f.label.toLowerCase() === (data.famille || '').toLowerCase())
     
-    // Codes pour les familles
-    const familleCodes: { [key: string]: string } = {
-      'Barry': 'F1',
-      'Diallo': 'F2',
-      'Sow': 'F3',
-      'Bah': 'F4',
-      'Balde': 'F5',
-      'Camara': 'F6',
-      'Keita': 'F7'
+    // Générer un code automatique si non trouvé
+    const generateAutoCode = (name: string, prefix: string, existingCodes: string[]): string => {
+      if (!name) return prefix + '999'
+      const cleanName = name.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+      let codeNum = 1
+      let code = prefix + codeNum.toString().padStart(3, '0')
+      while (existingCodes.includes(code) && codeNum < 999) {
+        codeNum++
+        code = prefix + codeNum.toString().padStart(3, '0')
+      }
+      return code
     }
     
     const regionCode = regionCodes[data.region] || 'R1'
-    const ethnieCode = ethnieCodes[data.ethnie] || 'E1'
-    const familleCode = familleCodes[data.famille] || 'F1'
+    const ethnieCode = ethnieEntry?.code || generateAutoCode(data.ethnie || '', 'E', ETHNIE_CODES.map(e => e.code))
+    const familleCode = familleEntry?.code || generateAutoCode(data.famille || '', 'F', FAMILLE_CODES.map(f => f.code))
     
     // Générer un numéro unique
     const counter = localStorage.getItem('numeroHD_counter') || '0'
@@ -254,26 +252,32 @@ export function DeceasedVideoRegistration() {
             <div className="col-6">
               <div className="field">
                 <label>Ethnie</label>
-                <select value={deceasedData.ethnie} onChange={(e) => setDeceasedData(prev => ({ ...prev, ethnie: e.target.value }))}>
-                  <option value="">Sélectionner</option>
-                  <option value="Peuls">Peuls</option>
-                  <option value="Malinkés">Malinkés</option>
-                  <option value="Soussous">Soussous</option>
+                <select 
+                  value={deceasedData.ethnie} 
+                  onChange={(e) => setDeceasedData(prev => ({ ...prev, ethnie: e.target.value }))}
+                  required
+                  className={deceasedData.ethnie ? 'border-green-500' : ''}
+                >
+                  <option value="">🌍 Sélectionner une ethnie</option>
+                  {ETHNIES.map(ethnie => (
+                    <option key={ethnie} value={ethnie}>{ethnie}</option>
+                  ))}
                 </select>
               </div>
             </div>
             <div className="col-6">
               <div className="field">
                 <label>Famille</label>
-                <select value={deceasedData.famille} onChange={(e) => setDeceasedData(prev => ({ ...prev, famille: e.target.value }))}>
-                  <option value="">Sélectionner</option>
-                  <option value="Barry">Barry</option>
-                  <option value="Diallo">Diallo</option>
-                  <option value="Sow">Sow</option>
-                  <option value="Bah">Bah</option>
-                  <option value="Balde">Balde</option>
-                  <option value="Camara">Camara</option>
-                  <option value="Keita">Keita</option>
+                <select 
+                  value={deceasedData.famille} 
+                  onChange={(e) => setDeceasedData(prev => ({ ...prev, famille: e.target.value }))}
+                  required
+                  className={deceasedData.famille ? 'border-green-500' : ''}
+                >
+                  <option value="">👨‍👩‍👧‍👦 Sélectionner un nom de famille</option>
+                  {FAMILLES.map(famille => (
+                    <option key={famille} value={famille}>{famille}</option>
+                  ))}
                 </select>
               </div>
             </div>

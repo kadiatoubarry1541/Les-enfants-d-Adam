@@ -638,3 +638,21 @@ export function getLocationCode(path: {
   if (path.quartier) code += path.quartier;
   return code;
 }
+
+// Fonction pour compter les préfectures dans une région
+export function countPrefecturesInRegion(regionCode: string, countryCode?: string, continentCode?: string): number {
+  const prefectures = getPrefecturesByRegion(regionCode, countryCode, continentCode);
+  return prefectures.length;
+}
+
+// Fonction pour compter les sous-préfectures dans une préfecture
+export function countSousPrefecturesInPrefecture(prefectureCode: string, regionCode?: string, countryCode?: string, continentCode?: string): number {
+  const sousPrefectures = getSousPrefecturesByPrefecture(prefectureCode, regionCode, countryCode, continentCode);
+  return sousPrefectures.length;
+}
+
+// Fonction pour compter les quartiers dans une sous-préfecture
+export function countQuartiersInSousPrefecture(sousPrefectureCode: string, prefectureCode?: string, regionCode?: string, countryCode?: string, continentCode?: string): number {
+  const quartiers = getQuartiersBySousPrefecture(sousPrefectureCode, prefectureCode, regionCode, countryCode, continentCode);
+  return quartiers.length;
+}

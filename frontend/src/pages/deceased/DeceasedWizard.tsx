@@ -99,33 +99,25 @@ export function DeceasedWizard() {
     const paysCode = state.paysCode || 'P1'
     const regionCode = state.regionCode || 'R1'
     
-    // Codes pour les ethnies
-    const ethnieCodes: { [key: string]: string } = {
-      'Peuls': 'E1',
-      'Malinkés': 'E2',
-      'Soussous': 'E3',
-      'Kissi': 'E4',
-      'Toma': 'E5',
-      'Guerzés': 'E6',
-      'Kpelle': 'E7'
+    // Utiliser les codes depuis constants.ts avec fallback automatique
+    const ethnieEntry = ETHNIE_CODES.find(e => e.label === state.ethnie)
+    const familleEntry = FAMILLE_CODES.find(f => f.label.toLowerCase() === (state.nom || '').toLowerCase())
+    
+    // Générer un code automatique si non trouvé
+    const generateAutoCode = (name: string, prefix: string, existingCodes: string[]): string => {
+      if (!name) return prefix + '999'
+      const cleanName = name.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+      let codeNum = 1
+      let code = prefix + codeNum.toString().padStart(3, '0')
+      while (existingCodes.includes(code) && codeNum < 999) {
+        codeNum++
+        code = prefix + codeNum.toString().padStart(3, '0')
+      }
+      return code
     }
     
-    // Codes pour les familles
-    const familleCodes: { [key: string]: string } = {
-      'Barry': 'F1',
-      'Diallo': 'F2',
-      'Sow': 'F3',
-      'Bah': 'F4',
-      'Balde': 'F5',
-      'Camara': 'F6',
-      'Keita': 'F7',
-      'Touré': 'F8',
-      'Sylla': 'F9',
-      'Kouyaté': 'F10'
-    }
-    
-    const ethnieCode = ethnieCodes[state.ethnie || ''] || ETHNIE_CODES.find(e=>e.label===state.ethnie)?.code || 'E1'
-    const familleCode = familleCodes[(state.nom || '').toLowerCase()] || FAMILLE_CODES.find(f=>f.label.toLowerCase() === (state.nom||'').toLowerCase())?.code || 'F1'
+    const ethnieCode = ethnieEntry?.code || generateAutoCode(state.ethnie || '', 'E', ETHNIE_CODES.map(e => e.code))
+    const familleCode = familleEntry?.code || generateAutoCode(state.nom || '', 'F', FAMILLE_CODES.map(f => f.code))
     
     // Générer un numéro unique basé sur le préfixe complet pour défunt
     const prefix = `${decet}${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
@@ -185,7 +177,7 @@ Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre gé
     
     // Rediriger vers la page d'accueil
     setTimeout(() => {
-      navigate('/')
+    navigate('/')
     }, 2000)
   }
 
@@ -210,7 +202,7 @@ Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre gé
             <div className="row">
               <div className="col-4"><Field label={t('label.name')}><input value={state.nom||''} onChange={e=>set({ nom: e.target.value })} /></Field></div>
               <div className="col-4"><Field label={t('label.firstname_any')}><input value={state.prenom||''} onChange={e=>set({ prenom: e.target.value })} /></Field></div>
-              <div className="col-4"><Field label={t('label.gender')}><Select value={state.genre} onChange={(v)=>set({ genre: v })} options={[ 'FEMME','HOMME','AUTRE' ]} /></Field></div>
+              <div className="col-4"><Field label={t('label.gender')}><Select value={state.genre} onChange={(v)=>set({ genre: v })} options={[ 'FEMME','HOMME' ]} /></Field></div>
             </div>
             <div className="row">
               <div className="col-4"><Field label={t('label.birthdate')}><input type="date" value={state.dateNaissance||''} onChange={e=>set({ dateNaissance: e.target.value })} /></Field></div>
