@@ -118,12 +118,16 @@ export const api = {
   // Connexion utilisateur
   async login(numeroH: string, password: string) {
     try {
+      // Normaliser le NumeroH avant l'envoi (supprimer les espaces multiples)
+      const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ')
+      console.log('🔍 Tentative de connexion avec NumeroH:', normalizedNumeroH)
+      
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ numeroH, password })
+        body: JSON.stringify({ numeroH: normalizedNumeroH, password })
       })
       
       if (!response.ok) {
@@ -133,20 +137,21 @@ export const api = {
       const result = await response.json()
       
       if (result.success) {
-        // Sauvegarder la session
+        // Sauvegarder la session avec le NumeroH normalisé
         localStorage.setItem('session_user', JSON.stringify({
-          numeroH,
+          numeroH: normalizedNumeroH,
           userData: result.user,
           token: result.token
         }))
+        console.log('✅ Session sauvegardée avec NumeroH:', normalizedNumeroH)
       }
       
       return result
     } catch (error) {
       console.error('Erreur connexion backend:', error)
       
-      // Fallback vers localStorage
-      return this.loginFromLocalStorage(numeroH, password)
+      // Fallback vers localStorage avec le NumeroH normalisé
+      return this.loginFromLocalStorage(normalizedNumeroH, password)
     }
   },
 

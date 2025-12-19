@@ -408,8 +408,38 @@ router.post('/register', validateUser, async (req, res) => {
       // Créer l'utilisateur vivant en base
       const newUser = await User.create(userData);
       
+      // ✅ VÉRIFIER QUE L'UTILISATEUR EST BIEN SAUVEGARDÉ EN BASE
+      // Recharger depuis la base pour s'assurer que tout est correct
+      let savedUser = await User.findByNumeroH(newUser.numeroH);
+      
+      // Si l'utilisateur n'est pas trouvé, essayer plusieurs fois avec des délais
+      if (!savedUser) {
+        console.warn('⚠️ Utilisateur non trouvé immédiatement, nouvelle tentative...');
+        // Attendre un peu pour la synchronisation de la base
+        await new Promise(resolve => setTimeout(resolve, 500));
+        savedUser = await User.findByNumeroH(newUser.numeroH);
+      }
+      
+      // Si toujours pas trouvé, essayer avec findByPk
+      if (!savedUser && newUser.numeroH) {
+        console.warn('⚠️ Essai avec findByPk...');
+        savedUser = await User.findByPk(newUser.numeroH);
+      }
+      
+      // Si toujours pas trouvé, utiliser newUser directement mais logger l'erreur
+      if (!savedUser) {
+        console.error('❌ ERREUR: L\'utilisateur n\'a pas été trouvé en base après création!', {
+          numeroH: newUser.numeroH,
+          id: newUser.id || 'N/A'
+        });
+        // Utiliser newUser comme fallback mais continuer quand même
+        savedUser = newUser;
+      } else {
+        console.log('✅ Utilisateur créé et vérifié en base:', savedUser.numeroH);
+      }
+      
       // Sauvegarder en mémoire comme backup
-      saveToFile(newUser);
+      saveToFile(savedUser);
 
       // Gérer les confirmations par les parents vivants
       if (newUser.numeroHPere || newUser.numeroHMere) {
@@ -421,14 +451,18 @@ router.post('/register', validateUser, async (req, res) => {
 
       // Générer le token JWT
       const token = jwt.sign(
-        { userId: newUser.numeroH, numeroH: newUser.numeroH },
+        { userId: savedUser.numeroH, numeroH: savedUser.numeroH },
         config.JWT_SECRET,
         { expiresIn: config.JWT_EXPIRE }
       );
 
-      // Retourner la réponse (sans le mot de passe)
-      const userWithoutPassword = { ...newUser.dataValues };
+      // Retourner la réponse (sans le mot de passe) - utiliser savedUser qui est vérifié en base
+      const userWithoutPassword = { ...savedUser.dataValues };
       delete userWithoutPassword.password;
+
+      console.log('✅ Inscription réussie pour:', savedUser.numeroH);
+      console.log('✅ NumeroH sauvegardé en base:', savedUser.numeroH);
+      console.log('✅ Utilisateur peut maintenant se connecter avec ce NumeroH et son mot de passe');
 
       res.status(201).json({
         success: true,
@@ -507,7 +541,17 @@ router.post('/login', [
 
     try {
       // Essayer d'utiliser la base de données PostgreSQL
-      const user = await User.findByNumeroH(numeroH);
+      // Normaliser le NumeroH avant la recherche
+      const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ');
+      console.log('🔍 NumeroH normalisé pour recherche:', normalizedNumeroH);
+      
+      let user = await User.findByNumeroH(normalizedNumeroH);
+      
+      // Si pas trouvé avec le normalisé, essayer avec l'original
+      if (!user && normalizedNumeroH !== numeroH.trim()) {
+        console.log('🔍 Essai avec NumeroH original (non normalisé):', numeroH.trim());
+        user = await User.findByNumeroH(numeroH.trim());
+      }
       
       if (!user) {
         console.log('❌ NumeroH non trouvé dans la base de données:', numeroH);

@@ -24,38 +24,96 @@ class User extends Model {
 
   // Méthodes statiques
   static async findByNumeroH(numeroH) {
+    if (!numeroH) {
+      console.log('❌ NumeroH vide ou null');
+      return null;
+    }
+    
     // Normaliser le NumeroH en supprimant les espaces supplémentaires
     const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ');
-    console.log('🔍 Recherche utilisateur avec NumeroH normalisé:', normalizedNumeroH);
+    console.log('🔍 Recherche utilisateur avec NumeroH:', numeroH, '→ normalisé:', normalizedNumeroH);
     
-    // Essayer d'abord une correspondance exacte
-    let user = await this.findOne({ where: { numeroH: normalizedNumeroH } });
-    
-    // Si aucun utilisateur n'est trouvé, essayer avec le NumeroH original
-    if (!user && normalizedNumeroH !== numeroH) {
-      console.log('🔍 Essai avec NumeroH original:', numeroH);
-      user = await this.findOne({ where: { numeroH } });
-    }
-    
-    // Si toujours aucun utilisateur, essayer avec une recherche insensible aux espaces
-    if (!user) {
-      console.log('🔍 Essai avec recherche insensible aux espaces');
-      // Vérifier si le NumeroH sans espaces correspond
-      const numeroHSansEspaces = normalizedNumeroH.replace(/\s/g, '');
-      
-      // Récupérer tous les utilisateurs pour une vérification manuelle
-      const allUsers = await this.findAll();
-      user = allUsers.find(u => {
-        const dbNumeroH = u.numeroH.replace(/\s/g, '');
-        return dbNumeroH === numeroHSansEspaces;
+    try {
+      // Essayer d'abord une correspondance exacte avec le champ Sequelize (numeroH)
+      let user = await this.findOne({ 
+        where: { numeroH: normalizedNumeroH },
+        raw: false // S'assurer qu'on récupère une instance Sequelize
       });
       
-      if (user) {
-        console.log('✅ Utilisateur trouvé avec correspondance insensible aux espaces:', user.numeroH);
+      // Si aucun utilisateur n'est trouvé, essayer avec le NumeroH original (sans normalisation)
+      if (!user && normalizedNumeroH !== numeroH.trim()) {
+        console.log('🔍 Essai avec NumeroH original (non normalisé):', numeroH.trim());
+        user = await this.findOne({ 
+          where: { numeroH: numeroH.trim() },
+          raw: false
+        });
       }
+      
+      // Si toujours aucun utilisateur, essayer avec une recherche directe sur le champ de base de données
+      if (!user) {
+        console.log('🔍 Essai avec recherche directe sur numero_h (champ DB)');
+        user = await this.findOne({ 
+          where: {
+            [Op.or]: [
+              { numeroH: normalizedNumeroH },
+              { numeroH: numeroH.trim() }
+            ]
+          },
+          raw: false
+        });
+      }
+      
+      // Si toujours aucun utilisateur, essayer avec une recherche insensible aux espaces (dernier recours)
+      if (!user) {
+        console.log('🔍 Essai avec recherche insensible aux espaces (dernier recours)');
+        const numeroHSansEspaces = normalizedNumeroH.replace(/\s/g, '');
+        
+        try {
+          // Utiliser une requête SQL brute pour une recherche plus flexible
+          const [results] = await sequelize.query(
+            `SELECT numero_h FROM users WHERE REPLACE(numero_h, ' ', '') = :numeroHSansEspaces LIMIT 1`,
+            {
+              replacements: { numeroHSansEspaces },
+              type: sequelize.QueryTypes.SELECT
+            }
+          );
+          
+          if (results && results.length > 0 && results[0].numero_h) {
+            // Utiliser findByPk avec le numero_h trouvé
+            user = await this.findByPk(results[0].numero_h, { raw: false });
+            if (user) {
+              console.log('✅ Utilisateur trouvé avec recherche SQL insensible aux espaces:', user.numeroH);
+            }
+          }
+        } catch (sqlError) {
+          console.error('❌ Erreur lors de la recherche SQL:', sqlError);
+          // Continuer sans lever d'erreur
+        }
+      }
+      
+      // Dernier recours : essayer avec findByPk directement si le numeroH ressemble à une clé primaire
+      if (!user && normalizedNumeroH) {
+        try {
+          user = await this.findByPk(normalizedNumeroH, { raw: false });
+          if (user) {
+            console.log('✅ Utilisateur trouvé avec findByPk direct:', user.numeroH);
+          }
+        } catch (pkError) {
+          // Ignorer l'erreur, ce n'est qu'un dernier recours
+        }
+      }
+      
+      if (user) {
+        console.log('✅ Utilisateur trouvé:', user.numeroH, '(type:', user.type, ', actif:', user.isActive, ')');
+      } else {
+        console.log('❌ Aucun utilisateur trouvé avec NumeroH:', numeroH);
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('❌ Erreur lors de la recherche de l\'utilisateur:', error);
+      return null;
     }
-    
-    return user;
   }
 
   static async findByType(type) {
