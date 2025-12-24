@@ -33,88 +33,24 @@ export function Login() {
       return
     }
     
-    console.log('🔍 TENTATIVE DE CONNEXION:', numeroH)
-    console.log('🔐 Mot de passe saisi:', password)
-    
     try {
-      // Utiliser l'API qui gère backend + fallback localStorage
+      // Connexion directe et rapide
       const result = await api.login(numeroH, password)
       
-      console.log('📋 Résultat de connexion:', result)
-      
       if (result.success) {
-        console.log('✅ CONNEXION RÉUSSIE:', result.message || 'Authentification validée')
-        console.log('👤 Utilisateur connecté:', result.user)
-        
-        // La session est déjà sauvegardée par api.login()
-        alert(`✅ ${t('login.submit')} !\n\nBienvenue ${result.user?.prenom} ${result.user?.nomFamille || ''}`)
-        
+        // Redirection immédiate sans alert
         navigate('/compte')
       } else {
-        console.log('❌ ÉCHEC DE CONNEXION:', result.message)
-        
-        // Si le result indique que le numeroH existe mais pas le bon mot de passe
+        // Messages d'erreur simples
         if (result.numeroHExists) {
-          setError('Mot de passe incorrect pour ce NumeroH. Veuillez vérifier votre mot de passe.')
+          setError('Mot de passe incorrect')
         } else {
-          // Vérifier si le NumeroH existe dans localStorage (peut-être avec un mauvais mot de passe)
-          const searchKeys = [
-            'dernier_vivant',
-            'vivant_written',
-            'vivant_video',
-            'defunt_video', 
-            'defunt_written',
-            'dernier_defunt'
-          ]
-          
-          let numeroHExists = false
-          let existingUser = null
-          
-          for (const key of searchKeys) {
-            const raw = localStorage.getItem(key)
-            if (raw) {
-              try {
-                const data = JSON.parse(raw)
-                const userNumeroH = data.numeroH || data.numeroHD
-                const normalizedUserNumeroH = userNumeroH?.replace(/\s+/g, ' ').trim()
-                const normalizedNumeroH = numeroH.replace(/\s+/g, ' ').trim()
-                
-                console.log(`🔍 Comparaison: "${normalizedUserNumeroH}" === "${normalizedNumeroH}"`)
-                
-                if (normalizedUserNumeroH === normalizedNumeroH) {
-                  numeroHExists = true
-                  existingUser = data
-                  console.log(`⚠️ NumeroH trouvé dans ${key}:`, {
-                    numeroH: existingUser.numeroH,
-                    hasPassword: !!existingUser.password,
-                    password: existingUser.password
-                  })
-                  break
-                }
-              } catch (e) {
-                // Ignore
-              }
-            }
-          }
-          
-          if (numeroHExists) {
-            setError(`Mot de passe incorrect pour ce NumeroH.\n\nNumeroH: ${existingUser.numeroH || existingUser.numeroHD}\nUtilisateur: ${existingUser.prenom} ${existingUser.nomFamille || existingUser.nom}\n\nVeuillez vérifier votre mot de passe.`)
-          } else {
-            // NumeroH n'existe pas → Proposer l'inscription
-            const wantsToRegister = confirm(`Le NumeroH "${numeroH}" n'existe pas encore.\n\n${t('login.signup_prompt')}`)
-            
-            if (wantsToRegister) {
-              navigate('/choix')
-              return
-            } else {
-              setError(`NumeroH non trouvé. ${t('login.signup_prompt')}`)
-            }
-          }
+          setError('NumeroH ou mot de passe incorrect')
         }
       }
-    } catch (error) {
-      console.error('💥 ERREUR CONNEXION:', error)
-      setError('Une erreur est survenue lors de la connexion. Veuillez réessayer.')
+    } catch (error: any) {
+      // Message d'erreur simple
+      setError(error?.message || 'Erreur de connexion. Vérifiez vos identifiants.')
     }
   }
 
@@ -126,13 +62,24 @@ export function Login() {
           <div className="col-6">
             <div className="field">
               <label>{t('login.numeroh')}</label>
-              <input value={numeroH} onChange={(e)=>setNumeroH(e.target.value)} placeholder="Ex: G1C1P2R1E1F1 1" />
+              <input 
+                value={numeroH} 
+                onChange={(e)=>setNumeroH(e.target.value)} 
+                onKeyPress={(e) => e.key === 'Enter' && onSubmit()}
+                placeholder="Ex: G1C1P2R1E1F1 1" 
+                autoFocus
+              />
             </div>
           </div>
           <div className="col-6">
             <div className="field">
               <label>{t('login.password')}</label>
-              <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} />
+              <input 
+                type="password" 
+                value={password} 
+                onChange={(e)=>setPassword(e.target.value)} 
+                onKeyPress={(e) => e.key === 'Enter' && onSubmit()}
+              />
             </div>
           </div>
         </div>

@@ -80,11 +80,8 @@ export const ETHNIES = [
   // Europe de l'Est
   'Russe','Ukrainien','Biélorusse','Polonais','Tchèque','Slovaque','Hongrois','Roumain','Bulgare','Serbe','Croate','Bosniaque','Monténégrin','Macédonien','Albanais','Grec','Turc','Géorgien','Arménien','Azerbaïdjanais','Moldave','Slovène','Kosovar',
   
-  // ========== AMÉRIQUES ==========
-  // Amérique du Nord
-  'Amérindien','Inuit','Métis','Afro-américain','Anglo-américain','Hispanique','Latino','Asiatique-américain','Hawaïen','Chamorro','Samoan','Tongien','Marshallais','Micronésien','Palauan','Carolinian','Yapese','Chuukese','Pohnpeian','Kosraean','Nauruan','Gilbertese','Tuvaluan','Tokelauan','Niuean','Cook Islander',
-  // Amérique du Sud
-  'Métis','Criollo','Mestizo','Mulato','Zambo','Indigène','Quichua','Aymara','Guaraní','Mapuche','Quechua','Wayuu','Emberá','Wounaan','Kuna','Ngäbe','Bribri','Cabécar','Boruca','Térraba','Maleku','Huetar','Chorotega','Nicoya','Guaymí','Naso','Teribe','Bokota','Buglé',
+  // ========== AMÉRIQUE ==========
+  'Amérindien','Inuit','Métis','Afro-américain','Anglo-américain','Hispanique','Latino','Asiatique-américain','Hawaïen','Chamorro','Samoan','Tongien','Marshallais','Micronésien','Palauan','Carolinian','Yapese','Chuukese','Pohnpeian','Kosraean','Nauruan','Gilbertese','Tuvaluan','Tokelauan','Niuean','Cook Islander','Criollo','Mestizo','Mulato','Zambo','Indigène','Quichua','Aymara','Guaraní','Mapuche','Quechua','Wayuu','Emberá','Wounaan','Kuna','Ngäbe','Bribri','Cabécar','Boruca','Térraba','Maleku','Huetar','Chorotega','Nicoya','Guaymí','Naso','Teribe','Bokota','Buglé',
   
   // ========== OCÉANIE ==========
   'Aborigène australien','Maori','Hawaïen','Samoan','Tongien','Fidjien','Papou','Mélanésien','Polynésien','Micronésien','Kanak','Tahitien','Marquisien','Tuamotu','Gambier','Austral','Rapa','Mangarevan'

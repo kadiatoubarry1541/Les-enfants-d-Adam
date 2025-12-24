@@ -57,6 +57,11 @@ export const api = {
       // Sauvegarder en localStorage comme backup avec le mot de passe
       localStorage.setItem('dernier_vivant', JSON.stringify(userDataWithPassword))
       
+      // Sauvegarder le token JWT si disponible
+      if (result.token) {
+        localStorage.setItem('token', result.token)
+      }
+      
       return { ...result, user: userDataWithPassword }
     } catch (error) {
       console.error('Erreur enregistrement vivant:', error)
@@ -115,13 +120,11 @@ export const api = {
     }
   },
 
-  // Connexion utilisateur
+  // Connexion utilisateur - Version optimisée et rapide
   async login(numeroH: string, password: string) {
+    const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ')
+    
     try {
-      // Normaliser le NumeroH avant l'envoi (supprimer les espaces multiples)
-      const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ')
-      console.log('🔍 Tentative de connexion avec NumeroH:', normalizedNumeroH)
-      
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -131,31 +134,31 @@ export const api = {
       })
       
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Erreur de connexion')
       }
       
       const result = await response.json()
       
       if (result.success) {
-        // Sauvegarder la session avec le NumeroH normalisé
+        // Sauvegarder la session immédiatement
         localStorage.setItem('session_user', JSON.stringify({
           numeroH: normalizedNumeroH,
           userData: result.user,
           token: result.token
         }))
-        console.log('✅ Session sauvegardée avec NumeroH:', normalizedNumeroH)
+        return result
+      } else {
+        // Fallback localStorage si backend retourne success: false
+        return this.loginFromLocalStorage(normalizedNumeroH, password)
       }
-      
-      return result
     } catch (error) {
-      console.error('Erreur connexion backend:', error)
-      
-      // Fallback vers localStorage avec le NumeroH normalisé
+      // Fallback vers localStorage en cas d'erreur réseau
       return this.loginFromLocalStorage(normalizedNumeroH, password)
     }
   },
 
-  // Connexion depuis localStorage (fallback)
+  // Connexion depuis localStorage (fallback) - Version optimisée
   loginFromLocalStorage(numeroH: string, password: string) {
     const searchKeys = [
       'dernier_vivant',
@@ -164,105 +167,49 @@ export const api = {
       'defunt_video',
       'defunt_written',
       'vivant_written',
-      // Ajouter les clés de comptes de test
       `compte_test_${numeroH.replace(/\s/g, '_')}`
     ]
     
-    console.log('🔍 Recherche dans localStorage avec numeroH:', numeroH)
+    const normalizedNumeroH = numeroH.replace(/\s+/g, ' ').trim()
     
-    // Chercher d'abord dans les clés standard
+    // Recherche rapide dans les clés principales
     for (const key of searchKeys) {
       const raw = localStorage.getItem(key)
-      if (raw) {
-        try {
-          const data = JSON.parse(raw)
-          const userNumeroH = data.numeroH || data.numeroHD
-          const normalizedUserNumeroH = userNumeroH?.replace(/\s+/g, ' ').trim()
-          const normalizedNumeroH = numeroH.replace(/\s+/g, ' ').trim()
+      if (!raw) continue
+      
+      try {
+        const data = JSON.parse(raw)
+        const userNumeroH = data.numeroH || data.numeroHD
+        const normalizedUserNumeroH = userNumeroH?.replace(/\s+/g, ' ').trim()
+        
+        if (normalizedUserNumeroH === normalizedNumeroH) {
+          const storedPassword = data.password || data.confirmPassword
           
-          console.log(`📋 Vérification ${key}: ${normalizedUserNumeroH} === ${normalizedNumeroH}`)
-          
-          if (normalizedUserNumeroH === normalizedNumeroH) {
-            // Vérifier le mot de passe
-            const storedPassword = data.password || data.confirmPassword
-            console.log(`🔐 Mot de passe trouvé dans ${key}:`, !!storedPassword)
-            
-            if (storedPassword && storedPassword === password) {
-              console.log(`✅ Mot de passe correct pour ${key}`)
-              localStorage.setItem('session_user', JSON.stringify({
-                numeroH: normalizedUserNumeroH,
-                userData: data,
-                type: data.type || 'vivant',
-                source: key
-              }))
-              return {
-                success: true,
-                user: data,
-                message: 'Connexion réussie (données locales)'
-              }
-            } else {
-              console.log(`❌ Mot de passe incorrect pour ${key}`)
-              // NumeroH trouvé mais mauvais mot de passe
-              return {
-                success: false,
-                message: 'Mot de passe incorrect',
-                numeroHExists: true
-              }
+          if (storedPassword && storedPassword === password) {
+            localStorage.setItem('session_user', JSON.stringify({
+              numeroH: normalizedUserNumeroH,
+              userData: data,
+              type: data.type || 'vivant',
+              source: key
+            }))
+            return {
+              success: true,
+              user: data,
+              message: 'Connexion réussie'
+            }
+          } else {
+            return {
+              success: false,
+              message: 'Mot de passe incorrect',
+              numeroHExists: true
             }
           }
-        } catch (e) {
-          console.error(`Erreur parsing ${key}:`, e)
         }
+      } catch (e) {
+        // Ignore les erreurs de parsing
       }
     }
     
-    // Chercher aussi dans TOUTES les clés localStorage qui pourraient contenir un compte
-    console.log('🔍 Recherche étendue dans toutes les clés localStorage...')
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && (key.startsWith('compte_test_') || key.includes('vivant') || key.includes('defunt'))) {
-        const raw = localStorage.getItem(key)
-        if (raw) {
-          try {
-            const data = JSON.parse(raw)
-            const userNumeroH = data.numeroH || data.numeroHD
-            const normalizedUserNumeroH = userNumeroH?.replace(/\s+/g, ' ').trim()
-            const normalizedNumeroH = numeroH.replace(/\s+/g, ' ').trim()
-            
-            if (normalizedUserNumeroH === normalizedNumeroH) {
-              const storedPassword = data.password || data.confirmPassword
-              console.log(`📋 Compte trouvé dans ${key}`)
-              
-              if (storedPassword && storedPassword === password) {
-                localStorage.setItem('session_user', JSON.stringify({
-                  numeroH: normalizedUserNumeroH,
-                  userData: data,
-                  type: data.type || 'vivant',
-                  source: key
-                }))
-                console.log(`✅ Connexion réussie depuis ${key}`)
-                return {
-                  success: true,
-                  user: data,
-                  message: 'Connexion réussie (compte trouvé)'
-                }
-              } else {
-                console.log(`❌ Mot de passe incorrect pour ${key}`)
-                return {
-                  success: false,
-                  message: 'Mot de passe incorrect',
-                  numeroHExists: true
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore les erreurs de parsing
-          }
-        }
-      }
-    }
-    
-    console.log('❌ NumeroH non trouvé dans localStorage')
     return {
       success: false,
       message: 'NumeroH ou mot de passe incorrect'

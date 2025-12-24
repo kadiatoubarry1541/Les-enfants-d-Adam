@@ -313,13 +313,19 @@ export function VideoRegistration() {
         localStorage.setItem('vivant_video', JSON.stringify(userDataWithPassword))
         localStorage.setItem('dernier_vivant', JSON.stringify(userDataWithPassword))
         
-        // ✅ CRÉER LA SESSION pour connexion automatique
+        // ✅ CRÉER LA SESSION pour connexion automatique avec token
         localStorage.setItem('session_user', JSON.stringify({
           numeroH: numeroH,
           userData: userDataWithPassword,
+          token: result.token || null, // Sauvegarder le token JWT si disponible
           type: 'vivant',
           source: 'registration_video'
         }))
+        
+        // Sauvegarder le token séparément si disponible
+        if (result.token) {
+          localStorage.setItem('token', result.token)
+        }
         
         console.log('✅ Données sauvegardées avec mot de passe EN CLAIR:', {
           numeroH: userDataWithPassword.numeroH,
@@ -328,15 +334,8 @@ export function VideoRegistration() {
           passwordLength: userDataWithPassword.password?.length
         })
         
-        // Afficher le numeroH généré et rediriger vers la page d'accueil
-        alert(`✅ Enregistrement réussi !\n\nVotre NumeroH : ${numeroH}\n\nVous êtes maintenant connecté automatiquement !`)
-        
-        // Rediriger vers la page d'accueil après 2 secondes
-        setTimeout(() => {
-          navigate('/moi')
-        }, 2000)
-        
-        setCurrentStep('complete')
+        // Redirection immédiate vers le compte utilisateur
+        navigate('/compte')
       } else {
         alert(`❌ Erreur: ${result.message}`)
       }
@@ -368,15 +367,8 @@ export function VideoRegistration() {
         passwordLength: dataWithClearPassword.password?.length
       })
       
-      // Afficher le numeroH généré et rediriger vers la page d'accueil
-      alert(`⚠️ Sauvegardé localement.\n\nVotre NumeroH : ${numeroH}\n\nVous êtes maintenant connecté automatiquement !`)
-      
-      // Rediriger vers la page d'accueil après 2 secondes
-      setTimeout(() => {
-        navigate('/moi')
-      }, 2000)
-      
-      setCurrentStep('complete')
+      // Redirection immédiate vers le compte utilisateur
+      navigate('/compte')
     }
   }
 
@@ -433,7 +425,7 @@ export function VideoRegistration() {
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Continent * {videoData.continentCode && <span className="text-blue-600 font-semibold">({videoData.continentCode})</span>}</label>
+                <label>Continent *</label>
                 <select 
                   value={videoData.continentCode} 
                   onChange={(e) => {
@@ -465,10 +457,10 @@ export function VideoRegistration() {
                   required
                   className={getFieldClassName('continentCode', !!videoData.continentCode)}
                 >
-                  <option value="">🌍 Sélectionner un continent</option>
+                  <option value="">Sélectionner un continent</option>
                   {continents.map(continent => (
                     <option key={continent.code} value={continent.code}>
-                      {continent.name} ({continent.code})
+                      {continent.name}
                     </option>
                   ))}
                 </select>
@@ -482,7 +474,7 @@ export function VideoRegistration() {
           <div className="row">
             <div className="col-6">
               <div className="field">
-                <label>Pays * {videoData.paysCode && <span className="text-blue-600 font-semibold">({videoData.paysCode})</span>}</label>
+                <label>Pays *</label>
                 <select 
                   value={videoData.paysCode} 
                   onChange={(e) => {
@@ -512,10 +504,10 @@ export function VideoRegistration() {
                   required
                   className={getFieldClassName('paysCode', !!videoData.paysCode)}
                 >
-                  <option value="">🌐 {videoData.continentCode ? `Sélectionner un pays (${countries.length} disponible${countries.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un continent'}</option>
+                  <option value="">{videoData.continentCode ? `Sélectionner un pays (${countries.length} disponible${countries.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un continent'}</option>
                   {countries.map(country => (
                     <option key={country.code} value={country.code}>
-                      {country.name} ({country.code})
+                      {country.name}
                     </option>
                   ))}
                 </select>
@@ -529,7 +521,7 @@ export function VideoRegistration() {
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Région * {videoData.regionCode && <span className="text-blue-600 font-semibold">({videoData.regionCode})</span>}</label>
+                <label>Région *</label>
                 <select 
                   value={videoData.regionCode} 
                   onChange={(e) => {
@@ -557,10 +549,10 @@ export function VideoRegistration() {
                   required
                   className={getFieldClassName('regionCode', !!videoData.regionCode)}
                 >
-                  <option value="">🗺️ {videoData.paysCode ? `Sélectionner une région (${regions.length} disponible${regions.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un pays'}</option>
+                  <option value="">{videoData.paysCode ? `Sélectionner une région (${regions.length} disponible${regions.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un pays'}</option>
                   {regions.map(region => (
                     <option key={region.code} value={region.code}>
-                      {region.name} ({region.code})
+                      {region.name}
                     </option>
                   ))}
                 </select>
@@ -580,7 +572,7 @@ export function VideoRegistration() {
           <div className="row">
             <div className="col-6">
               <div className="field">
-                <label>Préfecture * {videoData.prefectureCode && <span className="text-blue-600 font-semibold">({videoData.prefectureCode})</span>}</label>
+                <label>Préfecture *</label>
                 <select 
                   value={videoData.prefectureCode} 
                   onChange={(e) => {
@@ -606,10 +598,10 @@ export function VideoRegistration() {
                   required
                   className={getFieldClassName('prefectureCode', !!videoData.prefectureCode)}
                 >
-                  <option value="">🏛️ {videoData.regionCode ? `Sélectionner une préfecture (${prefectures.length} disponible${prefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une région'}</option>
+                  <option value="">{videoData.regionCode ? `Sélectionner une préfecture (${prefectures.length} disponible${prefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une région'}</option>
                   {prefectures.map(prefecture => (
                     <option key={prefecture.code} value={prefecture.code}>
-                      {prefecture.name} ({prefecture.code})
+                      {prefecture.name}
                     </option>
                   ))}
                 </select>
@@ -626,7 +618,7 @@ export function VideoRegistration() {
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Sous-préfecture * {videoData.sousPrefectureCode && <span className="text-blue-600 font-semibold">({videoData.sousPrefectureCode})</span>}</label>
+                <label>Sous-préfecture *</label>
                 <select 
                   value={videoData.sousPrefectureCode} 
                   onChange={(e) => {
@@ -650,10 +642,10 @@ export function VideoRegistration() {
                   required
                   className={getFieldClassName('sousPrefectureCode', !!videoData.sousPrefectureCode)}
                 >
-                  <option value="">📍 {videoData.prefectureCode ? `Sélectionner une sous-préfecture (${sousPrefectures.length} disponible${sousPrefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une préfecture'}</option>
+                  <option value="">{videoData.prefectureCode ? `Sélectionner une sous-préfecture (${sousPrefectures.length} disponible${sousPrefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une préfecture'}</option>
                   {sousPrefectures.map(sousPrefecture => (
                     <option key={sousPrefecture.code} value={sousPrefecture.code}>
-                      {sousPrefecture.name} ({sousPrefecture.code})
+                      {sousPrefecture.name}
                     </option>
                   ))}
                 </select>
@@ -673,7 +665,7 @@ export function VideoRegistration() {
           <div className="row">
             <div className="col-6">
               <div className="field">
-                <label>Quartier * {videoData.quartierCode && <span className="text-blue-600 font-semibold">({videoData.quartierCode})</span>}</label>
+                <label>Quartier *</label>
                 <select 
                   value={videoData.quartierCode} 
                   onChange={(e) => {
@@ -695,10 +687,10 @@ export function VideoRegistration() {
                   required
                   className={getFieldClassName('quartierCode', !!videoData.quartierCode)}
                 >
-                  <option value="">🏘️ {videoData.sousPrefectureCode ? `Sélectionner un quartier (${quartiers.length} disponible${quartiers.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une sous-préfecture'}</option>
+                  <option value="">{videoData.sousPrefectureCode ? `Sélectionner un quartier (${quartiers.length} disponible${quartiers.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une sous-préfecture'}</option>
                   {quartiers.map(quartier => (
                     <option key={quartier.code} value={quartier.code}>
-                      {quartier.name} ({quartier.code})
+                      {quartier.name}
                     </option>
                   ))}
                 </select>

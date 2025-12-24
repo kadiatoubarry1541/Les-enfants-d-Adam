@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Activite from "./Activite";
 import Education from "./Education";
-import Solidarite from "./Solidarite";
 import TerreAdam from "./TerreAdam";
 import Histoire from "./Histoire";
+import Science from "./Science";
 import { EchangesProfessionnel } from "../components/EchangesProfessionnel";
 import { ActivityIcon } from "../components/icons/ActivityIcon";
 import { EarthIcon } from "../components/icons/EarthIcon";
@@ -70,12 +70,12 @@ export function UserDashboard() {
   }, [navigate]);
 
   const tabs: Tab[] = [
-    { id: "terre-adam", label: "Terre ADAM", icon: "🌍", useSvg: true, SvgIcon: EarthIcon },
-    { id: "activite", label: "Activité", icon: "⚙️", useSvg: true, SvgIcon: ActivityIcon },
+    { id: "terre-adam", label: "Terre ADAM", icon: "🌍", useSvg: false },
+    { id: "activite", label: "Activité", icon: "📊", useSvg: true, SvgIcon: ActivityIcon },
+    { id: "echanges", label: "Échanges", icon: "⚖️", useSvg: false },
+    { id: "histoire", label: "Temps", icon: "🧭", useSvg: false },
+    { id: "science", label: "Science", icon: "⚛️", useSvg: false },
     { id: "education", label: "Éducation", icon: "🎓", useSvg: false },
-    { id: "solidarite", label: "Solidarité", icon: "🤝", useSvg: false },
-    { id: "histoire", label: "Histoire", icon: "📚", useSvg: false },
-    { id: "echanges", label: "Échanges", icon: "🤝", useSvg: true, SvgIcon: ExchangeIcon },
   ];
 
   // Si aucun onglet n'est sélectionné, sélectionner le premier
@@ -193,12 +193,12 @@ export function UserDashboard() {
 
       {/* Navigation par onglets - Style Facebook compact */}
               <div className="dashboard-tabs">
-        <div className="flex gap-1 sm:gap-1.5 flex-wrap justify-center px-1">
+        <div className="flex gap-0.5 sm:gap-1 md:gap-1.5 flex-wrap justify-center px-1 overflow-x-auto">
           {tabs.map((tab, index) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center gap-0.5 p-1.5 sm:p-2 rounded-lg transition-all duration-200 min-w-[50px] sm:min-w-[55px] max-w-[60px] text-center border-none bg-transparent ${
+              className={`flex flex-col items-center justify-center gap-0.5 p-1 sm:p-1.5 md:p-2 rounded-lg transition-all duration-200 min-w-[40px] sm:min-w-[50px] md:min-w-[55px] max-w-[50px] sm:max-w-[60px] text-center border-none bg-transparent ${
                 activeTab === tab.id 
                   ? "bg-blue-100/50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400" 
                   : "hover:bg-gray-100/50 dark:hover:bg-gray-700/30"
@@ -206,13 +206,17 @@ export function UserDashboard() {
             >
                 {tab.useSvg && tab.SvgIcon ? (
                   <tab.SvgIcon 
-                    className="w-5 h-5 sm:w-6 sm:h-6 mb-0.5 transition-transform duration-200 hover:scale-110 text-gray-700 dark:text-gray-300" 
+                    className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mb-0.5 transition-transform duration-200 hover:scale-110 ${
+                      tab.id === "terre-adam" 
+                        ? "text-blue-600 dark:text-blue-400" 
+                        : "text-gray-700 dark:text-gray-300"
+                    }`}
                     size={18}
                   />
                 ) : (
-                  <span className="text-lg sm:text-xl mb-0.5 transition-transform duration-200 hover:scale-110">{tab.icon}</span>
+                  <span className="text-base sm:text-lg md:text-xl mb-0.5 transition-transform duration-200 hover:scale-110">{tab.icon}</span>
                 )}
-                <span className="text-[9px] sm:text-[10px] font-medium leading-tight text-gray-700 dark:text-gray-300 px-0.5">{tab.label}</span>
+                <span className="text-[8px] sm:text-[9px] md:text-[10px] font-medium leading-tight text-gray-700 dark:text-gray-300 px-0.5 break-words text-center">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -248,17 +252,17 @@ function renderTabContent(tab: string, userData: UserData) {
       return <TerreAdam />;
     case "activite":
       return <Activite />;
-    case "education":
-      return <Education />;
-    case "solidarite":
-      return <Solidarite />;
-    case "histoire":
-      return <Histoire />;
     case "echanges":
       return <EchangesProfessionnel userData={userData} />;
-            default:
-              return <div className="text-gray-900 dark:text-gray-100">Contenu non disponible</div>;
-          }
+    case "histoire":
+      return <Histoire />;
+    case "science":
+      return <Science />;
+    case "education":
+      return <Education />;
+    default:
+      return <div className="text-gray-900 dark:text-gray-100">Contenu non disponible</div>;
+  }
 }
 
 // Composant pour l'onglet MOI

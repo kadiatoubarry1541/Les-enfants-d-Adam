@@ -293,12 +293,20 @@ export function LivingWizard() {
         // Sauvegarder dans plusieurs clés pour assurer la compatibilité
         localStorage.setItem('dernier_vivant', JSON.stringify(userDataWithPassword))
         localStorage.setItem('vivant_written', JSON.stringify(userDataWithPassword))
+        
+        // Créer la session avec le token si disponible
         localStorage.setItem('session_user', JSON.stringify({
           numeroH: numero,
           userData: userDataWithPassword,
+          token: result.token || null, // Sauvegarder le token JWT si disponible
           type: 'vivant',
           source: 'registration'
         }))
+        
+        // Sauvegarder le token séparément si disponible
+        if (result.token) {
+          localStorage.setItem('token', result.token)
+        }
         
         console.log('✅ Données sauvegardées avec mot de passe EN CLAIR:', {
           numeroH: userDataWithPassword.numeroH,
@@ -332,13 +340,8 @@ export function LivingWizard() {
           })
         }
         
-        // Afficher le numeroH généré et rediriger vers la page d'accueil
-        alert(`✅ Enregistrement réussi !\n\nVotre NumeroH : ${numero}\n\n${pereData ? `✅ Vous avez été ajouté à l'arbre généalogique de ${pereData.prenom} ${pereData.nomFamille}` : '⚠️ Aucun père trouvé - vous êtes le premier de votre lignée'}\n\nVous êtes maintenant connecté automatiquement !`)
-        
-        // Rediriger vers la page d'accueil après 2 secondes
-        setTimeout(() => {
-          navigate('/moi')
-        }, 2000)
+        // Redirection immédiate vers le compte utilisateur
+        navigate('/compte')
       } else {
         alert(`❌ Erreur: ${result.message}`)
       }
@@ -367,13 +370,8 @@ export function LivingWizard() {
         passwordLength: dataWithClearPassword.password?.length
       })
       
-      // Afficher le numeroH généré et rediriger vers la page d'accueil
-      alert(`⚠️ Sauvegardé localement.\n\nVotre NumeroH : ${numero}\n\nVous êtes maintenant connecté automatiquement !`)
-      
-      // Rediriger vers la page d'accueil après 2 secondes
-      setTimeout(() => {
-        navigate('/moi')
-      }, 2000)
+      // Redirection immédiate vers le compte utilisateur
+      navigate('/compte')
     }
   }
 
@@ -432,7 +430,7 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-6">
-                <Field label={`Continent * ${state.continentCode ? `(${state.continentCode})` : ''}`}>
+                <Field label="Continent *">
                   <select 
                     value={state.continentCode || ''} 
                     onChange={(e) => {
@@ -455,10 +453,10 @@ export function LivingWizard() {
                     required
                     className={state.continentCode ? 'border-green-500' : ''}
                   >
-                    <option value="">🌍 Sélectionner un continent</option>
+                    <option value="">Sélectionner un continent</option>
                     {continents.map(continent => (
                       <option key={continent.code} value={continent.code}>
-                        {continent.name} ({continent.code})
+                        {continent.name}
                       </option>
                     ))}
                   </select>
@@ -468,7 +466,7 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-6">
-                <Field label={`Pays * ${state.paysCode ? `(${state.paysCode})` : ''}`}>
+                <Field label="Pays *">
                   <select 
                     value={state.paysCode || ''} 
                     onChange={(e) => {
@@ -490,10 +488,10 @@ export function LivingWizard() {
                     required
                     className={state.paysCode ? 'border-green-500' : ''}
                   >
-                    <option value="">🌐 {state.continentCode ? `Sélectionner un pays (${countries.length} disponible${countries.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un continent'}</option>
+                    <option value="">{state.continentCode ? `Sélectionner un pays (${countries.length} disponible${countries.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un continent'}</option>
                     {countries.map(country => (
                       <option key={country.code} value={country.code}>
-                        {country.name} ({country.code})
+                        {country.name}
                       </option>
                     ))}
                   </select>
@@ -506,7 +504,7 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-6">
-                <Field label={`Région * ${state.regionCode ? `(${state.regionCode})` : ''}`}>
+                <Field label="Région *">
                   <select 
                     value={state.regionCode || state.regionOrigine || ''} 
                     onChange={(e) => {
@@ -527,9 +525,9 @@ export function LivingWizard() {
                     required
                     className={state.regionCode ? 'border-green-500' : ''}
                   >
-                    <option value="">🗺️ {state.paysCode ? `Sélectionner une région (${regions.length} disponible${regions.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un pays'}</option>
+                    <option value="">{state.paysCode ? `Sélectionner une région (${regions.length} disponible${regions.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un pays'}</option>
                     {regions.map(r => (
-                      <option key={r.code} value={r.code}>{r.name} ({r.code})</option>
+                      <option key={r.code} value={r.code}>{r.name}</option>
                     ))}
                   </select>
                   {!state.paysCode && (
@@ -541,7 +539,7 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-6">
-                <Field label={`Préfecture * ${state.prefectureCode ? `(${state.prefectureCode})` : ''}`}>
+                <Field label="Préfecture *">
                   <select 
                     value={state.prefectureCode || state.prefecture || ''} 
                     onChange={(e) => {
@@ -560,9 +558,9 @@ export function LivingWizard() {
                     required
                     className={state.prefectureCode ? 'border-green-500' : ''}
                   >
-                    <option value="">🏛️ {state.regionCode ? `Sélectionner une préfecture (${prefectures.length} disponible${prefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une région'}</option>
+                    <option value="">{state.regionCode ? `Sélectionner une préfecture (${prefectures.length} disponible${prefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une région'}</option>
                     {prefectures.map(p => (
-                      <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
+                      <option key={p.code} value={p.code}>{p.name}</option>
                     ))}
                   </select>
                   {!state.regionCode && (
@@ -574,7 +572,7 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-6">
-                <Field label={`Sous-préfecture * ${state.sousPrefectureCode ? `(${state.sousPrefectureCode})` : ''}`}>
+                <Field label="Sous-préfecture *">
                   <select 
                     value={state.sousPrefectureCode || state.sousPrefecture || ''} 
                     onChange={(e) => {
@@ -591,9 +589,9 @@ export function LivingWizard() {
                     required
                     className={state.sousPrefectureCode ? 'border-green-500' : ''}
                   >
-                    <option value="">📍 {state.prefectureCode ? `Sélectionner une sous-préfecture (${sousPrefectures.length} disponible${sousPrefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une préfecture'}</option>
+                    <option value="">{state.prefectureCode ? `Sélectionner une sous-préfecture (${sousPrefectures.length} disponible${sousPrefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une préfecture'}</option>
                     {sousPrefectures.map(sp => (
-                      <option key={sp.code} value={sp.code}>{sp.name} ({sp.code})</option>
+                      <option key={sp.code} value={sp.code}>{sp.name}</option>
                     ))}
                   </select>
                   {!state.prefectureCode && (
@@ -605,7 +603,7 @@ export function LivingWizard() {
                 </Field>
               </div>
               <div className="col-6">
-                <Field label={`Quartier * ${state.quartierCode ? `(${state.quartierCode})` : ''}`}>
+                <Field label="Quartier *">
                   <select 
                     value={state.quartierCode || state.quartier || ''} 
                     onChange={(e) => {
@@ -620,9 +618,9 @@ export function LivingWizard() {
                     required
                     className={state.quartierCode ? 'border-green-500' : ''}
                   >
-                    <option value="">🏘️ {state.sousPrefectureCode ? `Sélectionner un quartier (${quartiers.length} disponible${quartiers.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une sous-préfecture'}</option>
+                    <option value="">{state.sousPrefectureCode ? `Sélectionner un quartier (${quartiers.length} disponible${quartiers.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une sous-préfecture'}</option>
                     {quartiers.map(q => (
-                      <option key={q.code} value={q.code}>{q.name} ({q.code})</option>
+                      <option key={q.code} value={q.code}>{q.name}</option>
                     ))}
                   </select>
                   {!state.sousPrefectureCode && (

@@ -673,7 +673,6 @@ export default function EchangeSecondaire() {
                   id="media-capture-secondaire"
                   capture="environment"
                   accept="image/*,video/*,audio/*"
-                  capture="environment"
                   multiple
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);

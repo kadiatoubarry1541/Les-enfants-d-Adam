@@ -99,6 +99,7 @@ export function Moi() {
     { id: "famille", label: "Famille", icon: "👨‍👩‍👧‍👦", type: "link", path: "/famille" },
     { id: "sante", label: "Santé", icon: "🏥", type: "link", path: "/sante" },
     { id: "securite", label: "Sécurité", icon: "🛡️", type: "link", path: "/securite" },
+    { id: "solidarite", label: "Solidarité", icon: "🤝", type: "link", path: "/solidarite" },
   ];
 
   return (

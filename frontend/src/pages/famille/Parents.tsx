@@ -21,14 +21,19 @@ interface Souvenir {
 }
 
 interface Note {
+  id: string
   annee: number
-  note: string
+  note: number // 0-5 étoiles
 }
 
 export default function Parents() {
   const [user, setUser] = useState<UserData | null>(null)
   const [souvenirs, setSouvenirs] = useState<{ [key: string]: Souvenir[] }>({})
   const [notes, setNotes] = useState<{ [key: string]: Note[] }>({})
+  const [newNotes, setNewNotes] = useState<{ [key: string]: { annee: number; note: number } }>({
+    papa: { annee: new Date().getFullYear(), note: 0 },
+    maman: { annee: new Date().getFullYear(), note: 0 }
+  })
 
   useEffect(() => {
     const sessionData = JSON.parse(localStorage.getItem('session_user') || '{}')
@@ -79,6 +84,34 @@ export default function Parents() {
     }
     setNotes(nouvellesNotes)
     localStorage.setItem(`notes_parents_${effectiveUser.numeroH}`, JSON.stringify(nouvellesNotes))
+  }
+
+  const handleNoteChange = (personne: string, noteValue: number) => {
+    setNewNotes(prev => ({
+      ...prev,
+      [personne]: { ...prev[personne], note: noteValue }
+    }))
+  }
+
+  const handleYearChange = (personne: string, annee: number) => {
+    setNewNotes(prev => ({
+      ...prev,
+      [personne]: { ...prev[personne], annee }
+    }))
+  }
+
+  const handleAddNote = (personne: string) => {
+    const nouvelleNote: Note = {
+      id: Date.now().toString(),
+      annee: newNotes[personne].annee,
+      note: newNotes[personne].note
+    }
+    ajouterNote(personne, nouvelleNote)
+    // Réinitialiser pour cette personne
+    setNewNotes(prev => ({
+      ...prev,
+      [personne]: { annee: new Date().getFullYear(), note: 0 }
+    }))
   }
 
   return (
@@ -195,6 +228,10 @@ export default function Parents() {
             personnes={["papa", "maman"]}
             notes={notes}
             onAddNote={ajouterNote}
+            newNotes={newNotes}
+            onNoteChange={handleNoteChange}
+            onYearChange={handleYearChange}
+            onAddNoteClick={handleAddNote}
           />
         </div>
       </div>
@@ -253,42 +290,148 @@ function SessionSouvenirs({
   );
 }
 
-// Tableau de notes
+// Tableau de notes avec étoiles
 function TableauNotes({
   personnes,
   notes,
   onAddNote,
+  newNotes,
+  onNoteChange,
+  onYearChange,
+  onAddNoteClick,
 }: {
   personnes: string[];
   notes: { [key: string]: Note[] };
   onAddNote: (personne: string, note: Note) => void;
+  newNotes: { [key: string]: { annee: number; note: number } };
+  onNoteChange: (personne: string, note: number) => void;
+  onYearChange: (personne: string, annee: number) => void;
+  onAddNoteClick: (personne: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-3 border border-gray-300 text-left">Personne</th>
-            <th className="p-3 border border-gray-300 text-left">Année</th>
-            <th className="p-3 border border-gray-300 text-left">Note</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="space-y-6">
+      {/* Section pour ajouter une nouvelle note */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border-2 border-purple-200">
+        <h4 className="text-lg font-semibold text-purple-800 mb-4">⭐ Ajouter une note</h4>
+        <div className="space-y-4">
           {personnes.map((personne) => (
-            <tr key={personne}>
-              <td className="p-3 border border-gray-300 font-bold">
-                {getPersonneLabel(personne)}
-              </td>
-              <td className="p-3 border border-gray-300">
-                {notes[personne]?.[0]?.annee || "-"}
-              </td>
-              <td className="p-3 border border-gray-300">
-                {notes[personne]?.[0]?.note || "-"}
-              </td>
-            </tr>
+            <div key={personne} className="bg-white rounded-lg p-4 border border-purple-200">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-2xl">{personne === 'papa' ? '👨' : '👩'}</span>
+                <span className="font-semibold text-slate-800">{getPersonneLabel(personne)}</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Année</label>
+                  <input
+                    type="number"
+                    value={newNotes[personne]?.annee || new Date().getFullYear()}
+                    onChange={(e) => onYearChange(personne, parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    min="2020"
+                    max="2030"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Note (cliquez sur les étoiles)</label>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`text-3xl transition-transform duration-150 hover:scale-125 ${
+                          (newNotes[personne]?.note || 0) >= star ? 'opacity-100' : 'opacity-30'
+                        }`}
+                        onClick={() => onNoteChange(personne, star)}
+                        title={`${star} étoile${star > 1 ? 's' : ''}`}
+                      >
+                        ⭐
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {newNotes[personne]?.note || 0} / 5 étoiles
+                  </p>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={() => onAddNoteClick(personne)}
+                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-200 shadow-sm"
+                  >
+                    ➕ Ajouter
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
+
+      {/* Section pour afficher les notes existantes */}
+      <div>
+        <h4 className="text-lg font-semibold text-slate-800 mb-4">📋 Notes précédentes</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-3 border border-gray-300 text-left">Personne</th>
+                <th className="p-3 border border-gray-300 text-left">Année</th>
+                <th className="p-3 border border-gray-300 text-left">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {personnes.map((personne) => {
+                const personneNotes = notes[personne] || []
+                if (personneNotes.length === 0) {
+                  return (
+                    <tr key={personne}>
+                      <td className="p-3 border border-gray-300 font-bold">
+                        <span className="flex items-center gap-2">
+                          <span className="text-xl">{personne === 'papa' ? '👨' : '👩'}</span>
+                          {getPersonneLabel(personne)}
+                        </span>
+                      </td>
+                      <td className="p-3 border border-gray-300 text-slate-400" colSpan={2}>
+                        Aucune note enregistrée
+                      </td>
+                    </tr>
+                  )
+                }
+                return personneNotes.map((note, index) => (
+                  <tr key={`${personne}-${note.id || index}`} className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                    <td className="p-3 border border-gray-300">
+                      <span className="flex items-center gap-2 font-bold">
+                        <span className="text-xl">{personne === 'papa' ? '👨' : '👩'}</span>
+                        {getPersonneLabel(personne)}
+                      </span>
+                    </td>
+                    <td className="p-3 border border-gray-300">
+                      {note.annee}
+                    </td>
+                    <td className="p-3 border border-gray-300">
+                      <div className="flex gap-1 items-center">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <span
+                            key={star}
+                            className={`text-2xl ${
+                              note.note >= star ? 'opacity-100' : 'opacity-30'
+                            }`}
+                          >
+                            ⭐
+                          </span>
+                        ))}
+                        <span className="ml-2 text-slate-600 font-medium">
+                          ({note.note}/5)
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

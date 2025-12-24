@@ -55,12 +55,10 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   'P46': '🇩🇰', // Danemark
   'P47': '🇫🇮', // Finlande
   
-  // Amérique du Nord
+  // Amérique
   'P48': '🇺🇸', // États-Unis
   'P49': '🇨🇦', // Canada
   'P50': '🇲🇽', // Mexique
-  
-  // Amérique du Sud
   'P51': '🇧🇷', // Brésil
   'P52': '🇦🇷', // Argentine
   'P53': '🇨🇱', // Chili
@@ -142,15 +140,13 @@ export const COUNTRY_NAME_FLAGS: Record<string, string> = {
   'Danemark': '🇩🇰',
   'Finlande': '🇫🇮',
   
-  // Amérique du Nord
+  // Amérique
   'États-Unis': '🇺🇸',
   'Etats-Unis': '🇺🇸',
   'États Unis': '🇺🇸',
   'Etats Unis': '🇺🇸',
   'Canada': '🇨🇦',
   'Mexique': '🇲🇽',
-  
-  // Amérique du Sud
   'Brésil': '🇧🇷',
   'Bresil': '🇧🇷',
   'Argentine': '🇦🇷',
@@ -187,14 +183,13 @@ export function getCountryFlag(countryCode?: string, countryName?: string): stri
   return '🌐'; // Drapeau par défaut
 }
 
-// Mapping des continents vers leurs icônes
+// Mapping des continents vers leurs icônes caractéristiques
 export const CONTINENT_ICONS: Record<string, string> = {
-  'C1': '🌍', // Afrique
-  'C2': '🌏', // Asie
-  'C3': '🌍', // Europe
-  'C4': '🌎', // Amérique du Nord
-  'C5': '🌎', // Amérique du Sud
-  'C6': '🌏', // Océanie
+  'C1': '🐘', // Afrique - Éléphant (animal majestueux et emblématique de l'Afrique, Big Five)
+  'C2': '🏯', // Asie - Temple (architecture asiatique emblématique, universellement reconnue et esthétique)
+  'C3': '🗼', // Europe - Tour Eiffel (monument emblématique et universellement reconnu de l'Europe)
+  'C4': '🗽', // Amérique - Statue de la Liberté (monument emblématique et universellement reconnu de l'Amérique)
+  'C5': '🦘', // Océanie - Kangourou (animal emblématique et unique à l'Océanie/Australie)
 };
 
 export function getContinentIcon(continentCode?: string, continentName?: string): string {
@@ -203,16 +198,95 @@ export function getContinentIcon(continentCode?: string, continentName?: string)
   }
   if (continentName) {
     const name = continentName.toLowerCase();
-    if (name.includes('afrique')) return '🌍';
-    if (name.includes('asie')) return '🌏';
-    if (name.includes('europe')) return '🌍';
+    if (name.includes('afrique')) return '🐘'; // Éléphant pour l'Afrique (animal majestueux et emblématique)
+    if (name.includes('asie')) return '🏯'; // Temple pour l'Asie (architecture asiatique emblématique et esthétique)
+    if (name.includes('europe')) return '🗼'; // Tour Eiffel pour l'Europe (monument emblématique et universellement reconnu)
     if (name.includes('amérique') || name.includes('amerique')) {
-      if (name.includes('nord')) return '🌎';
-      if (name.includes('sud')) return '🌎';
-      return '🌎';
+      return '🗽'; // Statue de la Liberté pour l'Amérique (monument emblématique et universellement reconnu)
     }
-    if (name.includes('océanie') || name.includes('oceanie')) return '🌏';
+    if (name.includes('océanie') || name.includes('oceanie')) return '🦘'; // Kangourou pour l'Océanie (animal emblématique et unique)
   }
-  return '🌍'; // Icône par défaut
+  return '🌐'; // Icône neutre par défaut (globe avec méridiens)
+}
+
+// Mapping des régions vers leurs icônes caractéristiques
+// Les logos sont choisis selon les caractéristiques géographiques, culturelles ou économiques de chaque région
+export const REGION_ICONS: Record<string, string> = {
+  // Les 4 régions naturelles de Guinée
+  'Basse-Guinée': '🌊', // Région côtière et maritime (Guinée maritime)
+  'Fouta-Djallon': '🐄', // Région montagneuse (Moyenne-Guinée) - Élevage de bovins
+  'Haute-Guinée': '🥇', // Région des mines d'or (Siguiri) - Or pur
+  'Guinée forestière': '🌴', // Région forestière tropicale
+  
+  // Autres régions (génériques par type)
+  // Zones côtières
+  'Côte': '🌊',
+  'Coast': '🌊',
+  'Littoral': '🌊',
+  
+  // Zones montagneuses
+  'Montagne': '⛰️',
+  'Mountain': '⛰️',
+  'Alpes': '🏔️',
+  'Alps': '🏔️',
+  
+  // Zones forestières
+  'Forêt': '🌲',
+  'Forest': '🌲',
+  'Jungle': '🌴',
+  
+  // Zones agricoles
+  'Plaine': '🌾',
+  'Plain': '🌾',
+  'Savane': '🌾',
+  'Savanna': '🌾',
+  
+  // Zones désertiques
+  'Désert': '🏜️',
+  'Desert': '🏜️',
+  'Sahara': '🏜️',
+  
+  // Zones urbaines
+  'Ville': '🏙️',
+  'City': '🏙️',
+  'Métropole': '🏙️',
+  'Metropolis': '🏙️',
+};
+
+// Fonction pour obtenir l'icône d'une région
+export function getRegionIcon(regionCode?: string, regionName?: string): string {
+  if (regionName) {
+    const name = regionName.trim();
+    
+    // Chercher une correspondance exacte
+    if (REGION_ICONS[name]) {
+      return REGION_ICONS[name];
+    }
+    
+    // Chercher une correspondance partielle (insensible à la casse)
+    const nameLower = name.toLowerCase();
+    for (const [key, icon] of Object.entries(REGION_ICONS)) {
+      if (nameLower.includes(key.toLowerCase()) || key.toLowerCase().includes(nameLower)) {
+        return icon;
+      }
+    }
+    
+    // Détection automatique selon les mots-clés dans le nom (4 RÉGIONS NATURELLES UNIQUEMENT)
+    if (nameLower.includes('basse') || nameLower.includes('côte') || nameLower.includes('coast') || nameLower.includes('littoral') || nameLower.includes('maritime')) {
+      return '🌊'; // Région côtière (Basse-Guinée / Guinée maritime)
+    }
+    if (nameLower.includes('fouta') || nameLower.includes('djallon') || nameLower.includes('moyenne')) {
+      return '🐄'; // Région montagneuse - Élevage (Fouta-Djallon / Moyenne-Guinée)
+    }
+    if (nameLower.includes('forestière') || nameLower.includes('forestiere') || nameLower.includes('forêt') || nameLower.includes('forest') || nameLower.includes('jungle')) {
+      return '🌴'; // Région forestière (Guinée forestière)
+    }
+    if (nameLower.includes('haute') || nameLower.includes('plaine') || nameLower.includes('plain') || nameLower.includes('savane') || nameLower.includes('savanna')) {
+      return '🌾'; // Région agricole/savane (Haute-Guinée)
+    }
+  }
+  
+  // Icône par défaut pour les régions non reconnues
+  return '🗺️'; // Carte (neutre pour région)
 }
 

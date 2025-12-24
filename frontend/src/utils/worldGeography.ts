@@ -341,10 +341,10 @@ export const WORLD_GEOGRAPHY: GeographicLocation[] = [
       }
     ]
   },
-  // AMÉRIQUE DU NORD
+  // AMÉRIQUE
   {
     code: 'C4',
-    name: 'Amérique du Nord',
+    name: 'Amérique',
     children: [
       {
         code: 'P1',
@@ -389,8 +389,6 @@ export const WORLD_GEOGRAPHY: GeographicLocation[] = [
                     name: 'Toronto Centre',
                     children: [
                       { code: 'Q1', name: 'Downtown Toronto' }
-                    ]
-                  }
                 ]
               }
             ]
@@ -399,13 +397,8 @@ export const WORLD_GEOGRAPHY: GeographicLocation[] = [
       }
     ]
   },
-  // AMÉRIQUE DU SUD
-  {
-    code: 'C5',
-    name: 'Amérique du Sud',
-    children: [
       {
-        code: 'P1',
+        code: 'P3',
         name: 'Brésil',
         children: [
           {
@@ -433,7 +426,7 @@ export const WORLD_GEOGRAPHY: GeographicLocation[] = [
   },
   // OCÉANIE
   {
-    code: 'C6',
+    code: 'C5',
     name: 'Océanie',
     children: [
       {

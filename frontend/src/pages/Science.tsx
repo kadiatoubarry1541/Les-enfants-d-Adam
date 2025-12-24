@@ -499,80 +499,93 @@ export default function Science() {
             </div>
 
             {filteredPosts.length > 0 ? (
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredPosts.map((post) => (
-                  <div key={post.id} className="border rounded-lg p-6 hover:shadow-lg transition-shadow">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900">{post.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{post.authorName}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(post.createdAt).toLocaleDateString()}
-                        </p>
+                  <div key={post.id} className="bg-white border rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-200">
+                    {/* Image en haut pour les posts image */}
+                    {post.type === 'image' && post.mediaUrl && (
+                      <div className="w-full h-48 overflow-hidden bg-gray-100">
+                        <img 
+                          src={post.mediaUrl} 
+                          alt={post.title} 
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        post.type === 'video' ? 'bg-red-100 text-red-800' :
-                        post.type === 'audio' ? 'bg-green-100 text-green-800' :
-                        post.type === 'image' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {post.type === 'video' ? '🎥 Vidéo' :
-                         post.type === 'audio' ? '🎵 Audio' :
-                         post.type === 'image' ? '📷 Image' : '💬 Texte'}
-                      </span>
-                    </div>
+                    )}
+                    
+                    {/* Contenu de la carte */}
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">{post.title}</h3>
+                          <p className="text-xs text-gray-500 mb-2">
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${
+                          post.type === 'video' ? 'bg-red-100 text-red-800' :
+                          post.type === 'audio' ? 'bg-green-100 text-green-800' :
+                          post.type === 'image' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {post.type === 'video' ? '🎥' :
+                           post.type === 'audio' ? '🎵' :
+                           post.type === 'image' ? '📷' : '💬'}
+                        </span>
+                      </div>
 
-                    <p className="text-gray-800 mb-4">{post.content}</p>
+                      <p className="text-sm text-gray-700 mb-3 line-clamp-3">{post.content}</p>
+                      
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <span className="flex items-center gap-1">
+                          <span>👤</span>
+                          <span className="truncate">{post.authorName}</span>
+                        </span>
+                      </div>
 
-                    {post.mediaUrl && (
-                      <div className="mb-4">
-                        {post.type === 'video' && (
-                          <video controls className="w-full max-w-2xl rounded-lg">
+                      {/* Vidéo et Audio */}
+                      {post.type === 'video' && post.mediaUrl && (
+                        <div className="mb-4 rounded-lg overflow-hidden">
+                          <video controls className="w-full rounded-lg">
                             <source src={post.mediaUrl} type="video/mp4" />
                           </video>
-                        )}
-                        {post.type === 'audio' && (
+                        </div>
+                      )}
+                      {post.type === 'audio' && post.mediaUrl && (
+                        <div className="mb-4">
                           <audio controls className="w-full">
                             <source src={post.mediaUrl} type="audio/mpeg" />
                           </audio>
-                        )}
-                        {post.type === 'image' && (
-                          <img src={post.mediaUrl} alt={post.title} className="max-w-2xl rounded-lg" />
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      )}
 
-                    <div className="flex items-center space-x-4 mb-4">
-                      <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600">
-                        <span>👍</span>
-                        <span>{post.likes.length}</span>
-                      </button>
-                      <button className="flex items-center space-x-2 text-gray-600 hover:text-green-600">
-                        <span>💬</span>
-                        <span>{post.comments.length}</span>
-                      </button>
-                      <button className="flex items-center space-x-2 text-gray-600 hover:text-purple-600">
-                        <span>📤</span>
-                        <span>Partager</span>
-                      </button>
+                      {/* Actions */}
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <div className="flex items-center space-x-4">
+                          <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors">
+                            <span>👍</span>
+                            <span className="text-xs">{post.likes.length}</span>
+                          </button>
+                          <button className="flex items-center space-x-1 text-gray-600 hover:text-green-600 transition-colors">
+                            <span>💬</span>
+                            <span className="text-xs">{post.comments.length}</span>
+                          </button>
+                        </div>
+                        <button className="flex items-center space-x-1 text-gray-600 hover:text-purple-600 transition-colors text-xs">
+                          <span>📤</span>
+                          <span>Partager</span>
+                        </button>
+                      </div>
+
+                      {/* Commentaires (affichage réduit) */}
+                      {post.comments.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <button className="text-xs text-blue-600 hover:text-blue-800">
+                            Voir {post.comments.length} commentaire{post.comments.length > 1 ? 's' : ''} →
+                          </button>
+                        </div>
+                      )}
                     </div>
-
-                    {post.comments.length > 0 && (
-                      <div className="space-y-2 mt-4 pt-4 border-t">
-                        <h4 className="font-medium text-gray-900">Commentaires:</h4>
-                        {post.comments.map((comment) => (
-                          <div key={comment.id} className="bg-gray-50 rounded p-3">
-                            <div className="flex justify-between items-start mb-1">
-                              <span className="text-sm font-medium text-gray-900">{comment.authorName}</span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(comment.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600">{comment.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
