@@ -215,7 +215,7 @@ export function VideoRegistration() {
     return `G${generationNumber}`
   }
 
-  const generateNumeroH = (data: VideoData): string => {
+  const generateNumeroH = async (data: VideoData): Promise<string> => {
     const generation = calculateGeneration(data.dateNaissance)
     
     // Utiliser les codes géographiques sélectionnés
@@ -250,12 +250,10 @@ export function VideoRegistration() {
     
     // Générer un numéro unique basé sur le préfixe complet
     const prefix = `${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
-    const counterKey = `numeroH_counter_${prefix}`
-    const counter = localStorage.getItem(counterKey) || '0'
-    const nextNumber = parseInt(counter) + 1
-    localStorage.setItem(counterKey, nextNumber.toString())
     
-    return `${prefix} ${nextNumber}`
+    // Utiliser la fonction qui vérifie l'existence avant de générer
+    const { generateUniqueNumeroH } = await import('../../utils/numeroHGenerator')
+    return await generateUniqueNumeroH(prefix)
   }
 
   const handleSubmit = async () => {
@@ -275,7 +273,11 @@ export function VideoRegistration() {
       return
     }
 
-    const numeroH = generateNumeroH(videoData)
+    const numeroH = await generateNumeroH(videoData)
+    
+    // Sauvegarder le NumeroH dans videoData pour référence future
+    setVideoData(prev => ({ ...prev, numeroH }))
+    
     const completeData = { 
       ...videoData, 
       numeroH,
@@ -1244,7 +1246,8 @@ export function VideoRegistration() {
   }
 
   if (currentStep === 'complete') {
-    const numeroH = generateNumeroH(videoData)
+    // Note: numeroH devrait déjà être généré et stocké dans videoData
+    const numeroH = videoData.numeroH || 'Génération en cours...'
     return (
       <div className="stack">
         <h2>✅ Enregistrement Terminé</h2>

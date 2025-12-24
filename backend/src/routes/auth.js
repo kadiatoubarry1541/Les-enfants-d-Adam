@@ -405,10 +405,13 @@ router.post('/register', validateUser, async (req, res) => {
         });
       }
 
-      // Créer l'utilisateur vivant en base
+      // ✅ CRÉER L'UTILISATEUR EN BASE DE DONNÉES
+      console.log('💾 Tentative de création utilisateur avec NumeroH:', userData.numeroH);
       const newUser = await User.create(userData);
       
       // ✅ VÉRIFIER QUE L'UTILISATEUR EST BIEN SAUVEGARDÉ EN BASE
+      console.log('🔍 Vérification que le NumeroH est bien sauvegardé en base:', newUser.numeroH);
+      
       // Recharger depuis la base pour s'assurer que tout est correct
       let savedUser = await User.findByNumeroH(newUser.numeroH);
       
@@ -435,7 +438,11 @@ router.post('/register', validateUser, async (req, res) => {
         // Utiliser newUser comme fallback mais continuer quand même
         savedUser = newUser;
       } else {
-        console.log('✅ Utilisateur créé et vérifié en base:', savedUser.numeroH);
+        console.log('✅ ✅ ✅ UTILISATEUR CRÉÉ ET VÉRIFIÉ EN BASE DE DONNÉES ✅ ✅ ✅');
+        console.log('✅ NumeroH sauvegardé:', savedUser.numeroH);
+        console.log('✅ Prénom:', savedUser.prenom);
+        console.log('✅ Nom de famille:', savedUser.nomFamille);
+        console.log('✅ L\'utilisateur peut maintenant se connecter avec ce NumeroH et son mot de passe');
       }
       
       // Sauvegarder en mémoire comme backup
@@ -460,7 +467,12 @@ router.post('/register', validateUser, async (req, res) => {
       const userWithoutPassword = { ...savedUser.dataValues };
       delete userWithoutPassword.password;
 
-      console.log('✅ Inscription réussie pour:', savedUser.numeroH);
+      console.log('✅ ✅ ✅ INSCRIPTION RÉUSSIE ✅ ✅ ✅');
+      console.log('✅ NumeroH sauvegardé en base de données PostgreSQL:', savedUser.numeroH);
+      console.log('✅ Utilisateur peut maintenant se connecter avec:');
+      console.log('   - NumeroH:', savedUser.numeroH);
+      console.log('   - Mot de passe: (celui qu\'il a choisi)');
+      console.log('✅ Le NumeroH est UNIQUE et FIXE - il ne changera jamais');
       console.log('✅ NumeroH sauvegardé en base:', savedUser.numeroH);
       console.log('✅ Utilisateur peut maintenant se connecter avec ce NumeroH et son mot de passe');
 
@@ -571,7 +583,11 @@ router.post('/login', [
         });
       }
       
-      console.log('✅ Utilisateur trouvé:', user.numeroH);
+      console.log('✅ ✅ ✅ UTILISATEUR TROUVÉ DANS LA BASE DE DONNÉES ✅ ✅ ✅');
+      console.log('✅ NumeroH:', user.numeroH);
+      console.log('✅ Prénom:', user.prenom);
+      console.log('✅ Nom:', user.nomFamille);
+      console.log('✅ Le NumeroH permet bien l\'accès au compte utilisateur');
 
       // Vérifier le mot de passe
       const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -608,7 +624,12 @@ router.post('/login', [
       const userWithoutPassword = { ...user.dataValues };
       delete userWithoutPassword.password;
       
-      console.log('✅ Connexion réussie pour:', numeroH);
+      console.log('✅ ✅ ✅ CONNEXION RÉUSSIE ✅ ✅ ✅');
+      console.log('✅ NumeroH utilisé:', numeroH);
+      console.log('✅ Utilisateur trouvé dans la base de données PostgreSQL');
+      console.log('✅ Prénom:', user.prenom);
+      console.log('✅ Nom:', user.nomFamille);
+      console.log('✅ Le NumeroH permet bien l\'accès au compte utilisateur');
 
       res.json({
         success: true,
@@ -682,6 +703,71 @@ router.post('/login', [
     res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de la connexion'
+    });
+  }
+});
+
+// @route   GET /api/auth/last-numero
+// @desc    Récupérer le dernier numéro utilisé pour un préfixe donné
+// @access  Public
+router.get('/last-numero', async (req, res) => {
+  try {
+    const { prefix } = req.query;
+    
+    if (!prefix) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le préfixe est requis'
+      });
+    }
+    
+    try {
+      // Chercher dans la base de données tous les NumeroH qui commencent par ce préfixe
+      const users = await User.findAll({
+        where: {
+          numeroH: {
+            [Op.like]: `${prefix}%`
+          }
+        },
+        attributes: ['numeroH']
+      });
+      
+      let maxNumber = 0;
+      
+      // Extraire le numéro le plus élevé
+      users.forEach(user => {
+        const numeroH = user.numeroH;
+        if (numeroH && numeroH.startsWith(prefix)) {
+          const parts = numeroH.split(' ');
+          if (parts.length > 1) {
+            const number = parseInt(parts[parts.length - 1], 10);
+            if (!isNaN(number) && number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        }
+      });
+      
+      res.json({
+        success: true,
+        lastNumber: maxNumber,
+        prefix: prefix
+      });
+      
+    } catch (dbError) {
+      console.warn('⚠️ Base de données indisponible pour last-numero:', dbError.message);
+      // Retourner 0 si la base n'est pas disponible
+      res.json({
+        success: true,
+        lastNumber: 0,
+        prefix: prefix
+      });
+    }
+  } catch (error) {
+    console.error('Erreur récupération dernier numéro:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
     });
   }
 });

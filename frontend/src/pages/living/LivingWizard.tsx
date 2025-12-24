@@ -250,12 +250,10 @@ export function LivingWizard() {
     
     // Générer un numéro unique basé sur le préfixe complet
     const prefix = `${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
-    const counterKey = `numeroH_counter_${prefix}`
-    const counter = parseInt(localStorage.getItem(counterKey) || '0', 10) || 0
-    const nextNumber = counter + 1
-    localStorage.setItem(counterKey, String(nextNumber))
     
-    const numero = `${prefix} ${nextNumber}`
+    // Utiliser la fonction qui vérifie l'existence avant de générer
+    const { generateUniqueNumeroH } = await import('../../utils/numeroHGenerator')
+    const numero = await generateUniqueNumeroH(prefix)
     
     const userData = { 
       ...state, 
