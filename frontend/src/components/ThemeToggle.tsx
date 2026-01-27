@@ -31,15 +31,16 @@ export function ThemeToggleCompact() {
 
   return (
     <button
+      type="button"
       onClick={toggleTheme}
-      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+      className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
       aria-label={`Basculer vers le mode ${theme === "light" ? "sombre" : "clair"}`}
       title={`Mode ${theme === "light" ? "clair" : "sombre"}`}
     >
       {theme === "dark" ? (
-        <span className="text-xl">🌙</span>
+        <span className="text-xl" aria-hidden>🌙</span>
       ) : (
-        <span className="text-xl">☀️</span>
+        <span className="text-xl" aria-hidden>☀️</span>
       )}
     </button>
   );

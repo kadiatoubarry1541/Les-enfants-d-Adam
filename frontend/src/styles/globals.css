@@ -1,4 +1,40 @@
-/* Styles globaux professionnels pour l'application */
+/* Styles globaux professionnels pour l'application - Responsive tous écrans */
+
+/* Safe-area pour encoches et barres système (iPhone, Android) */
+html {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+/* Utilitaires responsive - conteneurs et espacements */
+.safe-area-inset-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.safe-area-inset-top { padding-top: max(0.5rem, env(safe-area-inset-top)); }
+
+/* Zones tactiles minimales 44px en hauteur (recommandation accessibilité mobile) */
+@media (pointer: coarse) {
+  button:not([aria-hidden]):not(.no-touch-target),
+  a[href].btn,
+  [role="button"]:not(.no-touch-target),
+  select,
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+  }
+  /* Champs de formulaire : taille lisible, évite zoom auto iOS */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
 
 /* Variables CSS pour les couleurs et animations */
 :root {

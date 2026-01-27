@@ -464,6 +464,12 @@ User.init({
   },
   lastLogin: {
     type: DataTypes.DATE
+  },
+  // Histoires utilisateur (7 sections inspirées de la vie du Prophète)
+  userStories: {
+    type: DataTypes.TEXT, // Stocké comme JSON stringifié
+    defaultValue: '{}',
+    comment: 'Histoires personnelles de l\'utilisateur en 7 sections'
   }
 }, {
   sequelize,

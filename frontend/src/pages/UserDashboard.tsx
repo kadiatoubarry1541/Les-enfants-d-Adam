@@ -87,16 +87,16 @@ export function UserDashboard() {
 
   if (!userData) {
     return (
-      <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen p-8">
+      <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6">
               <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4 animate-pulse"></div>
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 animate-pulse"></div>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2">
               {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-3xl shadow-md p-4 w-24 h-24 animate-pulse"></div>
+                <div key={i} className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl shadow-md p-3 sm:p-4 w-16 h-16 sm:w-24 sm:h-24 animate-pulse"></div>
               ))}
             </div>
           </div>
@@ -106,26 +106,22 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Barre supérieure: Déconnexion en haut à droite */}
-      <div className="flex items-center justify-end mb-4">
-        <button className="btn secondary" onClick={() => navigate("/")}>
+    <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen overflow-x-hidden">
+      {/* Barre supérieure: Déconnexion - responsive */}
+      <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 mb-3 sm:mb-4">
+        <button className="btn secondary min-h-[44px] w-full xs:w-auto max-w-[200px] xs:max-w-none" onClick={() => navigate("/")}>
           Déconnexion
         </button>
       </div>
 
-      {/* En-tête profil: photo + nom + NumeroH */}
-      <div className="dashboard-header">
-        <div className="flex justify-start">
-          <div>
+      {/* En-tête profil: photo + nom + NumeroH - responsive */}
+      <div className="dashboard-header px-3 xs:px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-start max-w-7xl mx-auto">
+          <div className="w-full max-w-[420px]">
             <div
-              className="profile-card bg-white/80 dark:bg-gray-800/80 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-800/60 backdrop-blur rounded-3xl shadow-md ring-1 ring-gray-200 dark:ring-gray-700 px-5 py-4"
-              style={{ maxWidth: "420px", width: "100%" }}
+              className="profile-card bg-white/80 dark:bg-gray-800/80 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-800/60 backdrop-blur rounded-2xl sm:rounded-3xl shadow-md ring-1 ring-gray-200 dark:ring-gray-700 px-4 sm:px-5 py-4"
             >
-              <div
-                className="user-info"
-                style={{ display: "flex", alignItems: "center", gap: "16px" }}
-              >
+              <div className="user-info flex flex-col xs:flex-row items-start xs:items-center gap-3 sm:gap-4">
                 <div className="user-avatar" style={{ marginTop: "-6px" }}>
                   {userData.photo ? (
                     <img
@@ -179,8 +175,8 @@ export function UserDashboard() {
                       {userData.numeroH}
                     </span>
                   </div>
-                  <div className="mt-3">
-                    <button className="btn" onClick={() => navigate("/moi")}>
+                  <div className="mt-3 w-full xs:w-auto">
+                    <button className="btn min-h-[44px] w-full xs:w-auto" onClick={() => navigate("/moi")}>
                       MOI
                     </button>
                   </div>
@@ -191,17 +187,17 @@ export function UserDashboard() {
         </div>
       </div>
 
-      {/* Navigation par onglets - Style Facebook compact */}
-              <div className="dashboard-tabs">
-        <div className="flex gap-0.5 sm:gap-1 md:gap-1.5 flex-wrap justify-center px-1 overflow-x-auto">
-          {tabs.map((tab, index) => (
+      {/* Navigation par onglets - responsive, défilement horizontal sur petit écran */}
+      <div className="dashboard-tabs px-3 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="flex gap-1 sm:gap-1.5 md:gap-2 justify-start sm:justify-center overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center gap-0.5 p-1 sm:p-1.5 md:p-2 rounded-lg transition-all duration-200 min-w-[40px] sm:min-w-[50px] md:min-w-[55px] max-w-[50px] sm:max-w-[60px] text-center border-none bg-transparent ${
+              className={`flex flex-col items-center justify-center gap-0.5 p-2 sm:p-2.5 rounded-lg transition-all duration-200 min-w-[52px] min-h-[52px] sm:min-w-[56px] sm:min-h-[56px] flex-shrink-0 text-center border-none ${
                 activeTab === tab.id 
                   ? "bg-blue-100/50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400" 
-                  : "hover:bg-gray-100/50 dark:hover:bg-gray-700/30"
+                  : "hover:bg-gray-100/50 dark:hover:bg-gray-700/30 bg-transparent"
               }`}
             >
                 {tab.useSvg && tab.SvgIcon ? (
@@ -222,8 +218,8 @@ export function UserDashboard() {
         </div>
       </div>
 
-      {/* Contenu des onglets */}
-      <div className="dashboard-content">
+      {/* Contenu des onglets - padding responsive */}
+      <div className="dashboard-content px-3 xs:px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl mx-auto">
         {renderTabContent(activeTab, userData)}
       </div>
     </div>

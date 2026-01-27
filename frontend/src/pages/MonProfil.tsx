@@ -61,13 +61,12 @@ export default function MonProfil() {
     if (!numeroH) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5002/api/logos/my-logos`, {
+      const response = await fetch('http://localhost:5002/api/logos/my-logos', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setUserLogos(data.logos || []);

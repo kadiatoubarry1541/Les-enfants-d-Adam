@@ -10,7 +10,7 @@ interface Message {
 export default function ProfesseurIA() {
   const [messages, setMessages] = useState<Message[]>([
     {
-      text: "Bonjour cher(e) élève ! Je suis ravi(e) de te rencontrer. Je suis ici pour t'aider à apprendre et à comprendre. N'hésite pas à me poser toutes tes questions, même celles qui te semblent simples. Il n'y a pas de question bête, seulement des questions qui n'ont pas encore été posées. Que souhaiterais-tu apprendre aujourd'hui ? 📖",
+      text: "Bonjour cher(e) élève ! ✨\n\nJe suis votre Professeur IA de Français, spécialisé à 100% dans l'enseignement de la langue française.\n\nJe peux vous enseigner :\n✅ La grammaire française (verbes, conjugaison, genres, pluriels, accords)\n✅ L'orthographe (accents, règles, exceptions)\n✅ Le vocabulaire (synonymes, antonymes, expressions)\n✅ La syntaxe (structure des phrases)\n✅ La prononciation (sons, phonétique)\n✅ Tous les temps verbaux (présent, passé composé, imparfait, futur, conditionnel, subjonctif)\n\nJe donne toujours des réponses complètes avec 5-7 exemples concrets et 3-5 exercices avec corrigés.\n\nPosez-moi n'importe quelle question sur le français, je vous répondrai de manière simple, précise et exhaustive ! 📚💪",
       isUser: false,
       timestamp: new Date()
     }
@@ -42,11 +42,10 @@ export default function ProfesseurIA() {
     setIsLoading(true);
 
     try {
-      // Essayer de se connecter au backend IA SC (port 5000 par défaut)
       const response = await fetch('http://localhost:5000/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           message: inputValue.trim(),
@@ -57,15 +56,23 @@ export default function ProfesseurIA() {
         })
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        const botMessage: Message = {
-          text: data.response,
-          isUser: false,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, botMessage]);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const botMessage: Message = {
+            text: data.response,
+            isUser: false,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, botMessage]);
+        } else {
+          const errorMessage: Message = {
+            text: "Cher(e) élève, il y a eu une erreur. Peux-tu réessayer ?",
+            isUser: false,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        }
       } else {
         const errorMessage: Message = {
           text: "Cher(e) élève, il y a eu une erreur. Peux-tu réessayer ?",
@@ -75,9 +82,9 @@ export default function ProfesseurIA() {
         setMessages(prev => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur lors de l\'envoi du message:', error);
       const errorMessage: Message = {
-        text: "Cher(e) élève, il y a un problème de connexion avec le serveur IA. Assurez-vous que le serveur IA SC est démarré (port 5000). En attendant, je peux toujours vous aider avec des réponses basiques !",
+        text: "Cher(e) élève, il y a un problème de connexion avec le serveur IA. Assurez-vous que le serveur IA SC est démarré. En attendant, je peux toujours vous aider avec des réponses basiques !",
         isUser: false,
         timestamp: new Date()
       };
@@ -105,8 +112,8 @@ export default function ProfesseurIA() {
                 🤖
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Professeur IA</h1>
-                <p className="text-gray-600">Votre assistant d'apprentissage intelligent</p>
+                <h1 className="text-3xl font-bold text-gray-900">Professeur IA de Français</h1>
+                <p className="text-gray-600">Votre professeur expert en langue française - Enseignement à 100%</p>
               </div>
             </div>
             <div className="flex space-x-4">
@@ -194,7 +201,7 @@ export default function ProfesseurIA() {
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-2 text-center">
-                💡 Astuce : Posez vos questions sur n'importe quel sujet - Français, Mathématiques, Sciences, etc.
+                💡 Astuce : Posez vos questions sur le français - Grammaire, Conjugaison, Orthographe, Vocabulaire, Syntaxe, Prononciation, etc.
               </p>
             </div>
           </div>

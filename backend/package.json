@@ -20,6 +20,8 @@
     "create-tables": "node create-all-tables.js",
     "start-complete": "node start-complete-system.js",
     "check-db": "node scripts/check-db.js",
+    "init-admin": "node scripts/initAdmin.js",
+    "verify-admin": "node scripts/verifyAdmin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

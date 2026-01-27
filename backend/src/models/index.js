@@ -53,6 +53,7 @@ export { default as RealityPost } from './RealityPost.js';
 export { default as StateMessage } from './StateMessage.js';
 export { default as Logo } from './Logo.js';
 export { default as UserLogo } from './UserLogo.js';
+export { default as PublishedStory } from './PublishedStory.js';
 
 // Export des modèles supplémentaires
 export * from './additional.js';

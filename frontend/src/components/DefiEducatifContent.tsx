@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { config } from '../config/api';
 
-// Forcer l'URL de l'API sur le port 5002
-const API_BASE_URL = 'http://localhost:5002/api';
-
 interface UserData {
   numeroH: string;
   prenom: string;
@@ -1097,13 +1094,13 @@ export default function DefiEducatifContent({ userData }: DefiEducatifContentPro
                   {currentQuestion.questionType === 'audio' && currentQuestion.questionMediaUrl && (
                     <div>
                       <p className="mb-2">Question audio</p>
-                      <audio src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl}`} controls className="w-full"></audio>
+                      <audio src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl.startsWith('/') ? currentQuestion.questionMediaUrl : '/' + currentQuestion.questionMediaUrl}`} controls className="w-full"></audio>
                     </div>
                   )}
                   {currentQuestion.questionType === 'video' && currentQuestion.questionMediaUrl && (
                     <div>
                       <p className="mb-2">Question vidéo</p>
-                      <video src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl}`} controls className="w-full rounded-lg"></video>
+                      <video src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl.startsWith('/') ? currentQuestion.questionMediaUrl : '/' + currentQuestion.questionMediaUrl}`} controls className="w-full rounded-lg"></video>
                     </div>
                   )}
                 </div>
@@ -1274,7 +1271,7 @@ export default function DefiEducatifContent({ userData }: DefiEducatifContentPro
                           ) : answer.answerType === 'video' && answer.answerMediaUrl ? (
                             <div>
                               <p className="mb-2">Réponse vidéo</p>
-                              <video src={answer.answerMediaUrl.startsWith('http') ? answer.answerMediaUrl : `http://localhost:5002${answer.answerMediaUrl}`} controls className="w-full rounded-lg"></video>
+                              <video src={answer.answerMediaUrl.startsWith('http') ? answer.answerMediaUrl : `http://localhost:5002${answer.answerMediaUrl.startsWith('/') ? answer.answerMediaUrl : '/' + answer.answerMediaUrl}`} controls className="w-full rounded-lg"></video>
                             </div>
                           ) : (
                             <span>{answer.answerContent || 'Réponse média'}</span>
@@ -1415,13 +1412,13 @@ export default function DefiEducatifContent({ userData }: DefiEducatifContentPro
                   {currentQuestion.questionType === 'audio' && currentQuestion.questionMediaUrl && (
                     <div>
                       <p className="mb-2">Question audio</p>
-                      <audio src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl}`} controls className="w-full"></audio>
+                      <audio src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl.startsWith('/') ? currentQuestion.questionMediaUrl : '/' + currentQuestion.questionMediaUrl}`} controls className="w-full"></audio>
                     </div>
                   )}
                   {currentQuestion.questionType === 'video' && currentQuestion.questionMediaUrl && (
                     <div>
                       <p className="mb-2">Question vidéo</p>
-                      <video src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl}`} controls className="w-full rounded-lg"></video>
+                      <video src={currentQuestion.questionMediaUrl.startsWith('http') ? currentQuestion.questionMediaUrl : `http://localhost:5002${currentQuestion.questionMediaUrl.startsWith('/') ? currentQuestion.questionMediaUrl : '/' + currentQuestion.questionMediaUrl}`} controls className="w-full rounded-lg"></video>
                     </div>
                   )}
                 </div>

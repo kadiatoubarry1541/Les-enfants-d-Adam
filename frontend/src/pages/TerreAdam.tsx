@@ -13,12 +13,55 @@ interface UserData {
   [key: string]: any;
 }
 
+interface ResidenceGroup {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  members: UserData[];
+  posts: any[];
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+}
+
+interface ResidenceMessage {
+  id: string;
+  author: string;
+  authorName: string;
+  content: string;
+  type: 'text' | 'image' | 'video' | 'audio';
+  mediaUrl?: string;
+  likes: string[];
+  comments: any[];
+  createdAt: string;
+  numeroH: string;
+}
+
 export default function TerreAdam() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [activeTab, setActiveTab] = useState<'lieux' | 'region' | 'pays' | 'continent' | 'mondial'>('lieux');
   const [activeLieuTab, setActiveLieuTab] = useState<'quartier' | 'sous-prefecture' | 'prefecture'>('quartier');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  
+  // États pour le système de messagerie
+  const [groups, setGroups] = useState<ResidenceGroup[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<ResidenceGroup | null>(null);
+  const [messages, setMessages] = useState<ResidenceMessage[]>([]);
+  const [newMessage, setNewMessage] = useState({
+    content: '',
+    messageType: 'text' as 'text' | 'image' | 'video' | 'audio',
+    mediaFile: null as File | null
+  });
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroup, setNewGroup] = useState({
+    name: '',
+    description: '',
+    neighborhood: '',
+    district: ''
+  });
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Récupérer les informations géographiques de l'utilisateur depuis la session
   const userContinent = userData?.continentCode ? findLocationByCode(userData.continentCode) : null;
@@ -51,11 +94,162 @@ export default function TerreAdam() {
       }
       
       setUserData(user);
-      setLoading(false);
+      setIsAdmin(user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0');
+      if (activeTab === 'lieux' && activeLieuTab === 'quartier') {
+        loadGroups();
+      } else {
+        setLoading(false);
+      }
     } catch {
       navigate("/login");
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (activeTab === 'lieux' && activeLieuTab === 'quartier' && userData) {
+      loadGroups();
+    }
+  }, [activeTab, activeLieuTab, userData]);
+
+  useEffect(() => {
+    if (selectedGroup) {
+      loadMessages();
+    }
+  }, [selectedGroup]);
+
+  const loadGroups = async () => {
+    if (!userData) return;
+    
+    try {
+      const quartier = userData.quartier || userData.lieu1 || userData.lieuResidence1;
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5002/api/residences/lieu1/groups?location=${encodeURIComponent(quartier || '')}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      
+      let filteredGroups = data.groups || [];
+      
+      // Si l'utilisateur n'est pas admin, filtrer par quartier
+      if (!isAdmin && quartier) {
+        filteredGroups = filteredGroups.filter((g: ResidenceGroup) => 
+          g.location === quartier || g.location === userData.lieu1 || g.location === userData.lieuResidence1
+        );
+      }
+      
+      setGroups(filteredGroups);
+    } catch (error) {
+      console.error('Erreur lors du chargement des groupes:', error);
+      setGroups([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async () => {
+    if (!selectedGroup) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5002/api/residences/groups/${selectedGroup.id}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      setMessages((data.messages || []).reverse());
+    } catch (error) {
+      console.error('Erreur lors du chargement des messages:', error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!selectedGroup) return;
+    
+    const quartier = userData?.quartier || userData?.lieu1 || userData?.lieuResidence1;
+    
+    // Vérifier si l'utilisateur est admin ou si le groupe correspond à son quartier
+    if (!isAdmin && selectedGroup.location !== quartier) {
+      alert('Vous ne pouvez publier que dans votre quartier. Contactez un administrateur pour obtenir des droits de publication dans d\'autres quartiers.');
+      return;
+    }
+    
+    if (newMessage.messageType === 'text' && !newMessage.content.trim()) {
+      alert('Veuillez entrer un message');
+      return;
+    }
+    
+    if (newMessage.messageType !== 'text' && !newMessage.mediaFile) {
+      alert('Veuillez sélectionner un fichier média');
+      return;
+    }
+    
+    try {
+      const formData = new FormData();
+      formData.append('content', newMessage.content);
+      formData.append('messageType', newMessage.messageType);
+      
+      if (newMessage.mediaFile) {
+        formData.append('media', newMessage.mediaFile);
+      }
+      
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5002/api/residences/groups/${selectedGroup.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMessages([...messages, data.message]);
+        setNewMessage({ content: '', messageType: 'text', mediaFile: null });
+        loadMessages();
+      } else {
+        const error = await response.json().catch(() => ({ message: 'Erreur lors de l\'envoi du message' }));
+        alert(error.message || 'Erreur lors de l\'envoi du message');
+      }
+    } catch (error: any) {
+      console.error('Erreur lors de l\'envoi du message:', error);
+      alert(error.message || 'Erreur lors de l\'envoi du message');
+    }
+  };
+
+  const createGroup = async () => {
+    if (!userData) return;
+    
+    const quartier = userData.quartier || userData.lieu1 || userData.lieuResidence1;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('http://localhost:5002/api/residences/lieu1/groups', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...newGroup,
+          location: quartier,
+          createdBy: userData.numeroH
+        })
+      });
+      
+      alert('Organisation créé avec succès !');
+      setShowCreateGroup(false);
+      setNewGroup({ name: '', description: '', neighborhood: '', district: '' });
+      loadGroups();
+    } catch (error: any) {
+      console.error('Erreur:', error);
+      alert(error.message || 'Erreur lors de la création du Organisation');
+    }
+  };
 
   if (loading) {
     return (
@@ -224,16 +418,224 @@ export default function TerreAdam() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 sm:mt-4 md:mt-6">
-                        <button
-                          onClick={() => {
-                            alert('Accès à l\'espace communautaire de votre quartier');
-                          }}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 md:px-6 rounded-lg transition-colors text-[10px] sm:text-xs md:text-sm font-medium"
-                        >
-                          ✅ Accéder à l'espace Quartier
-                        </button>
-                      </div>
+                      
+                      {/* Système de messagerie */}
+                      {!selectedGroup ? (
+                        <div className="mt-4 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-gray-900">💬 Système de Messagerie - Groupes disponibles</h3>
+                            <button
+                              onClick={() => setShowCreateGroup(true)}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                            >
+                              ➕ Créer un groupe
+                            </button>
+                          </div>
+                          
+                          {!isAdmin && (
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
+                              <p className="text-sm text-yellow-800">
+                                • Vous ne pouvez publier que dans votre quartier
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Formulaire de création de groupe */}
+                          {showCreateGroup && (
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                              <h4 className="text-lg font-semibold mb-3">Créer un nouveau groupe</h4>
+                              <div className="space-y-3">
+                                <input
+                                  type="text"
+                                  value={newGroup.name}
+                                  onChange={(e) => setNewGroup({...newGroup, name: e.target.value})}
+                                  placeholder="Nom du groupe"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                />
+                                <textarea
+                                  value={newGroup.description}
+                                  onChange={(e) => setNewGroup({...newGroup, description: e.target.value})}
+                                  placeholder="Description"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                  rows={3}
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={createGroup}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                  >
+                                    Créer
+                                  </button>
+                                  <button
+                                    onClick={() => setShowCreateGroup(false)}
+                                    className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                                  >
+                                    Annuler
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Liste des groupes */}
+                          <div className="space-y-2">
+                            {groups.length === 0 ? (
+                              <div className="bg-gray-50 rounded-lg p-8 text-center">
+                                <p className="text-gray-600 mb-4">Aucun groupe disponible pour le moment.</p>
+                                <p className="text-sm text-gray-500">Créez un nouveau groupe pour commencer à échanger !</p>
+                              </div>
+                            ) : (
+                              groups.map((group) => (
+                                <div
+                                  key={group.id}
+                                  onClick={() => setSelectedGroup(group)}
+                                  className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow border border-gray-200 cursor-pointer flex items-center gap-4"
+                                >
+                                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
+                                    👥
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-gray-900">{group.name}</h4>
+                                    {group.description && (
+                                      <p className="text-sm text-gray-500 truncate">{group.description}</p>
+                                    )}
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      {group.members.length} membre{group.members.length > 1 ? 's' : ''}
+                                    </p>
+                                  </div>
+                                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Interface WhatsApp style */
+                        <div className="mt-4 bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+                          {/* Header */}
+                          <div className="bg-green-600 text-white px-4 py-3 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setSelectedGroup(null)}
+                                className="text-white hover:bg-green-700 rounded-full p-2 transition-colors"
+                              >
+                                ←
+                              </button>
+                              <div>
+                                <h3 className="font-semibold">{selectedGroup.name}</h3>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Zone de messages */}
+                          <div className="flex-1 overflow-y-auto bg-gray-100 p-4" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
+                            {messages.length === 0 ? (
+                              <div className="text-center text-gray-500 py-8">
+                                <p>Aucun message pour le moment.</p>
+                                <p className="text-sm">Soyez le premier à envoyer un message !</p>
+                              </div>
+                            ) : (
+                              messages.map((msg) => {
+                                const isMyMessage = msg.numeroH === userData?.numeroH;
+                                return (
+                                  <div
+                                    key={msg.id}
+                                    className={`mb-4 flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                                  >
+                                    <div
+                                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                                        isMyMessage
+                                          ? 'bg-green-500 text-white'
+                                          : 'bg-white text-gray-900'
+                                      }`}
+                                    >
+                                      {!isMyMessage && (
+                                        <p className="text-xs font-semibold mb-1 opacity-75">{msg.authorName}</p>
+                                      )}
+                                      {msg.type === 'text' && msg.content && (
+                                        <p className="text-sm">{msg.content}</p>
+                                      )}
+                                      {msg.type === 'image' && msg.mediaUrl && (
+                                        <img
+                                          src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
+                                          alt="Image"
+                                          className="max-w-full h-auto rounded-lg mb-1"
+                                        />
+                                      )}
+                                      {msg.type === 'video' && msg.mediaUrl && (
+                                        <video
+                                          src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
+                                          controls
+                                          className="max-w-full h-auto rounded-lg mb-1"
+                                        />
+                                      )}
+                                      {msg.type === 'audio' && msg.mediaUrl && (
+                                        <audio
+                                          src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
+                                          controls
+                                          className="w-full mb-1"
+                                        />
+                                      )}
+                                      <p className={`text-xs mt-1 ${isMyMessage ? 'text-green-100' : 'text-gray-500'}`}>
+                                        {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                          
+                          {/* Zone de saisie */}
+                          <div className="bg-gray-200 px-4 py-3 border-t">
+                            <div className="flex gap-2">
+                              <div className="flex gap-2 flex-1">
+                                <select
+                                  value={newMessage.messageType}
+                                  onChange={(e) => setNewMessage({...newMessage, messageType: e.target.value as any, mediaFile: null})}
+                                  className="px-2 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                                >
+                                  <option value="text">📝</option>
+                                  <option value="image">🖼️</option>
+                                  <option value="video">🎥</option>
+                                  <option value="audio">🎵</option>
+                                </select>
+                                {newMessage.messageType === 'text' ? (
+                                  <input
+                                    type="text"
+                                    value={newMessage.content}
+                                    onChange={(e) => setNewMessage({...newMessage, content: e.target.value})}
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        sendMessage();
+                                      }
+                                    }}
+                                    placeholder="Tapez un message..."
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  />
+                                ) : (
+                                  <input
+                                    type="file"
+                                    accept={newMessage.messageType === 'image' ? 'image/*' : newMessage.messageType === 'video' ? 'video/*' : 'audio/*'}
+                                    onChange={(e) => setNewMessage({...newMessage, mediaFile: e.target.files?.[0] || null})}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                                  />
+                                )}
+                              </div>
+                              <button
+                                onClick={sendMessage}
+                                disabled={newMessage.messageType === 'text' ? !newMessage.content.trim() : !newMessage.mediaFile}
+                                className="bg-green-600 text-white px-6 py-2 rounded-full hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                              >
+                                ➤
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

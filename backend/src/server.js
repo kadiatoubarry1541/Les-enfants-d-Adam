@@ -30,6 +30,7 @@ import scienceRoutes from './routes/science.js';
 import realityRoutes from './routes/reality.js';
 import stateMessagesRoutes from './routes/stateMessages.js';
 import stateProductsRoutes from './routes/stateProducts.js';
+import userStoriesRoutes from './routes/userStories.js';
 import { handleUploadError } from './middleware/upload.js';
 import { config } from '../config.js';
 
@@ -136,6 +137,7 @@ app.use('/api/science', scienceRoutes);
 app.use('/api/reality', realityRoutes);
 app.use('/api/state-messages', stateMessagesRoutes);
 app.use('/api/state-products', stateProductsRoutes);
+app.use('/api/user-stories', userStoriesRoutes);
 app.use('/api', additionalRoutes);
 
 // Route de test

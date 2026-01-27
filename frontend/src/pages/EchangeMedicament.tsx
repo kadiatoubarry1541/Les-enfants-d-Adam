@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
-import { PaiementMarchand } from '../components/PaiementMarchand';
 
 interface UserData {
   numeroH: string;
@@ -366,9 +365,6 @@ export default function EchangeMedicament() {
       >
         ← Retour
       </button>
-
-      {/* Paiement Marchand */}
-      <PaiementMarchand numero="65432" title="Paiement Marchand - Achat de Produits Médicaux" />
 
       {/* Boutons seulement */}
       <div className="bg-white rounded-lg shadow border border-gray-200 p-4 mb-6">

@@ -14,7 +14,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true,
+    open: false, // Désactivé pour éviter l'erreur EPERM sur Windows
     hmr: {
       overlay: true,
     },

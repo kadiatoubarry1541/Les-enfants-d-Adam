@@ -6,6 +6,14 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    screens: {
+      xs: "375px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
       colors: {
         // Nouveau schéma de couleurs professionnel
@@ -86,7 +94,22 @@ export default {
       },
       container: {
         center: true,
-        padding: '1rem'
+        padding: "1rem",
+        screens: {
+          xs: "100%",
+          sm: "640px",
+          md: "768px",
+          lg: "1024px",
+          xl: "1280px",
+          "2xl": "1536px",
+        },
+      },
+      minHeight: {
+        touch: "44px",
+      },
+      spacing: {
+        "safe-bottom": "env(safe-area-inset-bottom)",
+        "safe-top": "env(safe-area-inset-top)",
       },
       borderRadius: {
         xl: '0.75rem'

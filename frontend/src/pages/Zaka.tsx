@@ -364,7 +364,6 @@ export default function Zaka() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setFormations(data.formations || []);
@@ -373,6 +372,7 @@ export default function Zaka() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des formations:', error);
+      alert('Erreur lors du chargement des formations');
       setFormations([]);
     }
   };
@@ -386,7 +386,6 @@ export default function Zaka() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setStages(data.stages || []);
@@ -395,6 +394,7 @@ export default function Zaka() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des stages:', error);
+      alert('Erreur lors du chargement des stages');
       setStages([]);
     }
   };
@@ -408,7 +408,6 @@ export default function Zaka() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setCourses(data.courses || []);
@@ -417,6 +416,7 @@ export default function Zaka() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des cours:', error);
+      alert('Erreur lors du chargement des cours');
       setCourses([]);
     }
   };
@@ -430,13 +430,13 @@ export default function Zaka() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setMyRegistrations(data.registrations || []);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des inscriptions:', error);
+      alert('Erreur lors du chargement des inscriptions');
     }
   };
   
@@ -449,13 +449,13 @@ export default function Zaka() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setMyStageRequests(data.requests || []);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des demandes de stages:', error);
+      console.error('Erreur lors du chargement des demandes de stage:', error);
+      alert('Erreur lors du chargement des demandes de stage');
     }
   };
   
@@ -468,13 +468,13 @@ export default function Zaka() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setMyProgress(data.progress || []);
       }
     } catch (error) {
       console.error('Erreur lors du chargement du progrès:', error);
+      alert('Erreur lors du chargement du progrès');
     }
   };
   
@@ -487,13 +487,13 @@ export default function Zaka() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setMyCertificates(data.certificates || []);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des certificats:', error);
+      alert('Erreur lors du chargement des certificats');
     }
   };
   
@@ -529,7 +529,7 @@ export default function Zaka() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('http://localhost:5002/api/education/formations/' + selectedFormation.id + '/register', {
+      const response = await fetch(`http://localhost:5002/api/education/formations/${selectedFormation.id}/register`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -550,7 +550,7 @@ export default function Zaka() {
         alert('Erreur lors de l\'inscription');
       }
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur lors de l\'inscription:', error);
       alert('Erreur lors de l\'inscription');
     }
   };
@@ -560,7 +560,7 @@ export default function Zaka() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('http://localhost:5002/api/education/stages/' + selectedStage.id + '/request', {
+      const response = await fetch(`http://localhost:5002/api/education/stages/${selectedStage.id}/request`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -582,7 +582,7 @@ export default function Zaka() {
         alert('Erreur lors de l\'envoi de la demande');
       }
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur lors de l\'envoi de la demande:', error);
       alert('Erreur lors de l\'envoi de la demande');
     }
   };

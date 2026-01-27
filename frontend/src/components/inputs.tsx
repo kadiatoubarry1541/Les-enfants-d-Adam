@@ -163,71 +163,22 @@ export function FilePicker({ accept, onFile }: { accept?: string, onFile: (file:
           </button>
         </div>
       ) : (
-        <div style={{ 
-          display: 'flex', 
-          gap: '0.5rem', 
-          flexDirection: 'column',
-          width: '100%'
-        }}>
-          <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+        <div className="flex flex-col gap-2 w-full">
+          <div className="flex flex-col xs:flex-row gap-2 w-full">
             <label
               htmlFor="file-picker-capture"
-              style={{
-                flex: 1,
-                padding: '0.75rem 1rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                textAlign: 'center',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-              }}
+              className="flex-1 min-h-[44px] flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
             >
               📷 Prendre une photo
             </label>
             <label
               htmlFor="file-picker-gallery"
-              style={{
-                flex: 1,
-                padding: '0.75rem 1rem',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                textAlign: 'center',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#059669';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#10b981';
-              }}
+              className="flex-1 min-h-[44px] flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer"
             >
               🖼️ Choisir depuis galerie
             </label>
           </div>
-          <small style={{ color: '#6b7280', fontSize: '0.75rem', textAlign: 'center' }}>
+          <small className="text-gray-500 text-xs text-center">
             Formats acceptés: JPG, PNG, GIF (max 5MB)
           </small>
         </div>

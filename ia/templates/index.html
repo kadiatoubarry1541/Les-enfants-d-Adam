@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IA Professeur - Votre Professeur Virtuel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 IA Professeur</h1>
+            <p class="subtitle">Votre professeur virtuel : clair, patient et attentionné. Posez vos questions, j'enseigne avec excellence.</p>
+        </header>
+
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages">
+                <div class="message bot-message">
+                    <div class="message-content">
+                        <strong>Professeur :</strong>
+                        <p>Bonjour cher(e) élève ! Je suis ravi(e) de te rencontrer. Je suis ici pour t'aider à apprendre et à comprendre. N'hésite pas à me poser toutes tes questions, même celles qui te semblent simples. Il n'y a pas de question bête, seulement des questions qui n'ont pas encore été posées. Que souhaiterais-tu apprendre aujourd'hui ? 📖</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <input 
+                    type="text" 
+                    id="user-input" 
+                    placeholder="Écrivez votre question ici..." 
+                    autocomplete="off"
+                >
+                <button id="send-button">Envoyer</button>
+            </div>
+        </div>
+
+        <footer>
+            <p>💡 Astuce : Le professeur explique clairement, donne des exemples concrets et encourage toujours les questions. N'hésite pas à demander des clarifications !</p>
+        </footer>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        let conversationHistory = [];
+
+        // Fonction pour ajouter un message dans le chat
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (isUser) {
+                contentDiv.innerHTML = `<strong>Vous :</strong><p>${text}</p>`;
+            } else {
+                contentDiv.innerHTML = `<strong>Professeur :</strong><p>${text}</p>`;
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Fonction pour envoyer un message
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            
+            if (!message) return;
+            
+            // Désactiver le bouton et l'input pendant l'envoi
+            sendButton.disabled = true;
+            userInput.disabled = true;
+            
+            // Afficher le message de l'utilisateur
+            addMessage(message, true);
+            userInput.value = '';
+            
+            // Afficher un indicateur de chargement
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message bot-message';
+            loadingDiv.id = 'loading-message';
+            loadingDiv.innerHTML = '<div class="message-content"><strong>Professeur :</strong><p>💭 Je réfléchis à ta question, cher(e) élève...</p></div>';
+            chatMessages.appendChild(loadingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: conversationHistory
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Supprimer le message de chargement
+                const loadingMsg = document.getElementById('loading-message');
+                if (loadingMsg) loadingMsg.remove();
+                
+                if (data.success) {
+                    addMessage(data.response);
+                    // Ajouter à l'historique
+                    conversationHistory.push({
+                        question: message,
+                        reponse: data.response
+                    });
+                } else {
+                    addMessage('Cher(e) élève, il y a eu une erreur. Peux-tu réessayer ?');
+                }
+            } catch (error) {
+                const loadingMsg = document.getElementById('loading-message');
+                if (loadingMsg) loadingMsg.remove();
+                addMessage('Cher(e) élève, il y a un problème de connexion. Vérifie que le serveur fonctionne !');
+                console.error('Erreur:', error);
+            } finally {
+                // Réactiver le bouton et l'input après la réponse
+                sendButton.disabled = false;
+                userInput.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        // Événements
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
+

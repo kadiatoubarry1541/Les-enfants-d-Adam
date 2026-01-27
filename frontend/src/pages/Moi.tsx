@@ -33,17 +33,9 @@ interface UserLogo {
   };
 }
 
-interface FamilyMember {
-  numeroH: string;
-  nomComplet: string;
-  type: "parent" | "femme" | "mari" | "enfant" | "invite";
-  motDePasse?: string;
-}
-
 export function Moi() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userLogos, setUserLogos] = useState<UserLogo[]>([]);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,13 +63,12 @@ export function Moi() {
   const loadUserLogos = async (numeroH: string) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5002/api/logos/my-logos`, {
+      const response = await fetch('http://localhost:5002/api/logos/my-logos', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setUserLogos(data.logos || []);
@@ -87,10 +78,6 @@ export function Moi() {
     }
   };
 
-  const inviterMembre = (membre: FamilyMember) => {
-    console.log("Invitation envoyée:", membre);
-    setShowInviteModal(false);
-  };
 
   if (!userData) return null;
 
@@ -104,29 +91,27 @@ export function Moi() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+      {/* Header responsive */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col xs:flex-row justify-between items-stretch xs:items-center gap-3 py-4 sm:py-6">
+            <div className="min-w-0">
+              <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 truncate">
                 Moi
               </h1>
-              <p className="mt-2 text-gray-600">Espace personnel et profil</p>
+              <p className="mt-1 sm:mt-2 text-sm xs:text-base text-gray-600 dark:text-gray-400">Espace personnel et profil</p>
             </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => navigate("/compte")}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
-              >
-                ← Retour
-              </button>
-            </div>
+            <button
+              onClick={() => navigate("/compte")}
+              className="self-start xs:self-center min-h-[44px] px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors text-sm sm:text-base font-medium"
+            >
+              ← Retour
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Carte de profil - Style UserDashboard */}
         <div className="mb-8">
           <div className="bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur rounded-3xl shadow-md ring-1 ring-gray-200 px-6 py-5 max-w-md">
@@ -192,23 +177,16 @@ export function Moi() {
             {/* Bouton MOI */}
             <div className="mt-4 flex gap-2 sm:gap-3 flex-wrap">
               <button
-                onClick={() => setShowInviteModal(true)}
-                className="flex-1 min-w-[100px] px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors shadow-sm"
-              >
-                <span className="text-sm sm:text-base mr-1">➕</span>
-                Inviter
-              </button>
-              <button
                 onClick={() => navigate("/moi/profil")}
-                className="flex-1 min-w-[100px] px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors shadow-sm"
+                className="flex-1 min-w-[120px] min-h-[44px] px-3 sm:px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
               >
-                <span className="text-sm sm:text-base mr-1">👤</span>
+                <span className="mr-1" aria-hidden>👤</span>
                 Mon profil
               </button>
               {(userData.role === 'admin' || userData.isAdmin) && (
                 <button
                   onClick={() => navigate("/admin")}
-                  className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-base sm:text-lg font-semibold rounded-lg transition-colors shadow-sm"
+                  className="min-w-[44px] min-h-[44px] px-3 sm:px-4 py-2.5 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg transition-colors shadow-sm"
                   aria-label="Administration"
                 >
                   👑
@@ -249,108 +227,6 @@ export function Moi() {
           </div>
         </div>
 
-        {/* Modal d'invitation */}
-        {showInviteModal && (
-          <InviteModal
-            onClose={() => setShowInviteModal(false)}
-            onInvite={inviterMembre}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function InviteModal({
-  onClose,
-  onInvite,
-}: {
-  onClose: () => void;
-  onInvite: (membre: FamilyMember) => void;
-}) {
-  const [formData, setFormData] = useState({
-    numeroH: "",
-    nomComplet: "",
-    type: "invite" as FamilyMember["type"],
-    motDePasse: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onInvite(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Inviter un membre</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              NuméroH
-            </label>
-            <input
-              type="text"
-              value={formData.numeroH}
-              onChange={(e) => setFormData({...formData, numeroH: e.target.value})}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nom complet
-            </label>
-            <input
-              type="text"
-              value={formData.nomComplet}
-              onChange={(e) => setFormData({...formData, nomComplet: e.target.value})}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type
-            </label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({...formData, type: e.target.value as FamilyMember["type"]})}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="invite">Invité</option>
-              <option value="parent">Parent</option>
-              <option value="enfant">Enfant</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Mot de passe temporaire
-            </label>
-            <input
-              type="password"
-              value={formData.motDePasse}
-              onChange={(e) => setFormData({...formData, motDePasse: e.target.value})}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-            >
-              Inviter
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

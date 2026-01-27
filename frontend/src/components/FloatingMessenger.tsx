@@ -20,25 +20,26 @@ export function FloatingMessenger() {
 
   return (
     <>
-      {/* Bouton flottant */}
+      {/* Bouton flottant - position safe-area pour mobiles */}
       <button
         aria-label="Ouvrir la messagerie"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 text-white shadow-lg hover:shadow-xl w-14 h-14 flex items-center justify-center text-2xl"
+        className="fixed z-50 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform min-w-[56px] min-h-[56px] w-14 h-14 flex items-center justify-center text-2xl"
+        style={{ bottom: "max(1rem, env(safe-area-inset-bottom, 0px))", right: "max(1rem, env(safe-area-inset-right, 0px))" }}
       >
         💬
       </button>
 
-      {/* Modal */}
+      {/* Modal responsive - plein écran sur très petit */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-[min(96vw,900px)] max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b">
-              <h3 className="text-lg font-semibold">Messagerie</h3>
-              <button className="px-2 py-1 rounded-md hover:bg-gray-100" onClick={() => setOpen(false)}>✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} aria-hidden />
+          <div className="relative bg-white dark:bg-gray-800 rounded-none sm:rounded-xl shadow-xl w-full h-full sm:h-auto sm:max-h-[90vh] sm:w-[min(96vw,900px)] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0">
+              <h3 className="text-base sm:text-lg font-semibold">Messagerie</h3>
+              <button className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" onClick={() => setOpen(false)} aria-label="Fermer">✕</button>
             </div>
-            <div className="p-4 overflow-auto" style={{ maxHeight: 'calc(90vh - 56px)' }}>
+            <div className="p-4 overflow-auto flex-1 min-h-0" style={{ maxHeight: 'calc(100vh - 56px)' }}>
               {userData ? (
                 <CommunicationHub userData={userData} />
               ) : (

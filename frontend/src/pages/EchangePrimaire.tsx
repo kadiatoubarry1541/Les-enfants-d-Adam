@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
-import { PaiementMarchand } from '../components/PaiementMarchand';
 
 interface UserData {
   numeroH: string;
@@ -57,7 +56,7 @@ export default function EchangePrimaire() {
   const [showSupplierRegistration, setShowSupplierRegistration] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ExchangeProduct | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<'nourriture' | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<'nourriture'>('nourriture');
   const [activeNourritureTab] = useState<'aliments-base'>('aliments-base');
   const navigate = useNavigate();
 
@@ -401,61 +400,17 @@ export default function EchangePrimaire() {
 
   if (!userData) return null;
 
-  // Si aucun onglet n'est sélectionné, afficher seulement les 2 boutons principaux
-  if (activeMainTab === null) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button
-          onClick={() => navigate('/echange')}
-          className="mb-4 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-      >
-        ← Retour
-      </button>
-
-      {/* Paiement Marchand */}
-      <PaiementMarchand numero="65432" title="Paiement Marchand - Achat de Produits" />
-
-        {/* Navigation principale : Nourriture / Médicament - Vue initiale */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-8">
-          <div className="flex gap-4">
-            <button
-              onClick={() => setActiveMainTab('nourriture')}
-              className="flex-1 px-6 py-8 rounded-xl font-semibold text-xl transition-all duration-200 flex items-center justify-center gap-3 bg-green-600 text-white shadow-lg hover:bg-green-700"
-            >
-              <span className="text-3xl">🍽️</span>
-              <span>Nourriture</span>
-            </button>
-                </div>
-              </div>
-            </div>
-    );
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <button
-        onClick={() => setActiveMainTab(null)}
+        onClick={() => navigate('/echange')}
         className="mb-4 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
       >
         ← Retour
       </button>
 
-      {/* Paiement Marchand */}
-      <PaiementMarchand numero="65432" title="Paiement Marchand - Achat de Produits" />
-
-      {/* Navigation principale : Nourriture / Médicament */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-8">
-
-        {/* Sous-navigation selon l'onglet principal */}
-        {activeMainTab === 'nourriture' && (
-          <div className="mb-6">
-            <div className="px-4 py-3 rounded-lg font-medium bg-green-500 text-white shadow-md text-center">
-              🍚 Aliments
-            </div>
-          </div>
-        )}
-
       {/* Actions rapides */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-8">
         <div className="flex gap-4 flex-wrap">
         <button
           onClick={() => setShowCreateProduct(true)}

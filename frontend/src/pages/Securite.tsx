@@ -77,7 +77,6 @@ export default function Securite() {
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setAgents(data.agents || []);
@@ -87,6 +86,8 @@ export default function Securite() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des agents:', error);
+      alert('Erreur lors du chargement des agents');
+      // Si l'API n'existe pas encore, utiliser des données par défaut
       setAgents(getDefaultAgents());
     } finally {
       setLoading(false);

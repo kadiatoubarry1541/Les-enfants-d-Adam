@@ -55,8 +55,8 @@ export function Login() {
   }
 
   return (
-    <div className="stack">
-      <h1>{t('login.title')}</h1>
+    <div className="stack max-w-lg mx-auto w-full px-2 xs:px-0">
+      <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t('login.title')}</h1>
       <div className="card stack">
         <div className="row">
           <div className="col-6">
@@ -85,10 +85,10 @@ export function Login() {
         </div>
         {error && <div className="error">{error}</div>}
         <div className="actions">
-          <button className="btn" onClick={onSubmit}>{t('login.submit')}</button>
+          <button type="button" className="btn min-h-[44px] w-full sm:w-auto" onClick={onSubmit}>{t('login.submit')}</button>
         </div>
-        <div style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>
-          {t('login.signup_prompt')} <a href="/choix" style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>{t('login.signup_link')}</a>
+        <div className="text-center mt-5 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+          {t('login.signup_prompt')} <a href="/choix" className="text-indigo-500 dark:text-indigo-400 underline cursor-pointer hover:no-underline">{t('login.signup_link')}</a>
         </div>
       </div>
     </div>

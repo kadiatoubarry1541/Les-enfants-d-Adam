@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { config } from '../config/api';
 
 interface UserData {
   numeroH: string;
@@ -137,19 +136,14 @@ export default function HauteGuinee() {
   const loadGroups = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${config.API_BASE_URL}/regions/groups?region=Haute-Guinée`, {
+      const response = await fetch('http://localhost:5002/api/regions/groups?region=Haute-Guinée', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data.groups || []);
-      } else {
-        setGroups(getDefaultGroups());
-      }
+      const data = await response.json();
+      setGroups(data.groups || []);
     } catch (error) {
       console.error('Erreur lors du chargement des groupes:', error);
       setGroups(getDefaultGroups());
@@ -163,17 +157,14 @@ export default function HauteGuinee() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${config.API_BASE_URL}/regions/groups/${selectedGroup.id}/messages`, {
+      const response = await fetch(`http://localhost:5002/api/regions/groups/${selectedGroup.id}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setMessages((data.messages || []).reverse());
-      }
+      const data = await response.json();
+      setMessages((data.messages || []).reverse());
     } catch (error) {
       console.error('Erreur lors du chargement des messages:', error);
     }
@@ -184,19 +175,16 @@ export default function HauteGuinee() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${config.API_BASE_URL}/regions/groups/${selectedGroup.id}/check-permission`, {
+      const response = await fetch(`http://localhost:5002/api/regions/groups/${selectedGroup.id}/check-permission`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setHasPermission(data.hasPermission);
-        setIsAdmin(data.isAdmin);
-        setIsCreator(data.isCreator);
-      }
+      const data = await response.json();
+      setHasPermission(data.hasPermission);
+      setIsAdmin(data.isAdmin);
+      setIsCreator(data.isCreator);
     } catch (error) {
       console.error('Erreur lors de la vérification de la permission:', error);
     }
@@ -207,17 +195,14 @@ export default function HauteGuinee() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${config.API_BASE_URL}/regions/groups/${selectedGroup.id}/permissions`, {
+      const response = await fetch(`http://localhost:5002/api/regions/groups/${selectedGroup.id}/permissions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setPermissions(data.permissions || []);
-      }
+      const data = await response.json();
+      setPermissions(data.permissions || []);
     } catch (error) {
       console.error('Erreur lors du chargement des permissions:', error);
     }
@@ -249,7 +234,7 @@ export default function HauteGuinee() {
       }
       
       const token = localStorage.getItem("token");
-      const response = await fetch(`${config.API_BASE_URL}/regions/groups/${selectedGroup.id}/messages`, {
+      const response = await fetch(`http://localhost:5002/api/regions/groups/${selectedGroup.id}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -280,7 +265,7 @@ export default function HauteGuinee() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${config.API_BASE_URL}/regions/groups/${selectedGroup.id}/permissions`, {
+      const response = await fetch(`http://localhost:5002/api/regions/groups/${selectedGroup.id}/permissions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -288,19 +273,15 @@ export default function HauteGuinee() {
         },
         body: JSON.stringify({ targetNumeroH: permissionNumeroH })
       });
+      if (!response.ok) throw new Error('Erreur');
       
-      if (response.ok) {
-        alert('Permission accordée avec succès');
-        setPermissionNumeroH('');
-        setShowPermissionForm(false);
-        loadPermissions();
-      } else {
-        const error = await response.json();
-        alert(error.message || 'Erreur lors de l\'attribution de la permission');
-      }
-    } catch (error) {
+      alert('Permission accordée avec succès');
+      setPermissionNumeroH('');
+      setShowPermissionForm(false);
+      loadPermissions();
+    } catch (error: any) {
       console.error('Erreur lors de l\'attribution de la permission:', error);
-      alert('Erreur lors de l\'attribution de la permission');
+      alert(error.message || 'Erreur lors de l\'attribution de la permission');
     }
   };
 
@@ -311,24 +292,20 @@ export default function HauteGuinee() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${config.API_BASE_URL}/regions/groups/${selectedGroup.id}/permissions/${numeroH}`, {
+      const response = await fetch(`http://localhost:5002/api/regions/groups/${selectedGroup.id}/permissions/${numeroH}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      if (!response.ok) throw new Error('Erreur');
       
-      if (response.ok) {
-        alert('Permission révoquée avec succès');
-        loadPermissions();
-      } else {
-        const error = await response.json();
-        alert(error.message || 'Erreur lors de la révocation de la permission');
-      }
-    } catch (error) {
+      alert('Permission révoquée avec succès');
+      loadPermissions();
+    } catch (error: any) {
       console.error('Erreur lors de la révocation de la permission:', error);
-      alert('Erreur lors de la révocation de la permission');
+      alert(error.message || 'Erreur lors de la révocation de la permission');
     }
   };
 
@@ -377,7 +354,7 @@ export default function HauteGuinee() {
   const createGroup = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/regions/haute-guinee/groups', {
+      const response = await fetch('http://localhost:5002/api/regions/haute-guinee/groups', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -390,24 +367,20 @@ export default function HauteGuinee() {
         })
       });
       
-      if (response.ok) {
-        alert('Organisation créé avec succès !');
-        setShowCreateGroup(false);
-        setNewGroup({ name: '', description: '', city: '', district: '' });
-        loadGroups();
-      } else {
-        alert('Erreur lors de la création du Organisation');
-      }
-    } catch (error) {
+      alert('Organisation créé avec succès !');
+      setShowCreateGroup(false);
+      setNewGroup({ name: '', description: '', city: '', district: '' });
+      loadGroups();
+    } catch (error: any) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la création du Organisation');
+      alert(error.message || 'Erreur lors de la création du Organisation');
     }
   };
 
   const joinGroup = async (groupId: string) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`/api/regions/haute-guinee/groups/${groupId}/join`, {
+      const response = await fetch(`http://localhost:5002/api/regions/haute-guinee/groups/${groupId}/join`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -415,16 +388,13 @@ export default function HauteGuinee() {
         },
         body: JSON.stringify({ numeroH: userData?.numeroH })
       });
+      if (!response.ok) throw new Error('Erreur');
       
-      if (response.ok) {
-        alert('Vous avez rejoint le Organisation !');
-        loadGroups();
-      } else {
-        alert('Erreur lors de l\'adhésion au Organisation');
-      }
-    } catch (error) {
+      alert('Vous avez rejoint le Organisation !');
+      loadGroups();
+    } catch (error: any) {
       console.error('Erreur:', error);
-      alert('Erreur lors de l\'adhésion au Organisation');
+      alert(error.message || 'Erreur lors de l\'adhésion au Organisation');
     }
   };
 
@@ -432,7 +402,7 @@ export default function HauteGuinee() {
   const createEvent = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/regions/haute-guinee/events', {
+      const response = await fetch('http://localhost:5002/api/regions/haute-guinee/events', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -445,24 +415,20 @@ export default function HauteGuinee() {
         })
       });
       
-      if (response.ok) {
-        alert('Événement créé avec succès !');
-        setShowEventForm(false);
-        setNewEvent({ title: '', description: '', date: '', time: '', location: '', maxParticipants: 50, type: 'cultural' });
-        loadGroups();
-      } else {
-        alert('Erreur lors de la création de l\'événement');
-      }
-    } catch (error) {
+      alert('Événement créé avec succès !');
+      setShowEventForm(false);
+      setNewEvent({ title: '', description: '', date: '', time: '', location: '', maxParticipants: 50, type: 'cultural' });
+      loadGroups();
+    } catch (error: any) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la création de l\'événement');
+      alert(error.message || 'Erreur lors de la création de l\'événement');
     }
   };
 
   const createAnnouncement = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/regions/haute-guinee/announcements', {
+      const response = await fetch('http://localhost:5002/api/regions/haute-guinee/announcements', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -475,17 +441,13 @@ export default function HauteGuinee() {
         })
       });
       
-      if (response.ok) {
-        alert('Annonce créée avec succès !');
-        setShowAnnouncementForm(false);
-        setNewAnnouncement({ title: '', content: '', priority: 'normal', category: 'general' });
-        loadGroups();
-      } else {
-        alert('Erreur lors de la création de l\'annonce');
-      }
-    } catch (error) {
+      alert('Annonce créée avec succès !');
+      setShowAnnouncementForm(false);
+      setNewAnnouncement({ title: '', content: '', priority: 'normal', category: 'general' });
+      loadGroups();
+    } catch (error: any) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la création de l\'annonce');
+      alert(error.message || 'Erreur lors de la création de l\'annonce');
     }
   };
 
@@ -971,21 +933,21 @@ export default function HauteGuinee() {
                         )}
                         {msg.messageType === 'image' && msg.mediaUrl && (
                           <img
-                            src={`${config.API_BASE_URL.replace('/api', '')}${msg.mediaUrl}`}
+                            src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
                             alt="Image"
                             className="max-w-full h-auto rounded-lg mb-1"
                           />
                       )}
                         {msg.messageType === 'video' && msg.mediaUrl && (
                           <video
-                            src={`${config.API_BASE_URL.replace('/api', '')}${msg.mediaUrl}`}
+                            src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
                             controls
                             className="max-w-full h-auto rounded-lg mb-1"
                           />
                       )}
                         {msg.messageType === 'audio' && msg.mediaUrl && (
                           <audio
-                            src={`${config.API_BASE_URL.replace('/api', '')}${msg.mediaUrl}`}
+                            src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
                             controls
                             className="w-full mb-1"
                           />

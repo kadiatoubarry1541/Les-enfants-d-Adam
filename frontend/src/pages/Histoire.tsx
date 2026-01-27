@@ -27,7 +27,6 @@ interface Generation {
 
 export default function Histoire() {
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState<'generations' | 'timeline' | 'figures' | 'culture'>('generations');
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -283,21 +282,21 @@ export default function Histoire() {
     // Reorganisation par grandes périodes
     if (genId >= 1 && genId <= 10) {
       return [
-        { title: "Tablettes d'écriture cunéiforme (British Museum)", url: "https://www.britishmuseum.org/collection/object/W_1923-1112-1", type: 'image' },
+        { title: "Tablettes d'écriture cunéiforme (Musée britannique)", url: "https://www.britishmuseum.org/collection/object/W_1923-1112-1", type: 'image' },
         { title: "Grottes de Lascaux (art rupestre)", url: "https://www.lascaux.fr/fr", type: 'article' },
         { title: "Manuscrits de la mer Morte (bibliothèque numérique)", url: "https://www.deadseascrolls.org.il/", type: 'image' }
       ]
     }
     if (genId >= 11 && genId <= 20) {
       return [
-        { title: "Pyramides d'Égypte (Egypt Museum)", url: "https://egypt-museum.com/", type: 'article' },
+        { title: "Pyramides d'Égypte (Musée d'Égypte)", url: "https://egypt-museum.com/", type: 'article' },
         { title: "Ziggourat d'Ur (restitution et fouilles)", url: "https://oi.uchicago.edu/research/projects/ur-ancient-city-mesopotamia", type: 'article' },
         { title: "Hiéroglyphes et stèles (Musée du Louvre)", url: "https://collections.louvre.fr/", type: 'image' }
       ]
     }
     if (genId >= 21 && genId <= 40) {
       return [
-        { title: "Parthénon et art classique (Acropolis Museum)", url: "https://www.theacropolismuseum.gr/en", type: 'image' },
+        { title: "Parthénon et art classique (Musée de l'Acropole)", url: "https://www.theacropolismuseum.gr/en", type: 'image' },
         { title: "Empire achéménide à Persépolis (ICHTO Iran)", url: "https://whc.unesco.org/en/list/114/", type: 'article' },
         { title: "Bouddhisme ancien — stupas et manuscrits", url: "https://www.britannica.com/topic/stupa", type: 'article' }
       ]
@@ -305,13 +304,13 @@ export default function Histoire() {
     if (genId >= 41 && genId <= 60) {
       return [
         { title: "Manuscrits bibliques et évangéliaires (Gallica)", url: "https://gallica.bnf.fr/accueil/fr/content/accueil-fr?mode=desktop", type: 'image' },
-        { title: "Calligraphie et Corans anciens (Museum of Islamic Art)", url: "https://mia.org.qa/en/", type: 'image' },
+        { title: "Calligraphie et Corans anciens (Musée d'art islamique)", url: "https://mia.org.qa/en/", type: 'image' },
         { title: "Hégire et premiers siècles de l'Islam (UNESCO)", url: "https://fr.unesco.org/silkroad/", type: 'article' }
       ]
     }
     if (genId >= 61 && genId <= 80) {
       return [
-        { title: "Codex de Léonard de Vinci (British Library)", url: "https://www.bl.uk/collection-guides/leonardo-da-vinci", type: 'image' },
+        { title: "Codex de Léonard de Vinci (Bibliothèque britannique)", url: "https://www.bl.uk/collection-guides/leonardo-da-vinci", type: 'image' },
         { title: "Observations de Galilée (Sidereus Nuncius)", url: "https://brunelleschi.imss.fi.it/galileopalazzo/", type: 'article' },
         { title: "Mali impérial: Mansa Musa et Tombouctou (UNESCO)", url: "https://whc.unesco.org/fr/list/119/", type: 'article' }
       ]
@@ -319,24 +318,18 @@ export default function Histoire() {
     if (genId >= 81 && genId <= 96) {
       return [
         { title: "Manuscrits de Tombouctou (bibliothèques)", url: "https://www.hypotheses.org/31606", type: 'image' },
-        { title: "Discours de Mandela (Nelson Mandela Foundation)", url: "https://www.nelsonmandela.org/collections/digital-archives", type: 'article' },
+        { title: "Discours de Mandela (Fondation Nelson Mandela)", url: "https://www.nelsonmandela.org/collections/digital-archives", type: 'article' },
         { title: "Archives coloniales et indépendances (INA)", url: "https://www.ina.fr/", type: 'video' }
       ]
     }
     // Défaut — ressources généralistes fiables
     return [
       { title: "UNESCO — Patrimoine mondial", url: "https://whc.unesco.org/fr/list/", type: 'article' },
-      { title: "British Museum — Collections", url: "https://www.britishmuseum.org/collection", type: 'image' },
+      { title: "Musée britannique — Collections", url: "https://www.britishmuseum.org/collection", type: 'image' },
       { title: "Bibliothèque nationale de France — Gallica", url: "https://gallica.bnf.fr/", type: 'article' }
     ]
   }
 
-  const tabs = [
-    { id: 'generations', label: 'Générations', icon: '👑' },
-    { id: 'timeline', label: 'Chronologie', icon: '📅' },
-    { id: 'figures', label: 'Personnages', icon: '👑' },
-    { id: 'culture', label: 'Culture', icon: '🎭' }
-  ];
 
   if (loading) {
     return (
@@ -361,45 +354,38 @@ export default function Histoire() {
               <p className="mt-2 text-gray-600">De 4004 av. J.-C. à nos jours - {userData.prenom} fait partie de la Génération {userData.generation || '96'}</p>
             </div>
             <div className="flex space-x-4">
-      <button
+              <button
+                onClick={() => navigate('/histoire-humanite')}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
+              >
+                📚 Histoire de l'Humanité
+              </button>
+              <button
+                onClick={() => navigate('/a-retenir')}
+                className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
+              >
+                📖 À Retenir
+              </button>
+              <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
-      >
-        ← Retour
-      </button>
+              >
+                ← Retour
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-            </button>
-          ))}
-          </nav>
-          </div>
-        </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'generations' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">👑 Les 96 Générations de l'Humanité</h2>
+      {/* Content - Toutes les sections sur une seule page */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+        {/* Section Générations */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+              <span>👑</span>
+              <span>Les 96 Générations de l'Humanité</span>
+            </h2>
               
               {/* Saut rapide vers une génération */}
               <div className="mb-6 flex gap-4 items-center">
@@ -455,12 +441,14 @@ export default function Histoire() {
               </div>
             </div>
           </div>
-        )}
 
-        {activeTab === 'timeline' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">📅 Chronologie Générale de l'Humanité</h2>
+        {/* Section Chronologie */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <span>📅</span>
+              <span>Chronologie Générale de l'Humanité</span>
+            </h2>
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
                   <h3 className="text-xl font-bold text-blue-900 mb-2">🏛️ Antiquité (Générations 1-50)</h3>
@@ -481,12 +469,14 @@ export default function Histoire() {
               </div>
             </div>
           </div>
-        )}
 
-        {activeTab === 'figures' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">👑 Grandes Figures de l'Histoire</h2>
+        {/* Section Personnages */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <span>👑</span>
+              <span>Grandes Figures de l'Histoire</span>
+            </h2>
               
         <div className="space-y-8">
                 {/* Prophètes */}
@@ -569,12 +559,14 @@ export default function Histoire() {
               </div>
             </div>
           </div>
-        )}
 
-        {activeTab === 'culture' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">🎭 Développement Culturel de l'Humanité</h2>
+        {/* Section Culture */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <span>🎭</span>
+              <span>Développement Culturel de l'Humanité</span>
+            </h2>
               
               <div className="space-y-8">
                 <div>
@@ -631,8 +623,7 @@ export default function Histoire() {
               </div>
         </div>
           </div>
-        )}
-    </div>
+      </div>
 
       {/* Modal de détail d'une génération */}
       {selectedGeneration && (
