@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ButtonDonSante } from '../components/ButtonDonSante';
-
 interface UserData {
   numeroH: string;
   prenom: string;
@@ -52,42 +50,28 @@ interface Doctor {
   createdBy: string;
 }
 
-interface HealthProduct {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  manufacturer: string;
-  price: number;
-  currency: string;
-  dosage: string;
-  sideEffects: string[];
-  contraindications: string[];
-  isPrescriptionRequired: boolean;
-  isActive: boolean;
-  createdBy: string;
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 
 export default function Sante() {
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState<'hopitaux' | 'medecins' | 'realite'>('hopitaux');
+  const [activeTab, setActiveTab] = useState<'hopitaux' | 'medecins'>('hopitaux');
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
-  const [realityPosts, setRealityPosts] = useState<any[]>([]);
-  const [showCreatePost, setShowCreatePost] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [showMediaCapture, setShowMediaCapture] = useState(false);
-  const [selectedContentType, setSelectedContentType] = useState<'video' | 'photo' | 'message' | null>(null);
-  const [newPost, setNewPost] = useState({
-    title: '',
-    content: '',
-    type: 'text' as 'text' | 'image' | 'video',
-    category: 'message' as 'video' | 'photo' | 'message'
+  const [hospitalForm, setHospitalForm] = useState({
+    name: '',
+    type: 'centre de santé',
+    region: '',
+    city: '',
+    address: '',
+    phone: '',
+    emergencyPhone: ''
   });
+  const [hospitalLoading, setHospitalLoading] = useState(false);
+  const [hospitalMessage, setHospitalMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -107,104 +91,10 @@ export default function Sante() {
       
       setUserData(user);
       loadData();
-      if (activeTab === 'realite') {
-        loadRealityPosts();
-      }
     } catch {
       navigate("/login");
     }
   }, [navigate]);
-
-  useEffect(() => {
-    if (activeTab === 'realite') {
-      loadRealityPosts();
-    }
-  }, [activeTab]);
-
-
-  const loadRealityPosts = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('/api/reality/posts', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setRealityPosts(data.posts || []);
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des posts:', error);
-    }
-  };
-
-  const handleCreatePost = () => {
-    setNewPost({
-      title: '',
-      content: '',
-      type: 'text',
-      category: 'message'
-    });
-    setSelectedFile(null);
-    setShowCreatePost(true);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const submitCreatePost = async () => {
-    if (!newPost.title && !newPost.content && !selectedFile) {
-      alert('Veuillez remplir au moins le titre, le contenu ou ajouter un média');
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      
-      const formData = new FormData();
-      formData.append('title', newPost.title || '');
-      formData.append('content', newPost.content || '');
-      formData.append('type', newPost.type);
-      formData.append('category', newPost.category);
-      formData.append('author', userData?.numeroH || '');
-      formData.append('authorName', `${userData?.prenom} ${userData?.nomFamille}`);
-
-      if (selectedFile) {
-        formData.append('media', selectedFile);
-      }
-
-      const response = await fetch('/api/reality/create-post', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        alert('Post créé avec succès !');
-        setShowCreatePost(false);
-        setSelectedFile(null);
-        loadRealityPosts();
-      } else {
-        const data = await response.json();
-        alert(data.message || 'Erreur lors de la création du post');
-      }
-    } catch (error) {
-      console.error('Erreur lors de la création:', error);
-      alert('Erreur lors de la création du post');
-    }
-  };
-
-  const getPostsByCategory = (category: 'video' | 'photo' | 'message') => {
-    return realityPosts.filter(post => post.category === category);
-  };
 
   const loadData = async () => {
     try {
@@ -223,7 +113,7 @@ export default function Sante() {
   const loadHospitals = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/health/hospitals', {
+      const response = await fetch(`${API_URL}/api/health/hospitals`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -245,7 +135,7 @@ export default function Sante() {
   const loadDoctors = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/health/doctors', {
+      const response = await fetch(`${API_URL}/api/health/doctors`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -261,6 +151,33 @@ export default function Sante() {
     } catch (error) {
       console.error('Erreur lors du chargement des médecins:', error);
       setDoctors(getDefaultDoctors());
+    }
+  };
+
+  const handleRegisterHospital = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hospitalForm.name.trim()) return;
+    setHospitalLoading(true);
+    setHospitalMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/api/health/register-hospital`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(hospitalForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setHospitalMessage(data.message || 'Établissement enregistré. Il sera visible après validation.');
+        setHospitalForm({ name: '', type: 'centre de santé', region: '', city: '', address: '', phone: '', emergencyPhone: '' });
+        loadHospitals();
+      } else {
+        setHospitalMessage(data.message || 'Erreur');
+      }
+    } catch {
+      setHospitalMessage('Erreur de connexion');
+    } finally {
+      setHospitalLoading(false);
     }
   };
 
@@ -419,9 +336,6 @@ export default function Sante() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Bouton Don Santé - TRÈS VISIBLE EN HAUT */}
-      <ButtonDonSante />
-
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -453,9 +367,8 @@ export default function Sante() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
-              { id: 'hopitaux', label: 'Trouver un hôpital plus proche', icon: '🏥' },
-              { id: 'medecins', label: 'Trouver un médecin compétent', icon: '👨‍⚕️' },
-              { id: 'realite', label: 'Réalité (Admin)', icon: '📷' }
+              { id: 'hopitaux', label: 'Trouver un hôpital', icon: '🏥' },
+              { id: 'medecins', label: 'Trouver un médecin', icon: '👨‍⚕️' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -537,6 +450,55 @@ export default function Sante() {
 
         {activeTab === 'hopitaux' && (
           <div className="space-y-6">
+            {/* Inscription hôpital pour plus de visibilité */}
+            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl border border-teal-200 p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">🏥 Hôpitaux : s&apos;inscrire pour plus de visibilité</h3>
+              <p className="text-gray-700 mb-4">Les établissements de santé peuvent s&apos;enregistrer ici pour apparaître dans la liste. Votre compte sera associé comme contact. L&apos;établissement sera visible après validation par l&apos;administrateur.</p>
+              <form onSubmit={handleRegisterHospital} className="space-y-3 max-w-2xl mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l&apos;établissement <span className="text-red-500">*</span></label>
+                    <input type="text" value={hospitalForm.name} onChange={(e) => setHospitalForm({ ...hospitalForm, name: e.target.value })} placeholder="Ex : Centre de santé de..." className="w-full px-3 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <select value={hospitalForm.type} onChange={(e) => setHospitalForm({ ...hospitalForm, type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                      <option value="hôpital">Hôpital</option>
+                      <option value="clinique">Clinique</option>
+                      <option value="centre de santé">Centre de santé</option>
+                      <option value="dispensaire">Dispensaire</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Région</label>
+                    <input type="text" value={hospitalForm.region} onChange={(e) => setHospitalForm({ ...hospitalForm, region: e.target.value })} placeholder="Ex : Conakry, Kindia" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                    <input type="text" value={hospitalForm.city} onChange={(e) => setHospitalForm({ ...hospitalForm, city: e.target.value })} placeholder="Ville" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                  <input type="text" value={hospitalForm.address} onChange={(e) => setHospitalForm({ ...hospitalForm, address: e.target.value })} placeholder="Adresse complète" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                    <input type="text" value={hospitalForm.phone} onChange={(e) => setHospitalForm({ ...hospitalForm, phone: e.target.value })} placeholder="+224 ..." className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Urgences</label>
+                    <input type="text" value={hospitalForm.emergencyPhone} onChange={(e) => setHospitalForm({ ...hospitalForm, emergencyPhone: e.target.value })} placeholder="Numéro urgences" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                </div>
+                {hospitalMessage && <p className={`text-sm ${hospitalMessage.includes('visible') ? 'text-green-600' : 'text-red-600'}`}>{hospitalMessage}</p>}
+                <button type="submit" disabled={hospitalLoading} className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium disabled:opacity-50">{hospitalLoading ? 'Enregistrement...' : 'Enregistrer mon établissement'}</button>
+              </form>
+            </div>
+
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">🏥 Hôpitaux Guinéens</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -577,7 +539,7 @@ export default function Sante() {
                     <div className="mb-4">
                       <h4 className="font-medium text-gray-900 mb-2">Services:</h4>
                       <div className="flex flex-wrap gap-1">
-                        {hospital.services.map((service, index) => (
+                        {(hospital.services || []).map((service, index) => (
                           <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
                             {service}
                           </span>
@@ -663,226 +625,7 @@ export default function Sante() {
           </div>
         )}
 
-        {activeTab === 'realite' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">📷 Réalité (Publications Admin)</h2>
-              {userData?.numeroH === 'G0C0P0R0E0F0 0' || userData?.role === 'admin' ? (
-                <div className="bg-blue-50 rounded-lg p-6 mb-6">
-                  <h3 className="font-semibold text-blue-900 mb-2">Vous êtes administrateur</h3>
-                  <p className="text-blue-800 text-sm mb-4">Vous pouvez publier des vidéos, photos et textes.</p>
-                  <button 
-                    onClick={handleCreatePost}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    ➕ Publier du contenu
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <p className="text-gray-600 text-center">Seuls les administrateurs peuvent publier du contenu ici.</p>
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                {/* Contenu publié par admin */}
-                <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-lg p-6 border-2 border-gray-200">
-                  <div className="text-4xl mb-4">📹</div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Vidéos de sensibilisation</h3>
-                  <p className="text-gray-600 text-sm mb-4">Découvrez les campagnes de santé publique</p>
-                  <button 
-                    onClick={() => setSelectedContentType('video')}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Voir les vidéos ({getPostsByCategory('video').length})
-                  </button>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border-2 border-gray-200">
-                  <div className="text-4xl mb-4">🖼️</div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Photos de sensibilisation</h3>
-                  <p className="text-gray-600 text-sm mb-4">Images de prévention santé</p>
-                  <button 
-                    onClick={() => setSelectedContentType('photo')}
-                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Voir les photos ({getPostsByCategory('photo').length})
-                  </button>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border-2 border-gray-200">
-                  <div className="text-4xl mb-4">📄</div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Messages importants</h3>
-                  <p className="text-gray-600 text-sm mb-4">Communiqués officiels de santé</p>
-                  <button 
-                    onClick={() => setSelectedContentType('message')}
-                    className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    Lire les messages ({getPostsByCategory('message').length})
-                  </button>
-                </div>
-              </div>
-
-              {/* Affichage des posts par catégorie */}
-              {selectedContentType && (
-                <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {selectedContentType === 'video' ? '📹 Vidéos de sensibilisation' :
-                       selectedContentType === 'photo' ? '🖼️ Photos de sensibilisation' :
-                       '📄 Messages importants'}
-                    </h3>
-                    <button
-                      onClick={() => setSelectedContentType(null)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      ✕ Fermer
-                    </button>
-            </div>
-                  
-                  {getPostsByCategory(selectedContentType).length > 0 ? (
-                    <div className="space-y-4">
-                      {getPostsByCategory(selectedContentType).map((post: any) => (
-                        <div key={post.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h4 className="font-semibold text-gray-900">{post.title}</h4>
-                              <p className="text-sm text-gray-600">{post.authorName}</p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(post.created_at).toLocaleDateString('fr-FR')}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {post.mediaUrl && (
-                            <div className="mb-3">
-                              {post.type === 'video' ? (
-                                <video controls className="w-full max-w-2xl rounded-lg">
-                                  <source src={post.mediaUrl} type="video/mp4" />
-                                </video>
-                              ) : post.type === 'image' ? (
-                                <img src={post.mediaUrl} alt={post.title} className="max-w-2xl rounded-lg" />
-                              ) : null}
-          </div>
-        )}
-
-                          <p className="text-gray-800">{post.content}</p>
       </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 bg-gray-50 rounded-lg">
-                      <div className="text-6xl mb-4">
-                        {selectedContentType === 'video' ? '📹' :
-                         selectedContentType === 'photo' ? '🖼️' : '📄'}
-                      </div>
-                      <p className="text-gray-500 text-lg mb-4">
-                        Aucun {selectedContentType === 'video' ? 'vidéo' :
-                                selectedContentType === 'photo' ? 'photo' : 'message'} publié pour le moment
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {/* Modal de création de post */}
-      {showCreatePost && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
-              📝 Publier du contenu
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Catégorie *
-                </label>
-                <select
-                  value={newPost.category}
-                  onChange={(e) => {
-                    const category = e.target.value as 'video' | 'photo' | 'message';
-                    setNewPost({
-                      ...newPost,
-                      category,
-                      type: category === 'video' ? 'video' : category === 'photo' ? 'image' : 'text'
-                    });
-                  }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="message">📄 Message</option>
-                  <option value="photo">🖼️ Photo</option>
-                  <option value="video">📹 Vidéo</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Titre *
-                </label>
-                <input
-                  type="text"
-                  value={newPost.title}
-                  onChange={(e) => setNewPost({...newPost, title: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Titre du contenu..."
-                />
-              </div>
-
-              {(newPost.category === 'photo' || newPost.category === 'video') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {newPost.category === 'photo' ? '🖼️' : '📹'} Fichier média *
-                  </label>
-                  <input
-                    type="file"
-                    accept={newPost.category === 'photo' ? 'image/*' : 'video/*'}
-                    capture={newPost.category === 'photo' ? 'environment' : undefined}
-                    onChange={handleFileChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {selectedFile && (
-                    <p className="mt-2 text-sm text-green-600">✓ Fichier sélectionné : {selectedFile.name}</p>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contenu *
-                </label>
-                <textarea
-                  value={newPost.content}
-                  onChange={(e) => setNewPost({...newPost, content: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={6}
-                  placeholder="Rédigez votre contenu..."
-                />
-              </div>
-            </div>
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowCreatePost(false);
-                  setSelectedFile(null);
-                }}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={submitCreatePost}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-              >
-                Publier
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Publication de Produit Gratuit */}
     </div>
   );
 }

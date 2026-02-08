@@ -54,7 +54,7 @@ ActivityMessage.init({
     type: DataTypes.STRING,
     defaultValue: 'information',
     allowNull: true,
-    comment: 'Catégorie du message: information, rencontre, deces, reunion',
+    comment: 'Catégorie du message: information, rencontre, opportunite, outil, reunion',
     field: 'category'
   },
   content: {

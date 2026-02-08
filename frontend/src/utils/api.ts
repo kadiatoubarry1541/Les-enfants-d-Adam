@@ -186,15 +186,24 @@ export const api = {
           const storedPassword = data.password || data.confirmPassword
           
           if (storedPassword && storedPassword === password) {
+            // Générer un token factice pour le fallback localStorage
+            const fallbackToken = `fallback_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
             localStorage.setItem('session_user', JSON.stringify({
               numeroH: normalizedUserNumeroH,
               userData: data,
               type: data.type || 'vivant',
-              source: key
+              source: key,
+              token: fallbackToken
             }))
+
+            // Stocker aussi dans une clé séparée pour compatibilité
+            localStorage.setItem('token', fallbackToken)
+
             return {
               success: true,
               user: data,
+              token: fallbackToken,
               message: 'Connexion réussie'
             }
           } else {

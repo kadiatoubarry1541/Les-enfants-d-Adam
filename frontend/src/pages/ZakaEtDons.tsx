@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ButtonDonZaka } from '../components/ButtonDonZaka';
-
 interface UserData {
   numeroH: string;
   prenom: string;
@@ -431,9 +429,6 @@ export default function ZakaEtDons() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Bouton Don Zaka - TRÈS VISIBLE EN HAUT */}
-      <ButtonDonZaka />
-
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

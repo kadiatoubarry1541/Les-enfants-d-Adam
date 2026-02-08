@@ -136,6 +136,12 @@ if OPENAI_API_KEY:
 # Prompt système pour Professeur Professionnel de FRANÇAIS - Version 100% Complète
 PROFESSEUR_PROMPT = """Tu es un professeur EXCEPTIONNEL et COMPLET de FRANÇAIS. Tu ENSEIGNES la langue française à 100% de manière TRÈS SIMPLE, PRÉCISE et EXHAUSTIVE.
 
+🔴 RÈGLE ABSOLUE - 100% EN FRANÇAIS :
+- Tu réponds UNIQUEMENT en français. Toutes tes réponses, explications, exemples, exercices, consignes et encouragements sont 100% en français.
+- Si l'élève pose une question dans une autre langue (anglais, etc.), tu réponds quand même entièrement en français et tu enseignes le français ; tu peux éventuellement indiquer la traduction du mot demandé en français, puis continuer en français.
+- Aucune phrase, titre ou instruction en anglais ou autre langue dans tes réponses. Tout doit être en français correct et pédagogique.
+- Ton rôle exclusif est d'enseigner le français : grammaire, orthographe, conjugaison, vocabulaire, syntaxe, prononciation, du niveau débutant au niveau avancé.
+
 🎯 TA SPÉCIALITÉ EXCLUSIVE : ENSEIGNER LE FRANÇAIS À 100%
 Tu es un MAÎTRE ABSOLU en langue française. Tu maîtrises PARFAITEMENT et COMPLÈTEMENT :
 
@@ -395,16 +401,17 @@ def get_response_openai(message, conversation_history):
             messages.append({"role": "user", "content": hist["question"]})
             messages.append({"role": "assistant", "content": hist["reponse"]})
         
-        # Ajouter le message actuel
-        messages.append({"role": "user", "content": message})
+        # Ajouter le message actuel avec instruction 100% français
+        user_content = f"Question de l'élève (réponds UNIQUEMENT en français, de manière pédagogique et exhaustive) : {message}"
+        messages.append({"role": "user", "content": user_content})
         
         # Utiliser la nouvelle API OpenAI si disponible
         if openai_client:
             response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",  # Modèle plus récent et performant pour meilleures réponses
+                model="gpt-4o-mini",  # Modèle performant pour l'enseignement du français
                 messages=messages,
                 temperature=0.5,  # Plus bas pour plus de précision et cohérence
-                max_tokens=4000,  # Réponses très détaillées pour enseigner à 100%
+                max_tokens=4096,  # Réponses très détaillées pour enseigner le français à 100%
                 top_p=0.9,  # Contrôle de la diversité
                 frequency_penalty=0.3,  # Évite les répétitions
                 presence_penalty=0.3  # Encourage la variété
@@ -413,10 +420,10 @@ def get_response_openai(message, conversation_history):
         else:
             # Fallback pour ancienne version
             response = openai.ChatCompletion.create(
-                model="gpt-4o-mini",  # Modèle plus récent et performant
+                model="gpt-4o-mini",  # Modèle performant pour l'enseignement du français
                 messages=messages,
                 temperature=0.5,  # Plus bas pour plus de précision
-                max_tokens=4000  # Réponses très détaillées pour enseigner à 100%
+                max_tokens=4096  # Réponses très détaillées pour enseigner le français à 100%
             )
             return response.choices[0].message.content.strip()
     except Exception as e:
@@ -4455,11 +4462,13 @@ Mais pour le français, je peux répondre directement ! Pose-moi ta question mai
         else:
             return f"""Excellente question ! ✨
 
-Tu me demandes : "{message}"
+Je suis ton Professeur IA de Français et je réponds 100% en français.
+
+Tu me demandes : "{message[:200]}{'...' if len(message) > 200 else ''}"
 
 Je comprends ta question ! 
 
-**Je peux t'aider !**
+**Je peux t'aider en français !**
 
 **Si c'est une question sur le français, je peux répondre directement !**
 Je peux t'expliquer :

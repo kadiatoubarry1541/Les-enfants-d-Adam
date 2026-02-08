@@ -199,7 +199,7 @@ Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre gé
             <div className="row">
               <div className="col-6"><Field label={t('label.family_father')}><Select value={state.famillePere} onChange={(v)=>set({ famillePere: v })} options={FAMILLES} /></Field></div>
               <div className="col-6"><Field label={t('label.father_firstname')}><input value={state.prenomPere||''} onChange={e=>set({ prenomPere: e.target.value })} /></Field></div>
-              <div className="col-6"><Field label={t('label.father_status')}><Select value={state.pereStatut} onChange={(v)=>set({ pereStatut: v as any })} options={[ 'Vivant','Mort' ]} /></Field></div>
+              <div className="col-6"><Field label={t('label.father_status')}><Select value={state.pereStatut} onChange={(v)=>set({ pereStatut: v as any })} options={[ { value: 'Vivant', label: t('option.status_alive') }, { value: 'Mort', label: t('option.status_dead') } ]} placeholder={t('option.select_placeholder')} /></Field></div>
               <div className="col-6"><Field label={t('label.father_numeroh')}><input value={state.numeroHPere||''} onChange={e=>set({ numeroHPere: e.target.value })} /></Field></div>
               <div className="col-6"><Field label={t('label.family_mother')}><Select value={state.familleMere} onChange={(v)=>set({ familleMere: v })} options={FAMILLES} /></Field></div>
               <div className="col-6"><Field label={t('label.mother_firstname')}><input value={state.prenomMere||''} onChange={e=>set({ prenomMere: e.target.value })} /></Field></div>
@@ -207,7 +207,7 @@ Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre gé
             <div className="row">
               <div className="col-4"><Field label={t('label.name')}><input value={state.nom||''} onChange={e=>set({ nom: e.target.value })} /></Field></div>
               <div className="col-4"><Field label={t('label.firstname_any')}><input value={state.prenom||''} onChange={e=>set({ prenom: e.target.value })} /></Field></div>
-              <div className="col-4"><Field label={t('label.gender')}><Select value={state.genre} onChange={(v)=>set({ genre: v })} options={[ 'FEMME','HOMME' ]} /></Field></div>
+              <div className="col-4"><Field label={t('label.gender')}><Select value={state.genre} onChange={(v)=>set({ genre: v })} options={[ { value: 'FEMME', label: t('option.gender_female') }, { value: 'HOMME', label: t('option.gender_male') } ]} placeholder={t('option.select_placeholder')} /></Field></div>
             </div>
             <div className="row">
               <div className="col-4"><Field label={t('label.birthdate')}><input type="date" value={state.dateNaissance||''} onChange={e=>set({ dateNaissance: e.target.value })} /></Field></div>
@@ -215,7 +215,7 @@ Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre gé
               <div className="col-4"><Field label={t('label.birthplace')}><input value={state.lieuNaissance||''} onChange={e=>set({ lieuNaissance: e.target.value })} /></Field></div>
             </div>
             <div className="row">
-              <div className="col-4"><Field label={t('label.birth_rank')}><select value={state.rangNaissance||''} onChange={e=>set({ rangNaissance: e.target.value })}><option value="">Sélectionner</option>{Array.from({length:20},(_,i)=>i+1).map(n=> <option key={n} value={String(n)}>{n}</option>)}</select></Field></div>
+              <div className="col-4"><Field label={t('label.birth_rank')}><select value={state.rangNaissance||''} onChange={e=>set({ rangNaissance: e.target.value })}><option value="">{t('option.select_placeholder')}</option>{Array.from({length:20},(_,i)=>i+1).map(n=> <option key={n} value={String(n)}>{n}</option>)}</select></Field></div>
               <div className="col-4"><Field label={t('label.death_year')}><input type="number" value={state.anneeDeces||''} onChange={e=>set({ anneeDeces: e.target.value })} /></Field></div>
               <div className="col-4"><Field label={t('label.age_obtained')}><input value={ageObtenu ?? ''} readOnly /></Field></div>
             </div>

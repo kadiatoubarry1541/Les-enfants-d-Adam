@@ -38,7 +38,10 @@ export function Inscription() {
                 target.style.display = 'none';
                 const placeholder = document.createElement('div');
                 placeholder.className = 'mx-auto h-48 md:h-64 w-48 md:w-64 bg-gray-200 rounded-lg flex items-center justify-center';
-                placeholder.innerHTML = '<span class="text-gray-400 text-lg">Logo</span>';
+                const placeholderText = document.createElement('span');
+                placeholderText.className = 'text-gray-400 text-lg';
+                placeholderText.textContent = 'Logo';
+                placeholder.appendChild(placeholderText);
                 target.parentNode?.appendChild(placeholder);
               }
             }}

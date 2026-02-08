@@ -109,7 +109,7 @@ export default function MonProfil() {
                     target.style.display = 'none';
                     const parent = target.parentElement;
                     if (parent) {
-                      parent.innerHTML = userData.prenom?.charAt(0) || "👤";
+                      parent.textContent = userData.prenom?.charAt(0) || "👤";
                     }
                   }}
                 />

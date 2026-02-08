@@ -54,7 +54,7 @@ ResidenceMessage.init({
     type: DataTypes.STRING,
     defaultValue: 'information',
     allowNull: true,
-    comment: 'Catégorie du message: information, rencontre, deces, reunion',
+    comment: 'Quartier: information, rencontre, deces, mariage, bapteme, naissance, solidarite, fete, annonce, securite, reunion. Préfecture+: opportunite, outil (développement)',
     field: 'category'
   },
   content: {

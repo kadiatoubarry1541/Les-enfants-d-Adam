@@ -92,10 +92,15 @@ Professor.init({
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+  numeroH: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'NumeroH du compte utilisateur (si auto-inscription comme professeur)'
+  },
   createdBy: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'NumeroH de l\'administrateur qui a créé le professeur'
+    comment: 'NumeroH de l\'administrateur ou du professeur qui a créé le profil'
   },
   ratings: {
     type: DataTypes.JSON,

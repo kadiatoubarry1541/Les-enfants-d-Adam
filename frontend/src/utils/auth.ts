@@ -80,6 +80,20 @@ export function isAdmin(user: UserData | null): boolean {
 }
 
 /**
+ * Vérifie si l'utilisateur est l'administrateur principal (seul à voir le badge couronne / droits roi)
+ * @param user - Les données de l'utilisateur
+ * @returns true si admin principal, false sinon
+ */
+export function isMasterAdmin(user: UserData | null): boolean {
+  if (!user) return false;
+  const role = user.role?.toLowerCase() || '';
+  return (
+    user.numeroH === 'G0C0P0R0E0F0 0' ||
+    role === 'super-admin'
+  );
+}
+
+/**
  * Vérifie si l'utilisateur est connecté
  * @returns true si connecté, false sinon
  */

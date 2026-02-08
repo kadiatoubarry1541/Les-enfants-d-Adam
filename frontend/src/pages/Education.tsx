@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DefiEducatifContent from '../components/DefiEducatifContent';
+import { config } from '../config/api';
 
 interface UserData {
   numeroH: string;
@@ -50,13 +51,13 @@ interface Course {
   id: string;
   title: string;
   description: string;
-  type: 'audio' | 'video' | 'written' | 'library';
-  content: string;
+  type: 'audio' | 'video' | 'written' | 'library' | 'test';
+  content: string | { mediaUrl?: string; text?: string };
   duration: number;
   level: string;
   category: string;
-  instructor: string;
-  materials: string[];
+  instructor?: string;
+  materials?: string[];
   isActive: boolean;
   createdBy: string;
 }
@@ -143,9 +144,19 @@ interface Certificate {
   isValid: boolean;
 }
 
+interface School {
+  id: string;
+  name: string;
+  address?: string;
+  contact?: string;
+  description?: string;
+  createdByNumeroH: string;
+  isActive: boolean;
+}
+
 export default function Education() {
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState<'formation-scientifique' | 'science' | 'defi-educatif'>('defi-educatif');
+  const [activeTab, setActiveTab] = useState<'inscription-suivi' | 'formation-scientifique' | 'defi-educatif'>('formation-scientifique');
   const [formations, setFormations] = useState<Formation[]>([]);
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -162,7 +173,37 @@ export default function Education() {
   const [selectedFormation, setSelectedFormation] = useState<Formation | null>(null);
   const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null);
   const [selectedStage, setSelectedStage] = useState<Stage | null>(null);
-  const [activeCourseTab, setActiveCourseTab] = useState<'audio' | 'video' | 'written' | 'exercice' | 'library' | 'progress' | 'certificates'>('audio');
+  const [activeCourseTab, setActiveCourseTab] = useState<'audio' | 'video' | 'written' | 'exercice' | 'library' | 'progress' | 'certificates' | 'publier'>('audio');
+  const [showPublishForm, setShowPublishForm] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
+  const [myProfessorProfile, setMyProfessorProfile] = useState<Professor | null>(null);
+  const [childrenProgress, setChildrenProgress] = useState<Array<{ childNumeroH: string; childName: string; formations: Array<{ id: string; formationTitle?: string; category?: string; level?: string; status: string; progress: number; registeredAt: string }> }>>([]);
+  const [linkChildNumeroH, setLinkChildNumeroH] = useState('');
+  const [linkChildLoading, setLinkChildLoading] = useState(false);
+  const [linkChildMessage, setLinkChildMessage] = useState<string | null>(null);
+  const [registerProfessorForm, setRegisterProfessorForm] = useState({ specialty: 'Français', bio: '' });
+  const [registerProfessorLoading, setRegisterProfessorLoading] = useState(false);
+  const [registerProfessorSuccess, setRegisterProfessorSuccess] = useState<string | null>(null);
+  const [inscriptionStep, setInscriptionStep] = useState<'button' | 'choice' | 'professeur' | 'apprenant'>('button');
+  const [apprenantParent1, setApprenantParent1] = useState('');
+  const [apprenantParent2, setApprenantParent2] = useState('');
+  const [registerParentsLoading, setRegisterParentsLoading] = useState(false);
+  const [registerParentsMessage, setRegisterParentsMessage] = useState<string | null>(null);
+  const [schools, setSchools] = useState<School[]>([]);
+  const [schoolForm, setSchoolForm] = useState({ name: '', address: '', contact: '', description: '' });
+  const [schoolLoading, setSchoolLoading] = useState(false);
+  const [schoolMessage, setSchoolMessage] = useState<string | null>(null);
+  const [publishForm, setPublishForm] = useState({
+    type: 'written' as 'written' | 'video' | 'audio' | 'test' | 'library',
+    title: '',
+    description: '',
+    category: 'Général',
+    level: 'débutant',
+    duration: '',
+    content: '',
+    mediaFile: null as File | null
+  });
   const navigate = useNavigate();
 
   const [registrationForm, setRegistrationForm] = useState({
@@ -216,12 +257,174 @@ export default function Education() {
         loadMyRequests(),
         loadMyStageRequests(),
         loadMyProgress(),
-        loadMyCertificates()
+        loadMyCertificates(),
+        loadMyProfessorProfile(),
+        loadChildrenProgress(),
+        loadSchools()
       ]);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMyProfessorProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${config.API_BASE_URL}/education/my-professor-profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMyProfessorProfile(data.professor || null);
+      }
+    } catch {
+      setMyProfessorProfile(null);
+    }
+  };
+
+  const loadChildrenProgress = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${config.API_BASE_URL}/education/my-children-progress`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setChildrenProgress(data.children || []);
+      } else {
+        setChildrenProgress([]);
+      }
+    } catch {
+      setChildrenProgress([]);
+    }
+  };
+
+  const handleRegisterProfessor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterProfessorLoading(true);
+    setRegisterProfessorSuccess(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${config.API_BASE_URL}/education/register-professor`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(registerProfessorForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setRegisterProfessorSuccess(data.message || 'Demande enregistrée. Un administrateur confirmera votre statut.');
+        setMyProfessorProfile(data.professor);
+      } else {
+        setRegisterProfessorSuccess(data.message || 'Erreur');
+      }
+    } catch {
+      setRegisterProfessorSuccess('Erreur de connexion');
+    } finally {
+      setRegisterProfessorLoading(false);
+    }
+  };
+
+  const handleLinkChildByNumeroH = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = linkChildNumeroH.trim();
+    if (!trimmed) return;
+    setLinkChildLoading(true);
+    setLinkChildMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${config.API_BASE_URL}/parent-child/link`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childNumeroH: trimmed })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setLinkChildMessage('Demande envoyée. L\'apprenant devra confirmer le lien depuis Famille.');
+        setLinkChildNumeroH('');
+        loadChildrenProgress();
+      } else {
+        setLinkChildMessage(data.message || 'Erreur');
+      }
+    } catch {
+      setLinkChildMessage('Erreur de connexion');
+    } finally {
+      setLinkChildLoading(false);
+    }
+  };
+
+  const handleRegisterParents = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const p1 = apprenantParent1.trim();
+    if (!p1) return;
+    setRegisterParentsLoading(true);
+    setRegisterParentsMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${config.API_BASE_URL}/parent-child/register-parents`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parent1NumeroH: p1, parent2NumeroH: apprenantParent2.trim() || undefined })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setRegisterParentsMessage(data.message || 'NumeroH des parents enregistrés.');
+        if (data.created && data.created > 0) {
+          setApprenantParent1('');
+          setApprenantParent2('');
+        }
+      } else {
+        setRegisterParentsMessage(data.message || 'Erreur');
+      }
+    } catch {
+      setRegisterParentsMessage('Erreur de connexion');
+    } finally {
+      setRegisterParentsLoading(false);
+    }
+  };
+
+  const loadSchools = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${config.API_BASE_URL}/education/schools`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSchools(data.schools || []);
+      } else {
+        setSchools([]);
+      }
+    } catch {
+      setSchools([]);
+    }
+  };
+
+  const handleRegisterSchool = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!schoolForm.name.trim()) return;
+    setSchoolLoading(true);
+    setSchoolMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${config.API_BASE_URL}/education/register-school`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(schoolForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSchoolMessage(data.message || 'École enregistrée. Elle sera visible après validation.');
+        setSchoolForm({ name: '', address: '', contact: '', description: '' });
+        loadSchools();
+      } else {
+        setSchoolMessage(data.message || 'Erreur');
+      }
+    } catch {
+      setSchoolMessage('Erreur de connexion');
+    } finally {
+      setSchoolLoading(false);
     }
   };
 
@@ -273,7 +476,7 @@ export default function Education() {
   const loadCourses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/education/courses', {
+      const response = await fetch(`${config.API_BASE_URL}/education/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -289,6 +492,58 @@ export default function Education() {
     } catch (error) {
       console.error('Erreur lors du chargement des cours:', error);
       setCourses(getDefaultCourses());
+    }
+  };
+
+  const handlePublishCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!publishForm.title.trim()) return;
+    setPublishLoading(true);
+    setPublishSuccess(null);
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('title', publishForm.title.trim());
+      formData.append('description', publishForm.description);
+      formData.append('type', publishForm.type);
+      formData.append('category', publishForm.category);
+      formData.append('level', publishForm.level);
+      if (publishForm.duration) formData.append('duration', publishForm.duration);
+      if ((publishForm.type === 'written' || publishForm.type === 'test') && publishForm.content) {
+        formData.append('content', publishForm.content);
+      }
+      if (publishForm.mediaFile) {
+        formData.append('media', publishForm.mediaFile);
+      }
+      const response = await fetch(`${config.API_BASE_URL}/education/courses/publish`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPublishSuccess('Contenu publié avec succès !');
+        setPublishForm({
+          type: 'written',
+          title: '',
+          description: '',
+          category: 'Général',
+          level: 'débutant',
+          duration: '',
+          content: '',
+          mediaFile: null
+        });
+        loadCourses();
+      } else {
+        setPublishSuccess(data.message || 'Erreur lors de la publication');
+      }
+    } catch (err) {
+      console.error(err);
+      setPublishSuccess('Erreur de connexion. Réessayez.');
+    } finally {
+      setPublishLoading(false);
     }
   };
 
@@ -419,7 +674,8 @@ export default function Education() {
   };
 
   const submitFormationRegistration = async () => {
-    if (!selectedFormation || !registrationForm.numeroH) return;
+    const numeroH = userData?.numeroH || registrationForm.numeroH;
+    if (!selectedFormation || !numeroH) return;
 
     try {
       const token = localStorage.getItem("token");
@@ -431,7 +687,7 @@ export default function Education() {
         },
         body: JSON.stringify({
           formationId: selectedFormation.id,
-          studentNumeroH: registrationForm.numeroH,
+          studentNumeroH: userData?.numeroH || registrationForm.numeroH,
           motivation: registrationForm.motivation
         })
       });
@@ -460,7 +716,8 @@ export default function Education() {
   };
 
   const submitProfessorRequest = async () => {
-    if (!selectedProfessor || !professorRequestForm.numeroH) return;
+    const numeroH = userData?.numeroH || professorRequestForm.numeroH;
+    if (!selectedProfessor || !numeroH) return;
 
     try {
       const token = localStorage.getItem("token");
@@ -472,7 +729,7 @@ export default function Education() {
         },
         body: JSON.stringify({
           professorId: selectedProfessor.id,
-          studentNumeroH: professorRequestForm.numeroH,
+          studentNumeroH: userData?.numeroH || professorRequestForm.numeroH,
           subject: professorRequestForm.subject,
           message: professorRequestForm.message
         })
@@ -502,7 +759,8 @@ export default function Education() {
   };
 
   const submitStageRequest = async () => {
-    if (!selectedStage || !stageRequestForm.numeroH) return;
+    const numeroH = userData?.numeroH || stageRequestForm.numeroH;
+    if (!selectedStage || !numeroH) return;
 
     try {
       const token = localStorage.getItem("token");
@@ -514,7 +772,7 @@ export default function Education() {
         },
         body: JSON.stringify({
           stageId: selectedStage.id,
-          studentNumeroH: stageRequestForm.numeroH,
+          studentNumeroH: numeroH,
           subject: stageRequestForm.subject,
           message: stageRequestForm.message
         })
@@ -721,8 +979,8 @@ export default function Education() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
+              { id: 'inscription-suivi', label: 'Inscription & suivi', icon: '👥' },
               { id: 'formation-scientifique', label: 'Formation scientifique', icon: '📚' },
-              { id: 'science', label: 'Science', icon: '🔬', link: '/science' },
               { id: 'defi-educatif', label: 'Défi éducatif', icon: '🎯' }
             ].map((tab) => (
             <button
@@ -732,6 +990,7 @@ export default function Education() {
                   navigate(tab.link);
                 } else {
                   setActiveTab(tab.id as any);
+                  if (tab.id === 'inscription-suivi') setInscriptionStep('button');
                 }
               }}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -750,6 +1009,207 @@ export default function Education() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'inscription-suivi' && (
+          <div className="space-y-8">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">👥 Inscription & suivi (style IA Diangou)</h2>
+              <p className="text-gray-600 mb-6">Enregistrez-vous comme professeur ou apprenant, et suivez l&apos;évolution de vos enfants (formations et cours).</p>
+
+              {inscriptionStep === 'button' && (
+                <div className="text-center py-8">
+                  <button
+                    type="button"
+                    onClick={() => setInscriptionStep('choice')}
+                    className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-xl shadow-md transition-colors"
+                  >
+                    S&apos;inscrire
+                  </button>
+                </div>
+              )}
+
+              {inscriptionStep === 'choice' && (
+                <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Quel type de compte souhaitez-vous ?</h3>
+                  <div className="flex flex-wrap gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setInscriptionStep('professeur')}
+                      className="flex-1 min-w-[200px] p-6 bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-xl hover:border-indigo-400 hover:shadow-md transition-all text-left"
+                    >
+                      <span className="text-3xl block mb-2">🎓</span>
+                      <span className="font-bold text-gray-900">Professeur</span>
+                      <p className="text-sm text-gray-600 mt-1">Demander à devenir professeur ou guide</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInscriptionStep('apprenant')}
+                      className="flex-1 min-w-[200px] p-6 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl hover:border-emerald-400 hover:shadow-md transition-all text-left"
+                    >
+                      <span className="text-3xl block mb-2">📖</span>
+                      <span className="font-bold text-gray-900">Apprenant</span>
+                      <p className="text-sm text-gray-600 mt-1">Voir les formations et suivre des cours</p>
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => setInscriptionStep('button')} className="mt-4 text-gray-500 hover:text-gray-700 text-sm">← Retour</button>
+                </div>
+              )}
+
+              {inscriptionStep === 'professeur' && (
+              <div className="mb-8 p-6 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xl font-bold text-gray-900">🎓 Devenir professeur</h3>
+                  <button type="button" onClick={() => setInscriptionStep('choice')} className="text-sm text-indigo-600 hover:text-indigo-800">Changer de type</button>
+                </div>
+                {myProfessorProfile ? (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-800 font-medium">Vous êtes déjà inscrit comme professeur.</p>
+                    <p className="text-gray-700 text-sm mt-1">Matière : {myProfessorProfile.specialty} • Capacités : {myProfessorProfile.bio || '—'}</p>
+                    {!myProfessorProfile.isActive && <p className="text-amber-700 text-sm mt-1">⏳ En attente de confirmation par l’administrateur.</p>}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-600 text-sm mb-3">Votre identité (NumeroH et nom) est prise depuis votre compte. Indiquez uniquement la matière et vos capacités.</p>
+                    <form onSubmit={handleRegisterProfessor} className="space-y-4 max-w-xl">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Matière</label>
+                        <select value={registerProfessorForm.specialty} onChange={(e) => setRegisterProfessorForm({ ...registerProfessorForm, specialty: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                          <option value="Français">Français</option>
+                          <option value="Mathématiques">Mathématiques</option>
+                          <option value="Sciences">Sciences</option>
+                          <option value="Langues">Langues</option>
+                          <option value="Général">Général</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Capacités (court résumé)</label>
+                        <textarea value={registerProfessorForm.bio} onChange={(e) => setRegisterProfessorForm({ ...registerProfessorForm, bio: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex : cours niveau collège, préparation examens..." />
+                      </div>
+                      {registerProfessorSuccess && <p className={registerProfessorSuccess.includes('Demande') ? 'text-green-600' : 'text-red-600'}>{registerProfessorSuccess}</p>}
+                      <button type="submit" disabled={registerProfessorLoading} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50">{registerProfessorLoading ? 'Enregistrement...' : 'Demander à devenir professeur / guide'}</button>
+                    </form>
+                  </>
+                )}
+              </div>
+              )}
+
+              {inscriptionStep === 'apprenant' && (
+              <div className="mb-8 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xl font-bold text-gray-900">📖 Je suis apprenant</h3>
+                  <button type="button" onClick={() => setInscriptionStep('choice')} className="text-sm text-emerald-600 hover:text-emerald-800">Changer de type</button>
+                </div>
+                <p className="text-gray-700 mb-4">Inscrivez-vous aux formations et suivez vos cours dans l&apos;onglet <strong>Formation scientifique</strong>. Vous y trouverez les formations, les cours (audio, vidéo, écrit) et le Professeur IA de français.</p>
+                <div className="mb-6">
+                  <p className="text-gray-700 mb-3 font-medium">Indiquez les NumeroH de vos parents pour qu&apos;ils puissent suivre votre progression.</p>
+                  <form onSubmit={handleRegisterParents} className="space-y-3 max-w-xl">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">NumeroH du parent 1 *</label>
+                      <input type="text" value={apprenantParent1} onChange={(e) => setApprenantParent1(e.target.value)} placeholder="Ex : G0C0P0R0E0F0 0" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">NumeroH du parent 2 (optionnel)</label>
+                      <input type="text" value={apprenantParent2} onChange={(e) => setApprenantParent2(e.target.value)} placeholder="Ex : G0C0P0R0E0F0 0" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                    </div>
+                    {registerParentsMessage && <p className={`text-sm ${registerParentsMessage.includes('enregistrés') || registerParentsMessage.includes('enregistré') ? 'text-green-600' : 'text-red-600'}`}>{registerParentsMessage}</p>}
+                    <button type="submit" disabled={registerParentsLoading} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium disabled:opacity-50">{registerParentsLoading ? 'Enregistrement...' : 'Enregistrer les NumeroH des parents'}</button>
+                  </form>
+                </div>
+                <button type="button" onClick={() => setActiveTab('formation-scientifique')} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium">Voir les formations et cours</button>
+              </div>
+              )}
+
+              {inscriptionStep !== 'button' && (
+              <div className="p-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                <h3 className="text-xl font-bold text-gray-900 mb-3">👨‍👩‍👧 Suivi des apprenants</h3>
+                <p className="text-gray-700 mb-4">En tant que parent, suivez l&apos;évolution des apprenants : formations suivies, progression et cours. Saisissez votre <strong>NumeroH</strong> (parent) et le <strong>NumeroH de l&apos;apprenant</strong> pour accéder au suivi.</p>
+                {userData?.numeroH && (
+                  <p className="text-sm text-gray-600 mb-2">Votre NumeroH (parent) : <strong>{userData.numeroH}</strong></p>
+                )}
+                <form onSubmit={handleLinkChildByNumeroH} className="flex flex-wrap items-end gap-3 mb-4 max-w-xl">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">NumeroH de l&apos;apprenant</label>
+                    <input type="text" value={linkChildNumeroH} onChange={(e) => setLinkChildNumeroH(e.target.value)} placeholder="Ex : G0C0P0R0E0F0 0" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <button type="submit" disabled={linkChildLoading} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium disabled:opacity-50">{linkChildLoading ? 'Envoi...' : 'Lier cet apprenant'}</button>
+                </form>
+                {linkChildMessage && <p className={`text-sm mb-4 ${linkChildMessage.startsWith('Demande') ? 'text-green-600' : 'text-red-600'}`}>{linkChildMessage}</p>}
+                {childrenProgress.length === 0 ? (
+                  <p className="text-gray-600 italic">Aucun apprenant lié à votre compte. Saisissez le NumeroH de l&apos;apprenant ci-dessus pour lier et suivre sa progression ici.</p>
+                ) : (
+                  <div className="space-y-6">
+                    {childrenProgress.map((child) => (
+                      <div key={child.childNumeroH} className="bg-white rounded-lg border border-amber-200 p-4">
+                        <h4 className="font-bold text-gray-900 mb-2">👤 Apprenant</h4>
+                        <p className="text-sm text-gray-500">{child.childNumeroH}</p>
+                        {child.formations.length === 0 ? (
+                          <p className="text-gray-500 text-sm">Aucune formation inscrite pour le moment.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {child.formations.map((f) => (
+                              <li key={f.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                                <span className="font-medium">{f.formationTitle || 'Formation'}</span>
+                                <span className="text-gray-500">{f.category} • {f.level}</span>
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${f.status === 'approved' ? 'bg-green-100 text-green-800' : f.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{f.status}</span>
+                                <span className="text-indigo-600 font-semibold">{f.progress}%</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              )}
+
+              {/* Écoles : s'inscrire pour plus de visibilité */}
+              <div className="mt-8 p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-violet-200">
+                <h3 className="text-xl font-bold text-gray-900 mb-3">🏫 Écoles : s&apos;inscrire pour plus de visibilité</h3>
+                <p className="text-gray-700 mb-4">Les établissements peuvent s&apos;enregistrer ici pour apparaître dans la liste des écoles partenaires. Votre compte (NumeroH) sera associé comme contact.</p>
+                <form onSubmit={handleRegisterSchool} className="space-y-3 max-w-xl mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l&apos;établissement <span className="text-red-500">*</span></label>
+                    <input type="text" value={schoolForm.name} onChange={(e) => setSchoolForm({ ...schoolForm, name: e.target.value })} placeholder="Ex : Lycée Les Enfants d'Adam" className="w-full px-3 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Adresse (optionnel)</label>
+                    <input type="text" value={schoolForm.address} onChange={(e) => setSchoolForm({ ...schoolForm, address: e.target.value })} placeholder="Ville, pays" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact (optionnel)</label>
+                    <input type="text" value={schoolForm.contact} onChange={(e) => setSchoolForm({ ...schoolForm, contact: e.target.value })} placeholder="Téléphone ou email" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Présentation courte (optionnel)</label>
+                    <textarea value={schoolForm.description} onChange={(e) => setSchoolForm({ ...schoolForm, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Quelques mots sur l'établissement..." />
+                  </div>
+                  {schoolMessage && <p className={`text-sm ${schoolMessage.includes('visible') ? 'text-green-600' : 'text-red-600'}`}>{schoolMessage}</p>}
+                  <button type="submit" disabled={schoolLoading} className="px-6 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium disabled:opacity-50">{schoolLoading ? 'Enregistrement...' : 'Enregistrer mon école'}</button>
+                </form>
+                {schools.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-gray-800 mb-2">Écoles partenaires</h4>
+                    <ul className="space-y-2">
+                      {schools.map((s) => (
+                        <li key={s.id} className="bg-white rounded-lg border border-violet-100 p-3 flex flex-wrap justify-between items-start gap-2">
+                          <div>
+                            <span className="font-medium text-gray-900">{s.name}</span>
+                            {s.address && <span className="text-gray-500 text-sm block">{s.address}</span>}
+                            {s.contact && <span className="text-gray-500 text-sm">Contact : {s.contact}</span>}
+                            {s.description && <p className="text-gray-600 text-sm mt-1">{s.description}</p>}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-sm text-gray-500 mt-4">Inspiré de la plateforme IA Diangou : professeurs, apprenants et parents au cœur de l&apos;éducation.</p>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'formation-scientifique' && (
           <div className="space-y-8">
             {/* Section 0: Professeur IA 100% Disponible - EN PREMIER */}
@@ -1084,6 +1544,7 @@ export default function Education() {
                   { id: 'written', label: 'Écrit', icon: '📝' },
                   { id: 'exercice', label: 'Exercice', icon: '📝' },
                   { id: 'library', label: 'Bibliothèque', icon: '📚' },
+                  { id: 'publier', label: 'Publier', icon: '➕' },
                   { id: 'progress', label: 'Progrès', icon: '📊' },
                   { id: 'certificates', label: 'Certificats', icon: '🏆' }
                 ].map((tab) => (
@@ -1166,16 +1627,158 @@ export default function Education() {
 
                 {activeCourseTab === 'exercice' && (
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">📝 Exercices</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4">📝 Exercices et tests</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {courses.filter(c => c.type === 'test').map((course) => (
+                        <div key={course.id} className="border rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-900 mb-2">{course.title}</h4>
+                          <p className="text-gray-600 text-sm mb-2">{course.description}</p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500">{course.category} • {course.level}</span>
+                            <button className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm">
+                              Passer le test
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                       <div className="border rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 mb-2">Exercices disponibles</h4>
-                        <p className="text-gray-600 text-sm mb-4">Pratiquez avec des exercices interactifs</p>
+                        <h4 className="font-semibold text-gray-900 mb-2">Exercices interactifs</h4>
+                        <p className="text-gray-600 text-sm mb-4">Pratiquez avec des exercices supplémentaires</p>
                         <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm">
                           Commencer
                         </button>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {activeCourseTab === 'publier' && (
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4">➕ Publier un cours, une vidéo, un audio ou un test</h3>
+                    <p className="text-gray-600 text-sm mb-6">Publiez du contenu éducatif : cours écrit, vidéo, audio ou test/quiz.</p>
+                    <form onSubmit={handlePublishCourse} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 max-w-2xl">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Type de contenu *</label>
+                        <select
+                          value={publishForm.type}
+                          onChange={(e) => setPublishForm({ ...publishForm, type: e.target.value as any })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          required
+                        >
+                          <option value="written">📝 Cours écrit</option>
+                          <option value="video">🎥 Vidéo</option>
+                          <option value="audio">🎵 Audio</option>
+                          <option value="test">📋 Test / Quiz</option>
+                          <option value="library">📚 Bibliothèque / Ressources</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
+                        <input
+                          type="text"
+                          value={publishForm.title}
+                          onChange={(e) => setPublishForm({ ...publishForm, title: e.target.value })}
+                          placeholder="Ex : Grammaire française - Les accords"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea
+                          value={publishForm.description}
+                          onChange={(e) => setPublishForm({ ...publishForm, description: e.target.value })}
+                          placeholder="Décrivez brièvement le contenu..."
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                          <input
+                            type="text"
+                            value={publishForm.category}
+                            onChange={(e) => setPublishForm({ ...publishForm, category: e.target.value })}
+                            placeholder="Ex : Langues, Sciences"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+                          <select
+                            value={publishForm.level}
+                            onChange={(e) => setPublishForm({ ...publishForm, level: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="débutant">Débutant</option>
+                            <option value="intermédiaire">Intermédiaire</option>
+                            <option value="avancé">Avancé</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Durée (minutes)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={publishForm.duration}
+                          onChange={(e) => setPublishForm({ ...publishForm, duration: e.target.value })}
+                          placeholder="Ex : 30"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      {(publishForm.type === 'video' || publishForm.type === 'audio') && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {publishForm.type === 'video' ? 'Fichier vidéo' : 'Fichier audio'} *
+                          </label>
+                          <input
+                            type="file"
+                            accept={publishForm.type === 'video' ? 'video/*' : 'audio/*'}
+                            onChange={(e) => setPublishForm({ ...publishForm, mediaFile: e.target.files?.[0] || null })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+                      {(publishForm.type === 'written' || publishForm.type === 'test') && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {publishForm.type === 'test' ? 'Contenu du test (questions, consignes)' : 'Contenu du cours (texte)'}
+                          </label>
+                          <textarea
+                            value={publishForm.content}
+                            onChange={(e) => setPublishForm({ ...publishForm, content: e.target.value })}
+                            placeholder={publishForm.type === 'test' ? 'Ex : Q1. Quelle est la bonne orthographe ? ...' : 'Collez ou écrivez le contenu du cours...'}
+                            rows={6}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      )}
+                      {publishForm.type === 'library' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Fichier (PDF, document ou média)</label>
+                          <input
+                            type="file"
+                            accept=".pdf,image/*,video/*,audio/*"
+                            onChange={(e) => setPublishForm({ ...publishForm, mediaFile: e.target.files?.[0] || null })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+                      {publishSuccess && (
+                        <p className={`text-sm ${publishSuccess.startsWith('Contenu') ? 'text-green-600' : 'text-red-600'}`}>
+                          {publishSuccess}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={publishLoading || !publishForm.title.trim()}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
+                      >
+                        {publishLoading ? 'Publication en cours...' : 'Publier'}
+                      </button>
+                    </form>
                   </div>
                 )}
 
@@ -1276,14 +1879,13 @@ export default function Education() {
               <div className="space-y-4">
                 <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  NumeroH
+                  Votre NumeroH (compte connecté)
                 </label>
                   <input
                     type="text"
-                  value={registrationForm.numeroH}
-                  onChange={(e) => setRegistrationForm({...registrationForm, numeroH: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Votre NumeroH"
+                  value={userData?.numeroH ?? registrationForm.numeroH}
+                  readOnly
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-700"
                   />
                 </div>
                 <div>
@@ -1327,14 +1929,13 @@ export default function Education() {
               <div className="space-y-4">
                 <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  NumeroH
+                  Votre NumeroH (compte connecté)
                 </label>
                   <input
                     type="text"
-                  value={professorRequestForm.numeroH}
-                  onChange={(e) => setProfessorRequestForm({...professorRequestForm, numeroH: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Votre NumeroH"
+                  value={userData?.numeroH ?? professorRequestForm.numeroH}
+                  readOnly
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-700"
                   />
                 </div>
                 <div>
@@ -1390,14 +1991,13 @@ export default function Education() {
               <div className="space-y-4">
                 <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  NumeroH
+                  Votre NumeroH (compte connecté)
                 </label>
                   <input
                     type="text"
-                  value={stageRequestForm.numeroH}
-                  onChange={(e) => setStageRequestForm({...stageRequestForm, numeroH: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Votre NumeroH"
+                  value={userData?.numeroH ?? stageRequestForm.numeroH}
+                  readOnly
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-700"
                   />
                 </div>
                 <div>

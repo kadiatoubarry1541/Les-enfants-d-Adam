@@ -220,13 +220,6 @@ export function Education({ userData }: EducationProps) {
             <h3>🎓 Éducation de {userData.prenom} {userData.nomFamille}</h3>
             <p className="numero-h">NumeroH: {userData.numeroH}</p>
           </div>
-          <button 
-            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 rounded-lg shadow-md hover:shadow-lg transition-all"
-            onClick={() => navigate('/solidarite')}
-            title="Solidarité"
-          >
-            🤝 Solidarité
-          </button>
         </div>
       </div>
 

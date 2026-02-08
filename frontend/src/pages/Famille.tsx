@@ -44,16 +44,6 @@ interface FamilyMessage {
   createdAt: string;
 }
 
-interface OrangeMoneyAccount {
-  id: string;
-  numeroH: string;
-  phoneNumber: string;
-  balance: number;
-  currency: string;
-  isActive: boolean;
-  lastTransaction?: string;
-}
-
 interface FamilyTreeConfirmation {
   id: string;
   childNumeroH: string;
@@ -94,11 +84,9 @@ export default function Famille() {
     chefFamille2: ''
   });
   const [familyMessages, setFamilyMessages] = useState<FamilyMessage[]>([]);
-  const [orangeMoneyAccount, setOrangeMoneyAccount] = useState<OrangeMoneyAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showTreeChat, setShowTreeChat] = useState(false);
-  const [showOrangeMoney, setShowOrangeMoney] = useState(false);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const navigate = useNavigate();
 
@@ -130,13 +118,6 @@ export default function Famille() {
     type: 'text' as 'text' | 'image' | 'video' | 'audio'
   });
 
-  const [orangeMoneyForm, setOrangeMoneyForm] = useState({
-    phoneNumber: '',
-    amount: '',
-    recipient: '',
-    message: ''
-  });
-
   useEffect(() => {
     const session = localStorage.getItem("session_user");
     if (!session) {
@@ -166,7 +147,6 @@ export default function Famille() {
         loadFamilyMembers(),
         loadFamilyTree(),
         loadFamilyMessages(),
-        loadOrangeMoneyAccount(),
         loadFamilyPhotos(),
         loadFamilyTreeData(),
         loadPendingConfirmations()
@@ -456,28 +436,6 @@ export default function Famille() {
     }
   };
 
-  const loadOrangeMoneyAccount = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('/api/family/orange-money', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setOrangeMoneyAccount(data.account || getDefaultOrangeMoneyAccount());
-      } else {
-        setOrangeMoneyAccount(getDefaultOrangeMoneyAccount());
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement du compte Orange Money:', error);
-      setOrangeMoneyAccount(getDefaultOrangeMoneyAccount());
-    }
-  };
-
   const getDefaultFamilyMembers = (): FamilyMember[] => [
     {
       id: '1',
@@ -535,16 +493,6 @@ export default function Famille() {
     members: getDefaultFamilyMembers(),
         isActive: true,
     createdAt: '2024-01-01T00:00:00Z'
-  });
-
-  const getDefaultOrangeMoneyAccount = (): OrangeMoneyAccount => ({
-    id: '1',
-    numeroH: userData?.numeroH || '',
-    phoneNumber: '+224 123 456 789',
-    balance: 150000,
-    currency: 'FG',
-    isActive: true,
-    lastTransaction: '2024-01-20T10:30:00Z'
   });
 
   const handleAddMember = () => {
@@ -619,37 +567,6 @@ export default function Famille() {
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
       alert('Erreur lors de l\'envoi du message');
-    }
-  };
-
-  const submitOrangeMoneyTransfer = async () => {
-    if (!orangeMoneyForm.phoneNumber || !orangeMoneyForm.amount) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('/api/family/orange-money-transfer', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          recipientPhone: orangeMoneyForm.phoneNumber,
-          amount: parseFloat(orangeMoneyForm.amount),
-          message: orangeMoneyForm.message
-        })
-      });
-
-      if (response.ok) {
-        alert('Transfert Orange Money effectué avec succès !');
-        setShowOrangeMoney(false);
-        loadOrangeMoneyAccount();
-      } else {
-        alert('Erreur lors du transfert');
-      }
-    } catch (error) {
-      console.error('Erreur lors du transfert:', error);
-      alert('Erreur lors du transfert');
     }
   };
 
@@ -1020,12 +937,6 @@ export default function Famille() {
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors"
                 >
                   💬 Chat Familial
-                </button>
-                <button
-                  onClick={() => setShowOrangeMoney(true)}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg transition-colors"
-                >
-                  🍊 Orange Money
                 </button>
               </div>
             </div>
@@ -1518,80 +1429,6 @@ export default function Famille() {
           </div>
         )}
 
-      {/* Modal Orange Money */}
-      {showOrangeMoney && orangeMoneyAccount && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">🍊 Orange Money</h3>
-            
-            {/* Solde */}
-            <div className="bg-orange-50 rounded-lg p-4 mb-6">
-              <h4 className="font-semibold text-gray-900 mb-2">Solde disponible</h4>
-              <p className="text-2xl font-bold text-orange-600">
-                {orangeMoneyAccount.balance.toLocaleString()} {orangeMoneyAccount.currency}
-              </p>
-              <p className="text-sm text-gray-600">
-                Numéro: {orangeMoneyAccount.phoneNumber}
-              </p>
-            </div>
-
-            {/* Formulaire de transfert */}
-              <div className="space-y-4">
-                <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Numéro du destinataire
-                </label>
-                <input
-                  type="tel"
-                  value={orangeMoneyForm.phoneNumber}
-                  onChange={(e) => setOrangeMoneyForm({...orangeMoneyForm, phoneNumber: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="+224 XXX XXX XXX"
-                />
-                </div>
-                  <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Montant
-                </label>
-                <input
-                  type="number"
-                  value={orangeMoneyForm.amount}
-                  onChange={(e) => setOrangeMoneyForm({...orangeMoneyForm, amount: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="Montant en FG"
-                />
-                  </div>
-                  <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Message (optionnel)
-                </label>
-                <textarea
-                  value={orangeMoneyForm.message}
-                  onChange={(e) => setOrangeMoneyForm({...orangeMoneyForm, message: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  rows={2}
-                  placeholder="Message pour le destinataire..."
-                />
-                  </div>
-              </div>
-
-            <div className="flex space-x-3 mt-6">
-                <button
-                onClick={() => setShowOrangeMoney(false)}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
-                >
-                Annuler
-                </button>
-                <button
-                onClick={submitOrangeMoneyTransfer}
-                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors"
-                >
-                Transférer
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
     </div>
   );
 }

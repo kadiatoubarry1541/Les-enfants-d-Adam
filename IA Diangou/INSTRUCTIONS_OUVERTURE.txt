@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════════════════
+  COMMENT OUVRIR LE FICHIER RTF DANS WORD
+═══════════════════════════════════════════════════════════════
+
+MÉTHODE 1 : Utiliser le script automatique
+─────────────────────────────────────────────
+1. Double-cliquez sur le fichier : OUVRIR_DANS_WORD.bat
+2. Le fichier s'ouvrira automatiquement dans Word
+
+MÉTHODE 2 : Ouvrir manuellement dans Word
+─────────────────────────────────────────────
+1. Ouvrez Microsoft Word (recherchez "Word" dans le menu Démarrer)
+2. Dans Word, cliquez sur "Fichier" (en haut à gauche)
+3. Cliquez sur "Ouvrir"
+4. Naviguez vers le dossier : C:\Users\koolo barry\Desktop\IA Diangou
+5. Dans le menu déroulant "Type de fichier", choisissez "Tous les fichiers (*.*)"
+6. Sélectionnez le fichier : Poster_IA_Diangou_SIFSC.rtf
+7. Cliquez sur "Ouvrir"
+
+MÉTHODE 3 : Ouvrir avec (clic droit)
+─────────────────────────────────────────────
+1. Faites un clic droit sur le fichier : Poster_IA_Diangou_SIFSC.rtf
+2. Choisissez "Ouvrir avec"
+3. Sélectionnez "Microsoft Word"
+4. (Optionnel) Cochez "Toujours utiliser cette application pour ouvrir les fichiers .rtf"
+
+MÉTHODE 4 : Glisser-déposer
+─────────────────────────────────────────────
+1. Ouvrez Microsoft Word
+2. Ouvrez l'Explorateur de fichiers Windows
+3. Naviguez vers : C:\Users\koolo barry\Desktop\IA Diangou
+4. Glissez le fichier Poster_IA_Diangou_SIFSC.rtf dans la fenêtre Word
+
+═══════════════════════════════════════════════════════════════
+  APRÈS AVOIR OUVERT LE FICHIER DANS WORD
+═══════════════════════════════════════════════════════════════
+
+Pour enregistrer en format Word (.docx) :
+
+1. Dans Word, cliquez sur "Fichier" → "Enregistrer sous"
+2. Choisissez l'emplacement où vous voulez sauvegarder
+3. Dans "Type de fichier", choisissez "Word Document (*.docx)"
+4. Nommez le fichier : Poster_IA_Diangou_SIFSC.docx
+5. Cliquez sur "Enregistrer"
+
+═══════════════════════════════════════════════════════════════
+
+Si vous avez toujours des problèmes, dites-moi quelle erreur vous voyez !
+

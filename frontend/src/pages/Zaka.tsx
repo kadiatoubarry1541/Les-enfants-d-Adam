@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ButtonDonZaka } from '../components/ButtonDonZaka';
 import { isAdmin } from '../utils/auth';
 
 interface UserData {
@@ -256,7 +255,7 @@ export default function Zaka() {
       const userIsAdmin = isAdmin(user);
       if (user.religion !== 'Islam' && !userIsAdmin) {
         alert('Cette page est réservée aux musulmans uniquement.');
-        navigate("/solidarite");
+        navigate("/");
         return;
       }
       
@@ -876,9 +875,6 @@ export default function Zaka() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Bouton Don Zaka - TRÈS VISIBLE EN HAUT */}
-      <ButtonDonZaka />
-
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

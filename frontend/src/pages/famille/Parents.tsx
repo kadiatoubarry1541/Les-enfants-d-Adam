@@ -1,443 +1,401 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 interface UserData {
   numeroH: string
   prenom: string
   nomFamille: string
-  genre: 'HOMME' | 'FEMME' | 'AUTRE'
-  prenomPere?: string
-  numeroHPere?: string
-  prenomMere?: string
-  numeroHMere?: string
 }
 
-interface Souvenir {
+interface ParentLink {
   id: string
-  type: "photo" | "video" | "audio"
-  url: string
-  date: string
-  description?: string
+  parentNumeroH: string
+  childNumeroH: string
+  codeLiaison: string
+  numeroMaternite?: string
+  parentType: 'pere' | 'mere'
+  parent?: {
+    numeroH: string
+    prenom: string
+    nomFamille: string
+    photo?: string
+    genre?: string
+  }
+  activitiesCount?: number
 }
 
-interface Note {
+interface Activity {
   id: string
-  annee: number
-  note: number // 0-5 étoiles
+  parentNumeroH: string
+  childNumeroH: string
+  fromNumeroH: string
+  toNumeroH: string
+  type: string
+  content?: string
+  mediaUrl?: string
+  fromName?: string
+  created_at: string
+}
+
+function getToken() {
+  return localStorage.getItem('token')
+}
+
+interface PendingInvitation {
+  id: string
+  parentNumeroH: string
+  childNumeroH: string
+  parentType: string
+  codeLiaison?: string
+  parent?: { numeroH: string; prenom: string; nomFamille: string }
 }
 
 export default function Parents() {
   const [user, setUser] = useState<UserData | null>(null)
-  const [souvenirs, setSouvenirs] = useState<{ [key: string]: Souvenir[] }>({})
-  const [notes, setNotes] = useState<{ [key: string]: Note[] }>({})
-  const [newNotes, setNewNotes] = useState<{ [key: string]: { annee: number; note: number } }>({
-    papa: { annee: new Date().getFullYear(), note: 0 },
-    maman: { annee: new Date().getFullYear(), note: 0 }
-  })
+  const [parents, setParents] = useState<ParentLink[]>([])
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedParent, setSelectedParent] = useState<ParentLink | null>(null)
+  const [activities, setActivities] = useState<Activity[]>([])
+  const [newActivityContent, setNewActivityContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadUser = () => {
+    try {
+      const sessionData = JSON.parse(localStorage.getItem('session_user') || '{}')
+      const u = sessionData.userData || sessionData
+      if (u?.numeroH) setUser(u)
+      return u
+    } catch {
+      return null
+    }
+  }
+
+  const loadMyParents = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/parent-child/my-parents`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setParents(data.parents || [])
+      }
+    } catch (e) {
+      console.error('Erreur chargement mes parents:', e)
+    }
+  }
+
+  const loadPendingInvitations = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/parent-child/pending-invitations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setPendingInvitations(data.invitations || [])
+      }
+    } catch (e) {
+      console.error('Erreur invitations:', e)
+    }
+  }
+
+  const handleConfirmLink = async (linkId: string) => {
+    setSubmitting(true)
+    try {
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/api/parent-child/confirm/${linkId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        loadPendingInvitations()
+        loadMyParents()
+      } else alert(data.message || 'Erreur')
+    } catch (e) {
+      alert('Erreur réseau')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleLeaveLink = async (linkId: string) => {
+    if (!confirm('Quitter cette liaison ? Vous pourrez vous relier plus tard.')) return
+    setSubmitting(true)
+    try {
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/api/parent-child/link/${linkId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSelectedParent(null)
+        loadMyParents()
+      } else alert(data.message || 'Erreur')
+    } catch (e) {
+      alert('Erreur réseau')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const loadActivitiesForParent = async (link: ParentLink) => {
+    const token = getToken()
+    if (!token || !user) return
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/parent-child/activities?parentNumeroH=${encodeURIComponent(link.parentNumeroH)}&childNumeroH=${encodeURIComponent(link.childNumeroH)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setActivities(data.activities || [])
+      }
+    } catch (e) {
+      console.error('Erreur chargement activités:', e)
+    }
+  }
 
   useEffect(() => {
-    const sessionData = JSON.parse(localStorage.getItem('session_user') || '{}')
-    const u = sessionData.userData || sessionData
-    if (u?.numeroH) setUser(u)
-    
-    // Charger souvenirs et notes depuis localStorage
-    const storedSouvenirs = localStorage.getItem(`souvenirs_parents_${u?.numeroH}`)
-    const storedNotes = localStorage.getItem(`notes_parents_${u?.numeroH}`)
-    
-    if (storedSouvenirs) {
-      try {
-        setSouvenirs(JSON.parse(storedSouvenirs))
-      } catch (e) {
-        console.error('Erreur chargement souvenirs:', e)
-      }
-    }
-    
-    if (storedNotes) {
-      try {
-        setNotes(JSON.parse(storedNotes))
-      } catch (e) {
-        console.error('Erreur chargement notes:', e)
-      }
+    const u = loadUser()
+    if (u?.numeroH) {
+      setLoading(false)
+      loadMyParents()
+      loadPendingInvitations()
+    } else {
+      setLoading(false)
     }
   }, [])
 
-  const effectiveUser: UserData = user || {
-    numeroH: '',
-    prenom: 'Invité',
-    nomFamille: '',
-    genre: 'HOMME'
-  }
-
-  const ajouterSouvenir = (session: string, souvenir: Souvenir) => {
-    const nouveauxSouvenirs = {
-      ...souvenirs,
-      [session]: [...(souvenirs[session] || []), souvenir],
+  useEffect(() => {
+    if (selectedParent) {
+      loadActivitiesForParent(selectedParent)
+    } else {
+      setActivities([])
     }
-    setSouvenirs(nouveauxSouvenirs)
-    localStorage.setItem(`souvenirs_parents_${effectiveUser.numeroH}`, JSON.stringify(nouveauxSouvenirs))
-  }
+  }, [selectedParent?.id])
 
-  const ajouterNote = (personne: string, note: Note) => {
-    const nouvellesNotes = {
-      ...notes,
-      [personne]: [...(notes[personne] || []), note],
+  const handleAddActivity = async () => {
+    if (!selectedParent || !newActivityContent.trim() || !user) return
+    setSubmitting(true)
+    try {
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/api/parent-child/activity`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          parentNumeroH: selectedParent.parentNumeroH,
+          childNumeroH: selectedParent.childNumeroH,
+          toNumeroH: selectedParent.parentNumeroH,
+          type: 'message',
+          content: newActivityContent.trim()
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNewActivityContent('')
+        loadActivitiesForParent(selectedParent)
+      } else {
+        alert(data.message || 'Erreur')
+      }
+    } catch (e) {
+      alert('Erreur réseau')
+    } finally {
+      setSubmitting(false)
     }
-    setNotes(nouvellesNotes)
-    localStorage.setItem(`notes_parents_${effectiveUser.numeroH}`, JSON.stringify(nouvellesNotes))
   }
 
-  const handleNoteChange = (personne: string, noteValue: number) => {
-    setNewNotes(prev => ({
-      ...prev,
-      [personne]: { ...prev[personne], note: noteValue }
-    }))
-  }
-
-  const handleYearChange = (personne: string, annee: number) => {
-    setNewNotes(prev => ({
-      ...prev,
-      [personne]: { ...prev[personne], annee }
-    }))
-  }
-
-  const handleAddNote = (personne: string) => {
-    const nouvelleNote: Note = {
-      id: Date.now().toString(),
-      annee: newNotes[personne].annee,
-      note: newNotes[personne].note
-    }
-    ajouterNote(personne, nouvelleNote)
-    // Réinitialiser pour cette personne
-    setNewNotes(prev => ({
-      ...prev,
-      [personne]: { annee: new Date().getFullYear(), note: 0 }
-    }))
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8 flex justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Bouton retour */}
+    <div className="max-w-7xl mx-auto px-4 py-6">
       <Link
         to="/famille"
-        className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200"
+        className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
       >
         ← Retour à Famille
       </Link>
 
-      {/* En-tête */}
-      <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-emerald-500 border border-slate-200 p-6 mb-6">
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">👨‍👩‍👦 Mes Parents</h2>
-        <p className="text-slate-600">Informations sur vos parents</p>
-      </div>
-
-      {/* Informations des parents */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Carte Papa */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-3xl">
-              👨
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-slate-800">Papa</h3>
-              <p className="text-slate-500">Père</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-slate-700">
-              <span className="font-medium">Prénom:</span>{' '}
-              {effectiveUser.prenomPere || 'Non renseigné'}
-            </p>
-            <p className="text-slate-700">
-              <span className="font-medium">NuméroH:</span>{' '}
-              <span className="text-blue-600">{effectiveUser.numeroHPere || 'Non renseigné'}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Carte Maman */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center text-3xl">
-              👩
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-slate-800">Maman</h3>
-              <p className="text-slate-500">Mère</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-slate-700">
-              <span className="font-medium">Prénom:</span>{' '}
-              {effectiveUser.prenomMere || 'Non renseigné'}
-            </p>
-            <p className="text-slate-700">
-              <span className="font-medium">NuméroH:</span>{' '}
-              <span className="text-pink-600">{effectiveUser.numeroHMere || 'Non renseigné'}</span>
-            </p>
-          </div>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold text-slate-800">👨‍👩‍👦 Mes Parents</h2>
+          <Link to="/famille/inspir" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-sm font-medium rounded-lg transition-colors border border-yellow-300">
+            🤝 Inspir
+          </Link>
         </div>
       </div>
 
-      {/* LES 3 SECTIONS ORIGINALES */}
-      <div className="space-y-6">
-        {/* Titre principal */}
-        <h2 className="text-3xl font-bold text-slate-800">📸 Nos souvenirs ensemble</h2>
-
-        {/* Session 1 : Mon enfance dans vos mains */}
-        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl shadow-sm border-2 border-yellow-200 p-6">
-          <h3 className="text-2xl font-bold text-yellow-800 mb-4 flex items-center gap-2">
-            👶 Mon enfance dans vos mains
-          </h3>
-          <SessionSouvenirs
-            session="enfance"
-            souvenirs={souvenirs.enfance || []}
-            onAdd={(souvenir) => ajouterSouvenir("enfance", souvenir)}
-          />
-        </div>
-
-        {/* Session 2 : Mon avenir dans vos mains */}
-        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl shadow-sm border-2 border-blue-200 p-6">
-          <h3 className="text-2xl font-bold text-blue-800 mb-4 flex items-center gap-2">
-            🌟 Mon avenir dans vos mains
-          </h3>
-          <SessionSouvenirs
-            session="avenir"
-            souvenirs={souvenirs.avenir || []}
-            onAdd={(souvenir) => ajouterSouvenir("avenir", souvenir)}
-          />
-        </div>
-
-        {/* Session 3 : Mon paradis dans vos mains */}
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl shadow-sm border-2 border-purple-200 p-6">
-          <h3 className="text-2xl font-bold text-purple-800 mb-4 flex items-center gap-2">
-            🏝️ Mon paradis dans vos mains
-          </h3>
-          <SessionSouvenirs
-            session="paradis"
-            souvenirs={souvenirs.paradis || []}
-            onAdd={(souvenir) => ajouterSouvenir("paradis", souvenir)}
-          />
-        </div>
-
-        {/* Tableau de notes */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 className="text-2xl font-bold text-slate-800 mb-4">📝 Notes de mes parents</h3>
-          <p className="text-gray-600 mb-6">Notes que mes parents me donnent chaque année</p>
-          <TableauNotes
-            personnes={["papa", "maman"]}
-            notes={notes}
-            onAddNote={ajouterNote}
-            newNotes={newNotes}
-            onNoteChange={handleNoteChange}
-            onYearChange={handleYearChange}
-            onAddNoteClick={handleAddNote}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Composant Session Souvenirs
-function SessionSouvenirs({
-  session,
-  souvenirs,
-  onAdd,
-}: {
-  session: string;
-  souvenirs: Souvenir[];
-  onAdd: (souvenir: Souvenir) => void;
-}) {
-  return (
-    <div>
-      <div className="flex gap-3 mb-4 flex-wrap">
-        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-          📷 Photo
-        </button>
-        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-          🎥 Vidéo
-        </button>
-        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-          🎤 Audio
-        </button>
-      </div>
-
-      {souvenirs.length === 0 ? (
-        <div className="text-center text-gray-500 py-6">
-          Aucun souvenir pour le moment
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {souvenirs.map((souvenir, index) => (
-            <div key={index} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-              <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center text-3xl mb-2">
-                {souvenir.type === "photo" && "📷"}
-                {souvenir.type === "video" && "🎥"}
-                {souvenir.type === "audio" && "🎤"}
-              </div>
-              <p className="text-sm text-gray-600">
-                {new Date(souvenir.date).toLocaleDateString()}
-              </p>
-              {souvenir.description && (
-                <p className="text-xs text-gray-500 mt-1">{souvenir.description}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Tableau de notes avec étoiles
-function TableauNotes({
-  personnes,
-  notes,
-  onAddNote,
-  newNotes,
-  onNoteChange,
-  onYearChange,
-  onAddNoteClick,
-}: {
-  personnes: string[];
-  notes: { [key: string]: Note[] };
-  onAddNote: (personne: string, note: Note) => void;
-  newNotes: { [key: string]: { annee: number; note: number } };
-  onNoteChange: (personne: string, note: number) => void;
-  onYearChange: (personne: string, annee: number) => void;
-  onAddNoteClick: (personne: string) => void;
-}) {
-  return (
-    <div className="space-y-6">
-      {/* Section pour ajouter une nouvelle note */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border-2 border-purple-200">
-        <h4 className="text-lg font-semibold text-purple-800 mb-4">⭐ Ajouter une note</h4>
-        <div className="space-y-4">
-          {personnes.map((personne) => (
-            <div key={personne} className="bg-white rounded-lg p-4 border border-purple-200">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-2xl">{personne === 'papa' ? '👨' : '👩'}</span>
-                <span className="font-semibold text-slate-800">{getPersonneLabel(personne)}</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Année</label>
-                  <input
-                    type="number"
-                    value={newNotes[personne]?.annee || new Date().getFullYear()}
-                    onChange={(e) => onYearChange(personne, parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    min="2020"
-                    max="2030"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Note (cliquez sur les étoiles)</label>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <button
-                        key={star}
-                        type="button"
-                        className={`text-3xl transition-transform duration-150 hover:scale-125 ${
-                          (newNotes[personne]?.note || 0) >= star ? 'opacity-100' : 'opacity-30'
-                        }`}
-                        onClick={() => onNoteChange(personne, star)}
-                        title={`${star} étoile${star > 1 ? 's' : ''}`}
-                      >
-                        ⭐
-                      </button>
-                    ))}
+      {pendingInvitations.length > 0 && (
+        <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 mb-6">
+          <h3 className="text-lg font-bold text-amber-800 mb-4">📩 Invitations reçues (à confirmer)</h3>
+          <p className="text-slate-600 mb-4">Un parent souhaite vous lier. Confirmez pour accepter ou supprimez pour refuser.</p>
+          <div className="space-y-3">
+            {pendingInvitations.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between bg-white rounded-lg p-4 border border-amber-200">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{inv.parentType === 'mere' ? '👩' : '👨'}</span>
+                  <div>
+                    <p className="font-semibold text-slate-800">
+                      {inv.parent ? `${inv.parent.prenom} ${inv.parent.nomFamille}` : inv.parentNumeroH}
+                    </p>
+                    <p className="text-sm text-slate-500">{inv.parentNumeroH}</p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {newNotes[personne]?.note || 0} / 5 étoiles
-                  </p>
                 </div>
-                <div className="flex items-end">
+                <div className="flex gap-2">
                   <button
-                    onClick={() => onAddNoteClick(personne)}
-                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-200 shadow-sm"
+                    onClick={() => handleConfirmLink(inv.id)}
+                    disabled={submitting}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium rounded-lg"
                   >
-                    ➕ Ajouter
+                    ✓ Confirmer
+                  </button>
+                  <button
+                    onClick={() => handleLeaveLink(inv.id)}
+                    disabled={submitting}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded-lg"
+                  >
+                    Supprimer
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Section pour afficher les notes existantes */}
-      <div>
-        <h4 className="text-lg font-semibold text-slate-800 mb-4">📋 Notes précédentes</h4>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-3 border border-gray-300 text-left">Personne</th>
-                <th className="p-3 border border-gray-300 text-left">Année</th>
-                <th className="p-3 border border-gray-300 text-left">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {personnes.map((personne) => {
-                const personneNotes = notes[personne] || []
-                if (personneNotes.length === 0) {
-                  return (
-                    <tr key={personne}>
-                      <td className="p-3 border border-gray-300 font-bold">
-                        <span className="flex items-center gap-2">
-                          <span className="text-xl">{personne === 'papa' ? '👨' : '👩'}</span>
-                          {getPersonneLabel(personne)}
-                        </span>
-                      </td>
-                      <td className="p-3 border border-gray-300 text-slate-400" colSpan={2}>
-                        Aucune note enregistrée
-                      </td>
-                    </tr>
-                  )
-                }
-                return personneNotes.map((note, index) => (
-                  <tr key={`${personne}-${note.id || index}`} className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                    <td className="p-3 border border-gray-300">
-                      <span className="flex items-center gap-2 font-bold">
-                        <span className="text-xl">{personne === 'papa' ? '👨' : '👩'}</span>
-                        {getPersonneLabel(personne)}
-                      </span>
-                    </td>
-                    <td className="p-3 border border-gray-300">
-                      {note.annee}
-                    </td>
-                    <td className="p-3 border border-gray-300">
-                      <div className="flex gap-1 items-center">
-                        {[1, 2, 3, 4, 5].map(star => (
-                          <span
-                            key={star}
-                            className={`text-2xl ${
-                              note.note >= star ? 'opacity-100' : 'opacity-30'
-                            }`}
-                          >
-                            ⭐
-                          </span>
-                        ))}
-                        <span className="ml-2 text-slate-600 font-medium">
-                          ({note.note}/5)
-                        </span>
+      {parents.length === 0 && pendingInvitations.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+          <p className="text-slate-500 mb-4">
+            Aucun parent lié pour le moment. Vos parents doivent vous ajouter depuis leur page « Mes Enfants » avec leur code de liaison, votre NumeroH et votre numéro maternité.
+          </p>
+          <Link
+            to="/famille"
+            className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+          >
+            Retour à Famille
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-3">
+            {parents.map((link) => (
+              <div
+                key={link.id}
+                className={`rounded-xl border-2 p-4 transition-all ${
+                  selectedParent?.id === link.id
+                    ? 'border-blue-600 bg-blue-50'
+                    : 'border-slate-200 bg-white hover:border-blue-300'
+                }`}
+              >
+                <button
+                  onClick={() => setSelectedParent(link)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-2xl">
+                      {link.parentType === 'mere' ? '👩' : '👨'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-800">
+                        {link.parent ? `${link.parent.prenom} ${link.parent.nomFamille}` : link.parentNumeroH}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {link.parentType === 'mere' ? 'Maman' : 'Papa'}
+                      </p>
+                      <p className="text-xs text-slate-400">{link.parentNumeroH}</p>
+                    </div>
+                  </div>
+                </button>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    onClick={() => handleLeaveLink(link.id)}
+                    disabled={submitting}
+                    className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
+                  >
+                    Quitter la liaison
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="lg:col-span-2">
+            {selectedParent ? (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 className="text-xl font-bold text-slate-800 mb-4">
+                  Activités avec {selectedParent.parent ? `${selectedParent.parent.prenom} ${selectedParent.parent.nomFamille}` : selectedParent.parentNumeroH}
+                </h3>
+                <p className="text-slate-600 mb-4">
+                  Ce que vous faites pour votre parent et ce qu'il/elle fait pour vous.
+                </p>
+
+                <div className="mb-6 flex gap-2">
+                  <textarea
+                    value={newActivityContent}
+                    onChange={(e) => setNewActivityContent(e.target.value)}
+                    placeholder="Ajouter un message ou une activité pour votre parent..."
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    rows={2}
+                  />
+                  <button
+                    onClick={handleAddActivity}
+                    disabled={submitting || !newActivityContent.trim()}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg self-end"
+                  >
+                    Envoyer
+                  </button>
+                </div>
+
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {activities.length === 0 ? (
+                    <p className="text-slate-500 text-center py-8">Aucune activité pour le moment.</p>
+                  ) : (
+                    activities.map((act) => (
+                      <div
+                        key={act.id}
+                        className={`p-4 rounded-lg border ${
+                          act.fromNumeroH === user?.numeroH
+                            ? 'bg-blue-50 border-blue-200 ml-4'
+                            : 'bg-amber-50 border-amber-200 mr-4'
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-slate-700">
+                          {act.fromName || act.fromNumeroH}
+                          {act.fromNumeroH === user?.numeroH ? ' (vous)' : ''}
+                        </p>
+                        {act.content && <p className="text-slate-800 mt-1">{act.content}</p>}
+                        <p className="text-xs text-slate-500 mt-2">
+                          {new Date(act.created_at).toLocaleString('fr-FR')}
+                        </p>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              })}
-            </tbody>
-          </table>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-xl border border-slate-200 p-12 text-center">
+                <p className="text-slate-500">Sélectionnez un parent pour voir les activités partagées.</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
-  );
-}
-
-function getPersonneLabel(personne: string) {
-  if (personne === "papa") return "Papa";
-  if (personne === "maman") return "Maman";
-  return personne;
+  )
 }

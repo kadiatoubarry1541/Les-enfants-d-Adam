@@ -10,6 +10,8 @@ import ProfessorRequest from '../models/ProfessorRequest.js';
 import Course from '../models/Course.js';
 import CoursePermission from '../models/CoursePermission.js';
 import User from '../models/User.js';
+import ParentChildLink from '../models/ParentChildLink.js';
+import School from '../models/School.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -186,6 +188,172 @@ router.get('/my-formations', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de la récupération des formations'
+    });
+  }
+});
+
+// ========== INSCRIPTION PROF / APPRENANT / SUIVI PARENTS ==========
+
+// @route   POST /api/education/register-professor
+// @desc    S'inscrire comme professeur (lien avec le compte utilisateur)
+// @access  Authentifié
+router.post('/register-professor', async (req, res) => {
+  try {
+    const user = req.user;
+    const existing = await Professor.findOne({
+      where: { numeroH: user.numeroH }
+    });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous êtes déjà inscrit comme professeur'
+      });
+    }
+    const { specialty, bio } = req.body;
+    const name = `${(user.prenom || '').trim()} ${(user.nomFamille || '').trim()}`.trim() || 'Professeur';
+    const professor = await Professor.create({
+      name,
+      specialty: specialty || 'Général',
+      experience: 0,
+      bio: bio || '',
+      contactInfo: {},
+      numeroH: user.numeroH,
+      createdBy: user.numeroH,
+      isActive: false,
+      isAvailable: false
+    });
+    res.status(201).json({
+      success: true,
+      message: 'Demande enregistrée. Un administrateur confirmera votre statut de professeur ou guide.',
+      professor
+    });
+  } catch (error) {
+    console.error('Erreur inscription professeur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'inscription'
+    });
+  }
+});
+
+// @route   GET /api/education/my-professor-profile
+// @desc    Récupérer mon profil professeur (si inscrit)
+// @access  Authentifié
+router.get('/my-professor-profile', async (req, res) => {
+  try {
+    const professor = await Professor.findOne({
+      where: { numeroH: req.user.numeroH }
+    });
+    res.json({
+      success: true,
+      professor: professor || null
+    });
+  } catch (error) {
+    console.error('Erreur récupération profil professeur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// @route   POST /api/education/register-school
+// @desc    Inscription d'une école pour plus de visibilité (créateur = req.user.numeroH)
+// @access  Authentifié
+router.post('/register-school', async (req, res) => {
+  try {
+    const user = req.user;
+    const { name, address, contact, description } = req.body;
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nom de l\'établissement est obligatoire'
+      });
+    }
+    const school = await School.create({
+      name: String(name).trim(),
+      address: address ? String(address).trim() : null,
+      contact: contact ? String(contact).trim() : null,
+      description: description ? String(description).trim() : null,
+      createdByNumeroH: user.numeroH,
+      isActive: false
+    });
+    res.status(201).json({
+      success: true,
+      message: 'École enregistrée. Elle sera visible après validation par l\'administrateur.',
+      school
+    });
+  } catch (error) {
+    console.error('Erreur inscription école:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'inscription de l\'école'
+    });
+  }
+});
+
+// @route   GET /api/education/schools
+// @desc    Liste des écoles (visibles = isActive true)
+// @access  Public ou authentifié
+router.get('/schools', async (req, res) => {
+  try {
+    const schools = await School.getVisibleSchools();
+    res.json({
+      success: true,
+      schools
+    });
+  } catch (error) {
+    console.error('Erreur liste écoles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// @route   GET /api/education/my-children-progress
+// @desc    Pour les parents : suivi des enfants (formations, cours, progression)
+// @access  Authentifié
+router.get('/my-children-progress', async (req, res) => {
+  try {
+    const links = await ParentChildLink.getMyChildren(req.user.numeroH);
+    const children = [];
+    for (const link of links) {
+      const childUser = await User.findByNumeroH(link.childNumeroH);
+      const registrations = await FormationRegistration.findAll({
+        where: { numeroH: link.childNumeroH },
+        order: [['created_at', 'DESC']]
+      });
+      const formationIds = [...new Set(registrations.map(r => r.formationId).filter(Boolean))];
+      const formations = formationIds.length ? await Formation.findAll({ where: { id: formationIds } }) : [];
+      const formationMap = Object.fromEntries(formations.map(f => [f.id, f]));
+      children.push({
+        childNumeroH: link.childNumeroH,
+        childName: childUser ? `${(childUser.prenom || '').trim()} ${(childUser.nomFamille || '').trim()}`.trim() || link.childNumeroH : link.childNumeroH,
+        formations: registrations.map(r => {
+          const formation = formationMap[r.formationId];
+          return {
+            id: r.id,
+            formationId: r.formationId,
+            formationTitle: formation?.title,
+            category: formation?.category,
+            level: formation?.level,
+            status: r.status,
+            progress: r.progress ?? 0,
+            registeredAt: r.registeredAt
+          };
+        })
+      });
+    }
+    res.json({
+      success: true,
+      children
+    });
+  } catch (error) {
+    console.error('Erreur suivi enfants:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors du suivi des enfants'
     });
   }
 });
@@ -408,7 +576,7 @@ const canCreateCourse = async (req, res, next) => {
 };
 
 // @route   POST /api/education/courses
-// @desc    Créer un nouveau cours
+// @desc    Créer un nouveau cours (admin ou professeur autorisé)
 // @access  Admin ou Professeur autorisé
 router.post('/courses', canCreateCourse, upload.single('media'), async (req, res) => {
   try {
@@ -421,7 +589,7 @@ router.post('/courses', canCreateCourse, upload.single('media'), async (req, res
       duration: duration ? parseInt(duration) : null,
       level,
       category,
-      prerequisites: prerequisites ? JSON.parse(prerequisites) : [],
+      prerequisites: (prerequisites !== undefined && prerequisites !== '') ? (typeof prerequisites === 'string' ? JSON.parse(prerequisites) : prerequisites) : [],
       createdBy: req.user.numeroH
     };
     
@@ -444,6 +612,67 @@ router.post('/courses', canCreateCourse, upload.single('media'), async (req, res
     res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de la création du cours'
+    });
+  }
+});
+
+// @route   POST /api/education/courses/publish
+// @desc    Publier un cours (vidéo, audio, écrit ou test) — professeurs et admin uniquement
+// @access  Admin ou Professeur autorisé
+router.post('/courses/publish', upload.single('media'), canCreateCourse, async (req, res) => {
+  try {
+    const { title, description, type, duration, level, category } = req.body;
+    
+    if (!title || !type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Titre et type de contenu sont requis'
+      });
+    }
+    
+    const allowedTypes = ['audio', 'video', 'written', 'library', 'test'];
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Type invalide. Utilisez: audio, video, written, library ou test'
+      });
+    }
+    
+    const courseData = {
+      title,
+      description: description || '',
+      type,
+      duration: duration ? parseInt(duration) : null,
+      level: level || 'débutant',
+      category: category || 'Général',
+      prerequisites: [],
+      createdBy: req.user.numeroH
+    };
+    
+    if (req.file) {
+      courseData.content = {
+        mediaUrl: `/uploads/education/${req.file.filename}`,
+        mediaType: req.file.mimetype
+      };
+    } else if (type === 'written' || type === 'test') {
+      const textContent = req.body.content || req.body.text || '';
+      if (textContent) {
+        courseData.content = { text: textContent };
+      }
+    }
+    
+    const course = await Course.create(courseData);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Contenu publié avec succès',
+      course
+    });
+  } catch (error) {
+    console.error('Erreur lors de la publication du cours:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la publication'
     });
   }
 });

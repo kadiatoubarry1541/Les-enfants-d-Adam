@@ -19,7 +19,6 @@ const LoginMembre = lazy(() => import("./pages/LoginMembre").then(m => ({ defaul
 const Account = lazy(() => import("./pages/Account").then(m => ({ default: m.Account })));
 const Moi = lazy(() => import("./pages/Moi").then(m => ({ default: m.Moi })));
 const MonProfil = lazy(() => import("./pages/MonProfil"));
-const Donations = lazy(() => import("./pages/Donations").then(m => ({ default: m.Donations })));
 const Famille = lazy(() => import("./pages/famille/Famille"));
 const Parents = lazy(() => import("./pages/famille/Parents"));
 const Partenaire = lazy(() => import("./pages/famille/Partenaire"));
@@ -27,14 +26,14 @@ const Arbre = lazy(() => import("./pages/famille/Arbre"));
 const Membres = lazy(() => import("./pages/famille/Membres"));
 const Enfants = lazy(() => import("./pages/famille/Enfants"));
 const MesAmours = lazy(() => import("./pages/famille/MesAmours"));
+const FamilleAdmin = lazy(() => import("./pages/famille/FamilleAdmin"));
+const Inspir = lazy(() => import("./pages/famille/Inspir"));
 const Sante = lazy(() => import("./pages/Sante"));
 const Securite = lazy(() => import("./pages/Securite"));
+const Solidarite = lazy(() => import("./pages/Solidarite"));
 const Identite = lazy(() => import("./pages/Identite"));
 const Activite = lazy(() => import("./pages/Activite"));
 const Education = lazy(() => import("./pages/Education"));
-const Solidarite = lazy(() => import("./pages/Solidarite"));
-const Zaka = lazy(() => import("./pages/Zaka"));
-const ZakaEtDons = lazy(() => import("./pages/ZakaEtDons"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
 const AdminGovernments = lazy(() => import("./pages/AdminGovernments"));
@@ -138,12 +137,13 @@ function App() {
           <Route path="/identite" element={<Identite />} />
           <Route path="/activite" element={<Activite />} />
           <Route path="/education" element={<Education />} />
-          <Route path="/dokal" element={<Navigate to="/solidarite" replace />} />
-          <Route path="/foi" element={<Navigate to="/solidarite" replace />} />
+          <Route path="/dokal" element={<Navigate to="/" replace />} />
+          <Route path="/foi" element={<Navigate to="/" replace />} />
           <Route path="/solidarite" element={<Solidarite />} />
-          <Route path="/dons" element={<Navigate to="/solidarite" replace />} />
-          <Route path="/zaka" element={<Zaka />} />
-          <Route path="/zaka-et-dons" element={<Navigate to="/solidarite" replace />} />
+          <Route path="/dons" element={<Navigate to="/" replace />} />
+          <Route path="/donations" element={<Navigate to="/" replace />} />
+          <Route path="/zaka" element={<Navigate to="/" replace />} />
+          <Route path="/zaka-et-dons" element={<Navigate to="/" replace />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/badges" element={<AdminBadges />} />
           <Route path="/admin/logos" element={<Navigate to="/admin/badges?tab=logos" replace />} />
@@ -156,6 +156,8 @@ function App() {
           <Route path="/famille/arbre" element={<Arbre />} />
           <Route path="/famille/arbre/membres" element={<Membres />} />
           <Route path="/famille/mes-amours" element={<MesAmours />} />
+          <Route path="/famille/admin" element={<FamilleAdmin />} />
+          <Route path="/famille/inspir" element={<Inspir />} />
           <Route path="/lieux-residence" element={<Navigate to="/terre-adam" replace />} />
           <Route path="/pays" element={<Navigate to="/terre-adam" replace />} />
           <Route path="/terre-adam" element={<TerreAdam />} />

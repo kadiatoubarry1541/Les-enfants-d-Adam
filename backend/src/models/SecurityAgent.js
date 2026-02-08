@@ -10,6 +10,22 @@ class SecurityAgent extends Model {
     });
   }
 
+  static async getAgentsByCountry(country) {
+    return await this.findAll({
+      where: { country: country || 'Guinée', isActive: true },
+      order: [['name', 'ASC']]
+    });
+  }
+
+  static async getCountriesWithAgents() {
+    const rows = await this.findAll({
+      attributes: ['country'],
+      where: { isActive: true },
+      raw: true
+    });
+    return [...new Set(rows.map(r => r.country).filter(Boolean))].sort();
+  }
+
   static async searchAgents(query) {
     return await this.findAll({
       where: {
@@ -56,9 +72,14 @@ SecurityAgent.init({
     unique: true,
     comment: 'Numéro de badge'
   },
+  country: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Pays où l\'agent exerce (chaque pays a sa propre sécurité)'
+  },
   region: {
-    type: DataTypes.STRING // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière'),
-    allowNull: false
+    type: DataTypes.STRING,
+    allowNull: true
   },
   city: {
     type: DataTypes.STRING,
@@ -129,6 +150,9 @@ SecurityAgent.init({
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   indexes: [
+    {
+      fields: ['country']
+    },
     {
       fields: ['region']
     },

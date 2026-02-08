@@ -34,6 +34,10 @@ export { default as FriendRequest } from './FriendRequest.js';
 export { default as Friendship } from './Friendship.js';
 export { default as FamilyTreeMessage } from './FamilyTreeMessage.js';
 export { default as FamilyTreeConfirmation } from './FamilyTreeConfirmation.js';
+export { default as ParentChildLink } from './ParentChildLink.js';
+export { default as ParentChildActivity } from './ParentChildActivity.js';
+export { default as CoupleLink } from './CoupleLink.js';
+export { default as CoupleActivity } from './CoupleActivity.js';
 export { default as DeceasedMember } from './DeceasedMember.js';
 export { default as Document } from './Document.js';
 export { default as DocumentPermission } from './DocumentPermission.js';
@@ -54,6 +58,7 @@ export { default as StateMessage } from './StateMessage.js';
 export { default as Logo } from './Logo.js';
 export { default as UserLogo } from './UserLogo.js';
 export { default as PublishedStory } from './PublishedStory.js';
+export { default as School } from './School.js';
 
 // Export des modèles supplémentaires
 export * from './additional.js';

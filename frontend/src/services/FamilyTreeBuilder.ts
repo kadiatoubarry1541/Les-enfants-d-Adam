@@ -315,6 +315,60 @@ function calculateNextGeneration(currentGen: string): string {
 }
 
 /**
+ * Comptes pour "Le Cercle des Racines" (remplis à partir de l'arbre et du profil)
+ */
+export interface CercleDesRacinesCounts {
+  nbFreresMere: number
+  nbSoeursMere: number
+  nbFreresPere: number
+  nbSoeursPere: number
+  nbTantesMaternelles: number
+  nbTantesPaternelles: number
+  nbOnclesMaternels: number
+  nbOnclesPaternels: number
+  nbCousins: number
+  nbCousines: number
+  nbFilles: number
+  nbGarcons: number
+}
+
+/**
+ * Calcule les effectifs du Cercle des Racines à partir de l'arbre familial et du profil.
+ * - Filles / Garçons : déduits des enfants dans l'arbre (ou du profil si l'arbre n'a pas d'enfants).
+ * - Frères, sœurs, tantes, oncles, cousins : issus du profil (userData) ; l'arbre pourra les fournir plus tard via l'API.
+ */
+export function getCercleDesRacinesCounts(
+  userData: UserData,
+  familyMembers: FamilyMember[]
+): CercleDesRacinesCounts {
+  const userId = `user-${userData.numeroH}`
+
+  const children = familyMembers.filter(
+    (m) => m.parentId === userId && (m.relation === 'frere' || m.relation === 'soeur')
+  )
+  const nbFillesFromTree = children.filter((m) => m.genre === 'FEMME').length
+  const nbGarconsFromTree = children.filter((m) => m.genre === 'HOMME').length
+
+  const nbFilles = nbFillesFromTree > 0 ? nbFillesFromTree : (userData.nbFilles ?? 0)
+  const nbGarcons = nbGarconsFromTree > 0 ? nbGarconsFromTree : (userData.nbGarcons ?? 0)
+
+  return {
+    nbFreresMere: userData.nbFreresMere ?? 0,
+    nbSoeursMere: userData.nbSoeursMere ?? 0,
+    nbFreresPere: userData.nbFreresPere ?? 0,
+    nbSoeursPere: userData.nbSoeursPere ?? 0,
+    nbTantesMaternelles: userData.nbTantesMaternelles ?? 0,
+    nbTantesPaternelles: userData.nbTantesPaternelles ?? 0,
+    nbOnclesMaternels: userData.nbOnclesMaternels ?? 0,
+    nbOnclesPaternels: userData.nbOnclesPaternels ?? 0,
+    nbCousins: userData.nbCousins ?? 0,
+    nbCousines: userData.nbCousines ?? 0,
+    nbFilles,
+    nbGarcons
+  }
+}
+
+/**
  * Obtient les recommandations pour compléter l'arbre
  */
 export function getTreeCompletionRecommendations(userData: UserData): string[] {

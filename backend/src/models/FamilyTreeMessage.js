@@ -86,7 +86,7 @@ FamilyTreeMessage.init({
   },
   orangeMoneyAccount: {
     type: DataTypes.STRING,
-    comment: 'Compte Orange Money pour les transferts familiaux',
+    comment: 'Compte mobile pour les transferts familiaux',
     field: 'orange_money_account'
   }
 }, {

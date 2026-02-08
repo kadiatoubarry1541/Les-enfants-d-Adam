@@ -43,7 +43,7 @@ export function Donations() {
       <div className="card">
         <h1 className="text-2xl font-bold mb-2">{t('donations.title')}</h1>
         <p className="text-gray-600 mb-4">
-          {t('donations.number')}: <span className="font-bold text-emerald-700">653621</span>
+          {t('donations.number')}
         </p>
 
         <div className="row items-end">

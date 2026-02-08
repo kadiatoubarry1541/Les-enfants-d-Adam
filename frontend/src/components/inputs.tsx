@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import React, { type ReactNode } from 'react'
 
 export function Field({ label, help, error, children }: { label: string, help?: string, error?: string, children: ReactNode }) {
   return (
@@ -11,11 +11,13 @@ export function Field({ label, help, error, children }: { label: string, help?: 
   )
 }
 
-export function Select({ value, onChange, options, placeholder }: { value?: string, onChange: (v: string)=>void, options: string[], placeholder?: string }) {
+type SelectOption = string | { value: string; label: string }
+export function Select({ value, onChange, options, placeholder }: { value?: string, onChange: (v: string)=>void, options: SelectOption[], placeholder?: string }) {
+  const items = options.map(opt => typeof opt === 'string' ? { value: opt, label: opt } : opt)
   return (
     <select value={value || ''} onChange={(e)=>onChange(e.target.value)}>
-      <option value="">{placeholder || 'Sélectionner'}</option>
-      {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+      <option value="">{placeholder ?? ''}</option>
+      {items.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
     </select>
   )
 }
@@ -36,11 +38,11 @@ export function CheckboxGroup({ options, values, onChange }: { options: string[]
     onChange(next)
   }
   return (
-    <div className="stack">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
       {options.map(opt => (
-        <label key={opt} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input type="checkbox" checked={values.includes(opt)} onChange={()=>toggle(opt)} />
-          <span>{opt}</span>
+        <label key={opt} className="flex items-center gap-2 w-fit cursor-pointer">
+          <input type="checkbox" checked={values.includes(opt)} onChange={()=>toggle(opt)} className="shrink-0 w-4 h-4" />
+          <span className="text-sm">{opt}</span>
         </label>
       ))}
     </div>

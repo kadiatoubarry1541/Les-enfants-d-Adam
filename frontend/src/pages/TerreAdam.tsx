@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   findLocationByCode,
+  getLocationGroupTitle,
+  getAllLocationsForGroups,
   type GeographicLocation
 } from '../utils/worldGeography';
 import { getCountryFlag, getContinentIcon, getRegionIcon } from '../utils/countryFlags';
@@ -15,14 +17,16 @@ interface UserData {
 
 interface ResidenceGroup {
   id: string;
-  name: string;
-  description: string;
+  name?: string;
+  title?: string;
+  description?: string;
   location: string;
-  members: UserData[];
-  posts: any[];
-  isActive: boolean;
-  createdBy: string;
-  createdAt: string;
+  displayPath?: string;
+  members: UserData[] | string[];
+  posts?: any[];
+  isActive?: boolean;
+  createdBy?: string;
+  createdAt?: string;
 }
 
 interface ResidenceMessage {
@@ -30,8 +34,10 @@ interface ResidenceMessage {
   author: string;
   authorName: string;
   content: string;
-  type: 'text' | 'image' | 'video' | 'audio';
+  type?: 'text' | 'image' | 'video' | 'audio';
+  messageType?: 'text' | 'image' | 'video' | 'audio';
   mediaUrl?: string;
+  category?: string;
   likes: string[];
   comments: any[];
   createdAt: string;
@@ -52,16 +58,21 @@ export default function TerreAdam() {
   const [newMessage, setNewMessage] = useState({
     content: '',
     messageType: 'text' as 'text' | 'image' | 'video' | 'audio',
+    category: 'information' as string,
     mediaFile: null as File | null
   });
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [newGroup, setNewGroup] = useState({
-    name: '',
-    description: '',
-    neighborhood: '',
-    district: ''
-  });
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [filterScope, setFilterScope] = useState<'all' | 'quartier'>('quartier');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  // Filtre du fil quartier : tout ou par besoin (décès, mariage, baptême, etc.)
+  const [feedFilter, setFeedFilter] = useState<string>('all');
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [newGroupForm, setNewGroupForm] = useState({ locationCode: '', description: '' });
+  const locationOptionsForCreate = getAllLocationsForGroups();
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   // Récupérer les informations géographiques de l'utilisateur depuis la session
   const userContinent = userData?.continentCode ? findLocationByCode(userData.continentCode) : null;
@@ -94,7 +105,9 @@ export default function TerreAdam() {
       }
       
       setUserData(user);
-      setIsAdmin(user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0');
+      const admin = user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0';
+      setIsAdmin(admin);
+      if (admin) setFilterScope('all');
       if (activeTab === 'lieux' && activeLieuTab === 'quartier') {
         loadGroups();
       } else {
@@ -109,7 +122,7 @@ export default function TerreAdam() {
     if (activeTab === 'lieux' && activeLieuTab === 'quartier' && userData) {
       loadGroups();
     }
-  }, [activeTab, activeLieuTab, userData]);
+  }, [activeTab, activeLieuTab, userData, filterScope]);
 
   useEffect(() => {
     if (selectedGroup) {
@@ -123,7 +136,9 @@ export default function TerreAdam() {
     try {
       const quartier = userData.quartier || userData.lieu1 || userData.lieuResidence1;
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5002/api/residences/lieu1/groups?location=${encodeURIComponent(quartier || '')}`, {
+      // Admin avec filtre "Tout voir" : demander tous les groupes (location vide)
+      const locationParam = (isAdmin && filterScope === 'all') ? '' : (quartier || '');
+      const response = await fetch(`http://localhost:5002/api/residences/groups?location=${encodeURIComponent(locationParam)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -131,7 +146,10 @@ export default function TerreAdam() {
       });
       const data = await response.json();
       
-      let filteredGroups = data.groups || [];
+      let filteredGroups = (data.groups || []).map((g: any) => {
+        const displayName = findLocationByCode(g.location) ? getLocationGroupTitle(g.location) : (g.title || g.name);
+        return { ...g, name: displayName, title: displayName, members: g.members || [] };
+      });
       
       // Si l'utilisateur n'est pas admin, filtrer par quartier
       if (!isAdmin && quartier) {
@@ -149,6 +167,47 @@ export default function TerreAdam() {
     }
   };
 
+  const createGroup = async () => {
+    if (!isAdmin || !newGroupForm.locationCode.trim()) {
+      alert('Veuillez choisir un lieu (quartier, sous-préfecture, préfecture…).');
+      return;
+    }
+    const title = getLocationGroupTitle(newGroupForm.locationCode.trim());
+    setCreatingGroup(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('http://localhost:5002/api/residences/groups', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          location: newGroupForm.locationCode.trim(),
+          title,
+          description: newGroupForm.description.trim() || undefined
+        })
+      });
+      const data = await response.json();
+      if (data.success && data.group) {
+        const g = data.group;
+        const displayName = getLocationGroupTitle(g.location);
+        const newG = { ...g, name: displayName, title: displayName, members: g.members || [] };
+        setGroups((prev) => [newG, ...prev]);
+        setSelectedGroup(newG);
+        setNewGroupForm({ locationCode: '', description: '' });
+        setCreateGroupOpen(false);
+      } else {
+        alert(data.message || 'Erreur lors de la création du groupe.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || 'Erreur lors de la création du groupe.');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
   const loadMessages = async () => {
     if (!selectedGroup) return;
     
@@ -162,8 +221,69 @@ export default function TerreAdam() {
       });
       const data = await response.json();
       setMessages((data.messages || []).reverse());
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     } catch (error) {
       console.error('Erreur lors du chargement des messages:', error);
+    }
+  };
+
+  // Catégories quartier : besoins du quartier (décès, mariage, baptême, etc.)
+  const QUARTIER_CATEGORIES = [
+    { id: 'information', label: 'Information', icon: 'ℹ️' },
+    { id: 'rencontre', label: 'Rencontre', icon: '🤝' },
+    { id: 'deces', label: 'Décès', icon: '🕯️' },
+    { id: 'mariage', label: 'Mariage', icon: '💒' },
+    { id: 'bapteme', label: 'Baptême', icon: '⛪' },
+    { id: 'naissance', label: 'Naissance', icon: '👶' },
+    { id: 'solidarite', label: 'Solidarité / Entraide', icon: '🤲' },
+    { id: 'fete', label: 'Fête / Événement', icon: '🎉' },
+    { id: 'annonce', label: 'Annonce', icon: '📢' },
+    { id: 'securite', label: 'Sécurité / Urgence', icon: '🚨' },
+    { id: 'reunion', label: 'Réunion', icon: '👥' }
+  ] as const;
+
+  const getCategoryLogo = (category: string) => {
+    const c = QUARTIER_CATEGORIES.find((x) => x.id === category);
+    return c ? c.icon : 'ℹ️';
+  };
+
+  const getCategoryName = (category: string) => {
+    const c = QUARTIER_CATEGORIES.find((x) => x.id === category);
+    return c ? c.label : 'Information';
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], 'audio-recording.webm', { type: 'audio/webm' });
+        setNewMessage({ ...newMessage, messageType: 'audio', mediaFile: audioFile });
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Erreur accès micro:', error);
+      alert('Impossible d\'accéder au micro. Vérifiez les permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
     }
   };
 
@@ -192,6 +312,7 @@ export default function TerreAdam() {
       const formData = new FormData();
       formData.append('content', newMessage.content);
       formData.append('messageType', newMessage.messageType);
+      formData.append('category', newMessage.category);
       
       if (newMessage.mediaFile) {
         formData.append('media', newMessage.mediaFile);
@@ -209,8 +330,11 @@ export default function TerreAdam() {
       if (response.ok) {
         const data = await response.json();
         setMessages([...messages, data.message]);
-        setNewMessage({ content: '', messageType: 'text', mediaFile: null });
-        loadMessages();
+        setNewMessage({ content: '', messageType: 'text', category: 'information', mediaFile: null });
+        await loadMessages();
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       } else {
         const error = await response.json().catch(() => ({ message: 'Erreur lors de l\'envoi du message' }));
         alert(error.message || 'Erreur lors de l\'envoi du message');
@@ -218,36 +342,6 @@ export default function TerreAdam() {
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi du message:', error);
       alert(error.message || 'Erreur lors de l\'envoi du message');
-    }
-  };
-
-  const createGroup = async () => {
-    if (!userData) return;
-    
-    const quartier = userData.quartier || userData.lieu1 || userData.lieuResidence1;
-    
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('http://localhost:5002/api/residences/lieu1/groups', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...newGroup,
-          location: quartier,
-          createdBy: userData.numeroH
-        })
-      });
-      
-      alert('Organisation créé avec succès !');
-      setShowCreateGroup(false);
-      setNewGroup({ name: '', description: '', neighborhood: '', district: '' });
-      loadGroups();
-    } catch (error: any) {
-      console.error('Erreur:', error);
-      alert(error.message || 'Erreur lors de la création du Organisation');
     }
   };
 
@@ -276,7 +370,7 @@ export default function TerreAdam() {
                 <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 break-words">
                   Terre ADAM {userContinent?.name ? `- ${userContinent.name}` : ''}
                 </h1>
-                <p className="mt-0.5 sm:mt-1 md:mt-2 text-[10px] sm:text-xs md:text-sm text-gray-600 break-words">Organisation géographique mondiale - Votre localisation</p>
+                <p className="mt-0.5 sm:mt-1 md:mt-2 text-[10px] sm:text-xs md:text-sm text-gray-600 break-words"></p>
               </div>
             </div>
             <div className="flex space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
@@ -340,7 +434,7 @@ export default function TerreAdam() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4 md:py-6 overflow-hidden">
         {/* 1. Résidence */}
         {activeTab === 'lieux' && (
           <div className="space-y-3 sm:space-y-4 md:space-y-6 overflow-hidden">
@@ -349,10 +443,6 @@ export default function TerreAdam() {
                 <span className="text-base sm:text-lg md:text-xl lg:text-2xl">🏠</span>
                 <span className="text-[11px] sm:text-xs md:text-sm lg:text-base">Résidence</span>
               </h2>
-              <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-4 sm:mb-6">
-                Votre localisation précise enregistrée lors de l'inscription
-              </p>
-
               {/* Sous-onglets pour Résidence */}
               <div className="border-b border-gray-200 mb-3 sm:mb-4 md:mb-6 overflow-hidden">
                 <nav className="flex space-x-1 sm:space-x-2 md:space-x-4 overflow-x-auto">
@@ -377,112 +467,132 @@ export default function TerreAdam() {
                 </nav>
               </div>
 
-              {userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode && userData?.quartierCode ? (
+              {(userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode && userData?.quartierCode) || isAdmin ? (
                 <div className="space-y-4">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                    <p className="text-sm text-blue-800 mb-4">
-                      <strong>ℹ️ Information :</strong> Ces informations ont été enregistrées lors de votre inscription et ne peuvent pas être modifiées ici.
-                    </p>
-                  </div>
-
                   {/* Page Quartier */}
                   {activeLieuTab === 'quartier' && (
                     <div className="space-y-3 sm:space-y-4">
-                      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-lg p-3 sm:p-4 md:p-6 overflow-hidden">
-                        <div className="text-center overflow-hidden">
-                          <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">🏘️</div>
-                          <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 mb-1.5 sm:mb-2 break-words">
-                            Mon Quartier : {userQuartier?.name || userData.quartier || userData.lieu1 || 'Non défini'}
-                          </h3>
-                          {userData.quartierCode && (
-                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-2 sm:mb-3">
-                              Code : <span className="font-mono font-semibold">{userData.quartierCode}</span>
-                            </p>
-                          )}
-                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-blue-300 space-y-1 sm:space-y-1.5">
-                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                              <strong>Sous-préfecture :</strong> {userSousPrefecture?.name || userData.sousPrefecture || 'Non défini'}
-                            </p>
-                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                              <strong>Préfecture :</strong> {userPrefecture?.name || userData.prefecture || 'Non défini'}
-                            </p>
-                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                              <strong>Région :</strong> {userRegion?.name || userData.region || userData.regionOrigine || 'Non défini'}
-                            </p>
-                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                              <strong>Pays :</strong> {userCountry?.name || userData.pays || 'Non défini'} {getCountryFlag(userData.paysCode, userCountry?.name)}
-                            </p>
-                            <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                              <strong>Continent :</strong> {userContinent?.name || userData.continent || 'Non défini'} {getContinentIcon(userData.continentCode, userContinent?.name)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
                       {/* Système de messagerie */}
                       {!selectedGroup ? (
                         <div className="mt-4 space-y-4">
-                          <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-gray-900">💬 Système de Messagerie - Groupes disponibles</h3>
-                            <button
-                              onClick={() => setShowCreateGroup(true)}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                            >
-                              ➕ Créer un groupe
-                            </button>
-                          </div>
-                          
-                          {!isAdmin && (
-                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
-                              <p className="text-sm text-yellow-800">
-                                • Vous ne pouvez publier que dans votre quartier
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Formulaire de création de groupe */}
-                          {showCreateGroup && (
-                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                              <h4 className="text-lg font-semibold mb-3">Créer un nouveau groupe</h4>
-                              <div className="space-y-3">
-                                <input
-                                  type="text"
-                                  value={newGroup.name}
-                                  onChange={(e) => setNewGroup({...newGroup, name: e.target.value})}
-                                  placeholder="Nom du groupe"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                />
-                                <textarea
-                                  value={newGroup.description}
-                                  onChange={(e) => setNewGroup({...newGroup, description: e.target.value})}
-                                  placeholder="Description"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                  rows={3}
-                                />
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={createGroup}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                  >
-                                    Créer
-                                  </button>
-                                  <button
-                                    onClick={() => setShowCreateGroup(false)}
-                                    className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                                  >
-                                    Annuler
-                                  </button>
-                                </div>
+                          <div className="flex flex-wrap justify-between items-center gap-2">
+                            <h3 className="text-lg font-bold text-gray-900">
+                              💬 Système de Messagerie – Groupes disponibles
+                              {!isAdmin && (
+                                <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-amber-700">
+                                  (Votre quartier uniquement)
+                                </span>
+                              )}
+                              {isAdmin && (
+                                <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-emerald-700">
+                                  ({filterScope === 'all' ? 'Tous les quartiers' : 'Mon quartier'})
+                                </span>
+                              )}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-200 rounded-lg hover:border-blue-400 text-gray-700 text-sm font-medium transition-colors"
+                                >
+                                  <span>🔽</span>
+                                  Filtres
+                                </button>
+                                {showFilterDropdown && (
+                                  <div className="absolute left-0 top-full mt-1 py-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                    {isAdmin ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => { setFilterScope('all'); setShowFilterDropdown(false); loadGroups(); }}
+                                          className={`w-full text-left px-4 py-2 text-sm ${filterScope === 'all' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                                        >
+                                          🌍 Tout voir
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => { setFilterScope('quartier'); setShowFilterDropdown(false); loadGroups(); }}
+                                          className={`w-full text-left px-4 py-2 text-sm ${filterScope === 'quartier' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                                        >
+                                          🏘️ Mon quartier
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowFilterDropdown(false)}
+                                        className="w-full text-left px-4 py-2 text-sm text-gray-600"
+                                      >
+                                        🏘️ Mon quartier (seul filtre disponible)
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          )}
+                          </div>
                           
                           {/* Liste des groupes */}
                           <div className="space-y-2">
                             {groups.length === 0 ? (
-                              <div className="bg-gray-50 rounded-lg p-8 text-center">
-                                <p className="text-gray-600 mb-4">Aucun groupe disponible pour le moment.</p>
-                                <p className="text-sm text-gray-500">Créez un nouveau groupe pour commencer à échanger !</p>
+                              <div className="space-y-4">
+                                <div className="bg-gray-50 rounded-lg p-6 text-center">
+                                  <p className="text-gray-600 mb-4">Aucun groupe pour le moment.</p>
+                                  {isAdmin && (
+                                    <>
+                                      {!createGroupOpen ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setCreateGroupOpen(true)}
+                                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                                        >
+                                          Créer un groupe
+                                        </button>
+                                      ) : (
+                                        <div className="max-w-md mx-auto text-left bg-white rounded-lg p-4 border border-gray-200 space-y-3">
+                                          <label className="block text-sm font-medium text-gray-700">Lieu du groupe (quartier, sous-préfecture, préfecture…)</label>
+                                          <select
+                                            value={newGroupForm.locationCode}
+                                            onChange={(e) => setNewGroupForm((f) => ({ ...f, locationCode: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                          >
+                                            <option value="">Choisir un lieu</option>
+                                            {locationOptionsForCreate.map((loc) => (
+                                              <option key={loc.code} value={loc.code}>
+                                                {loc.title}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <input
+                                            type="text"
+                                            value={newGroupForm.description}
+                                            onChange={(e) => setNewGroupForm((f) => ({ ...f, description: e.target.value }))}
+                                            placeholder="Description (optionnel)"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                          />
+                                          <div className="flex gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={createGroup}
+                                              disabled={creatingGroup || !newGroupForm.locationCode.trim()}
+                                              className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-sm"
+                                            >
+                                              {creatingGroup ? 'Création…' : 'Créer'}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => { setCreateGroupOpen(false); setNewGroupForm({ locationCode: '', description: '' }); }}
+                                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            >
+                                              Annuler
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             ) : (
                               groups.map((group) => (
@@ -495,12 +605,12 @@ export default function TerreAdam() {
                                     👥
                                   </div>
                                   <div className="flex-1">
-                                    <h4 className="font-semibold text-gray-900">{group.name}</h4>
+                                    <h4 className="font-semibold text-gray-900">{group.title || group.name}</h4>
                                     {group.description && (
                                       <p className="text-sm text-gray-500 truncate">{group.description}</p>
                                     )}
                                     <p className="text-xs text-gray-400 mt-1">
-                                      {group.members.length} membre{group.members.length > 1 ? 's' : ''}
+                                      {group.members?.length ?? 0} membre{(group.members?.length ?? 0) > 1 ? 's' : ''}
                                     </p>
                                   </div>
                                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -512,8 +622,54 @@ export default function TerreAdam() {
                           </div>
                         </div>
                       ) : (
-                        /* Interface WhatsApp style */
-                        <div className="mt-4 bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+                        /* Interface même système que page Activité : blocs besoins + filtre + messages */
+                        <div className="mt-4 space-y-4">
+                          {/* Blocs besoins du quartier (Décès, Mariage, Baptême, etc.) */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                            {QUARTIER_CATEGORIES.filter((c) => ['deces', 'mariage', 'bapteme', 'naissance', 'solidarite', 'fete', 'securite', 'annonce'].includes(c.id)).map((cat) => {
+                              const count = messages.filter((m: ResidenceMessage) => (m.category || 'information') === cat.id).length;
+                              return (
+                                <div
+                                  key={cat.id}
+                                  onClick={() => setFeedFilter(feedFilter === cat.id ? 'all' : cat.id)}
+                                  className={`bg-white rounded-xl shadow-sm border-2 p-3 cursor-pointer transition-all ${
+                                    feedFilter === cat.id ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-300'
+                                  }`}
+                                >
+                                  <span className="text-xl sm:text-2xl">{cat.icon}</span>
+                                  <p className="text-xs sm:text-sm font-semibold text-gray-900 mt-1 truncate">{cat.label}</p>
+                                  <p className="text-[10px] text-gray-500">{count} partage(s)</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Filtre du fil */}
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setFeedFilter('all')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                feedFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              Tout le fil
+                            </button>
+                            {QUARTIER_CATEGORIES.map((cat) => (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setFeedFilter(feedFilter === cat.id ? 'all' : cat.id)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                  feedFilter === cat.id ? 'bg-green-600 text-white' : 'bg-green-50 text-green-800 hover:bg-green-100'
+                                }`}
+                              >
+                                {cat.icon} {cat.label}
+                              </button>
+                            ))}
+                          </div>
+
+                        <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ minHeight: '400px', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
                           {/* Header */}
                           <div className="bg-green-600 text-white px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-3">
@@ -524,20 +680,24 @@ export default function TerreAdam() {
                                 ←
                               </button>
                               <div>
-                                <h3 className="font-semibold">{selectedGroup.name}</h3>
+                                <h3 className="font-semibold">{selectedGroup.title || selectedGroup.name}</h3>
+                                <p className="text-xs text-green-100 opacity-90">{selectedGroup.members?.length ?? 0} membre(s)</p>
                               </div>
                             </div>
                           </div>
                           
                           {/* Zone de messages */}
-                          <div className="flex-1 overflow-y-auto bg-gray-100 p-4" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
-                            {messages.length === 0 ? (
+                          <div className="flex-1 overflow-y-auto bg-gray-100 p-4" style={{ minHeight: '250px', maxHeight: 'calc(70vh - 140px)', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
+                            {(() => {
+                              const filtered = feedFilter === 'all' ? messages : messages.filter((m: ResidenceMessage) => (m.category || 'information') === feedFilter);
+                              const emptyMsg = feedFilter === 'all' ? 'Aucun message pour le moment.' : `Aucun message « ${getCategoryName(feedFilter)} ». Soyez le premier !`;
+                              return filtered.length === 0 ? (
                               <div className="text-center text-gray-500 py-8">
-                                <p>Aucun message pour le moment.</p>
-                                <p className="text-sm">Soyez le premier à envoyer un message !</p>
+                                <p>{emptyMsg}</p>
+                                <p className="text-sm mt-1">Soyez le premier à envoyer un message !</p>
                               </div>
                             ) : (
-                              messages.map((msg) => {
+                              filtered.map((msg: ResidenceMessage) => {
                                 const isMyMessage = msg.numeroH === userData?.numeroH;
                                 return (
                                   <div
@@ -554,24 +714,30 @@ export default function TerreAdam() {
                                       {!isMyMessage && (
                                         <p className="text-xs font-semibold mb-1 opacity-75">{msg.authorName}</p>
                                       )}
-                                      {msg.type === 'text' && msg.content && (
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-sm">{getCategoryLogo(msg.category || 'information')}</span>
+                                        <span className={`text-xs font-medium ${isMyMessage ? 'text-green-100' : 'text-gray-600'}`}>
+                                          {getCategoryName(msg.category || 'information')}
+                                        </span>
+                                      </div>
+                                      {(msg.type === 'text' || msg.messageType === 'text') && msg.content && (
                                         <p className="text-sm">{msg.content}</p>
                                       )}
-                                      {msg.type === 'image' && msg.mediaUrl && (
+                                      {(msg.type === 'image' || msg.messageType === 'image') && msg.mediaUrl && (
                                         <img
                                           src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
                                           alt="Image"
                                           className="max-w-full h-auto rounded-lg mb-1"
                                         />
                                       )}
-                                      {msg.type === 'video' && msg.mediaUrl && (
+                                      {(msg.type === 'video' || msg.messageType === 'video') && msg.mediaUrl && (
                                         <video
                                           src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
                                           controls
                                           className="max-w-full h-auto rounded-lg mb-1"
                                         />
                                       )}
-                                      {msg.type === 'audio' && msg.mediaUrl && (
+                                      {(msg.type === 'audio' || msg.messageType === 'audio') && msg.mediaUrl && (
                                         <audio
                                           src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `http://localhost:5002${msg.mediaUrl.startsWith('/') ? msg.mediaUrl : '/' + msg.mediaUrl}`}
                                           controls
@@ -585,55 +751,132 @@ export default function TerreAdam() {
                                   </div>
                                 );
                               })
-                            )}
+                            );
+                            })()}
+                            <div ref={messagesEndRef} />
                           </div>
                           
-                          {/* Zone de saisie */}
-                          <div className="bg-gray-200 px-4 py-3 border-t">
-                            <div className="flex gap-2">
-                              <div className="flex gap-2 flex-1">
+                          {/* Zone de saisie (même système que page Activité) – catégories besoins du quartier */}
+                          <div className="bg-gray-200 px-4 py-2 border-t">
+                            <div className="space-y-2">
+                              <div className="flex gap-2 flex-wrap">
                                 <select
-                                  value={newMessage.messageType}
-                                  onChange={(e) => setNewMessage({...newMessage, messageType: e.target.value as any, mediaFile: null})}
-                                  className="px-2 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                                  value={newMessage.category}
+                                  onChange={(e) => setNewMessage({...newMessage, category: e.target.value})}
+                                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
                                 >
-                                  <option value="text">📝</option>
-                                  <option value="image">🖼️</option>
-                                  <option value="video">🎥</option>
-                                  <option value="audio">🎵</option>
+                                  {QUARTIER_CATEGORIES.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>
+                                  ))}
                                 </select>
-                                {newMessage.messageType === 'text' ? (
-                                  <input
-                                    type="text"
-                                    value={newMessage.content}
-                                    onChange={(e) => setNewMessage({...newMessage, content: e.target.value})}
-                                    onKeyPress={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        sendMessage();
-                                      }
-                                    }}
-                                    placeholder="Tapez un message..."
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
-                                  />
-                                ) : (
-                                  <input
-                                    type="file"
-                                    accept={newMessage.messageType === 'image' ? 'image/*' : newMessage.messageType === 'video' ? 'video/*' : 'audio/*'}
-                                    onChange={(e) => setNewMessage({...newMessage, mediaFile: e.target.files?.[0] || null})}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                                  />
-                                )}
                               </div>
-                              <button
-                                onClick={sendMessage}
-                                disabled={newMessage.messageType === 'text' ? !newMessage.content.trim() : !newMessage.mediaFile}
-                                className="bg-green-600 text-white px-6 py-2 rounded-full hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                              >
-                                ➤
-                              </button>
+                              <div className="flex gap-2">
+                                <div className="flex gap-2 flex-1">
+                                  <select
+                                    value={newMessage.messageType}
+                                    onChange={(e) => {
+                                      setNewMessage({...newMessage, messageType: e.target.value as any, mediaFile: null});
+                                      if (e.target.value !== 'audio' && isRecording) stopRecording();
+                                    }}
+                                    className="px-2 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                                  >
+                                    <option value="text">📝</option>
+                                    <option value="image">🖼️</option>
+                                    <option value="video">🎥</option>
+                                    <option value="audio">🎵</option>
+                                  </select>
+                                  {newMessage.messageType === 'text' ? (
+                                    <input
+                                      type="text"
+                                      value={newMessage.content}
+                                      onChange={(e) => setNewMessage({...newMessage, content: e.target.value})}
+                                      onKeyPress={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                          e.preventDefault();
+                                          sendMessage();
+                                        }
+                                      }}
+                                      placeholder="Tapez un message..."
+                                      className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    />
+                                  ) : newMessage.messageType === 'audio' ? (
+                                    <div className="flex gap-2 flex-1 items-center">
+                                      {!isRecording && !newMessage.mediaFile ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={startRecording}
+                                            className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center gap-2"
+                                          >
+                                            🎤 Enregistrer
+                                          </button>
+                                          <input
+                                            type="file"
+                                            accept="audio/*"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0] || null;
+                                              if (file) setNewMessage({...newMessage, messageType: 'audio', mediaFile: file});
+                                              else setNewMessage({...newMessage, mediaFile: null});
+                                            }}
+                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                                          />
+                                        </>
+                                      ) : isRecording ? (
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <div className="flex items-center gap-2 px-4 py-2 bg-red-100 rounded-lg">
+                                            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                                            <span className="text-sm text-red-700">Enregistrement...</span>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={stopRecording}
+                                            className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                                          >
+                                            ⏹️ Arrêter
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <span className="text-sm text-gray-600">Audio prêt</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setNewMessage({...newMessage, mediaFile: null})}
+                                            className="text-red-500 hover:text-red-700 text-sm"
+                                          >
+                                            ✕
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="file"
+                                      accept={newMessage.messageType === 'image' ? 'image/*' : 'video/*'}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        if (file) {
+                                          let detectedType = newMessage.messageType;
+                                          if (file.type.startsWith('image/')) detectedType = 'image';
+                                          else if (file.type.startsWith('video/')) detectedType = 'video';
+                                          else if (file.type.startsWith('audio/')) detectedType = 'audio';
+                                          setNewMessage({...newMessage, messageType: detectedType, mediaFile: file});
+                                        } else setNewMessage({...newMessage, mediaFile: null});
+                                      }}
+                                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                                    />
+                                  )}
+                                </div>
+                                <button
+                                  onClick={sendMessage}
+                                  disabled={newMessage.messageType === 'text' ? !newMessage.content.trim() : !newMessage.mediaFile}
+                                  className="bg-green-600 text-white px-6 py-2 rounded-full hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  ▶
+                                </button>
+                              </div>
                             </div>
                           </div>
+                        </div>
                         </div>
                       )}
                     </div>
@@ -646,7 +889,7 @@ export default function TerreAdam() {
                         <div className="text-center overflow-hidden">
                           <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">🏛️</div>
                           <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 mb-1.5 sm:mb-2 break-words">
-                            Ma Sous-préfecture : {userSousPrefecture?.name || userData.sousPrefecture || 'Non défini'}
+                            {userSousPrefecture?.name || userData.sousPrefecture || 'Non défini'}
                           </h3>
                           {userData.sousPrefectureCode && (
                             <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-2 sm:mb-3">
@@ -689,7 +932,7 @@ export default function TerreAdam() {
                         <div className="text-center overflow-hidden">
                           <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">🏢</div>
                           <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 mb-1.5 sm:mb-2 break-words">
-                            Ma Préfecture : {userPrefecture?.name || userData.prefecture || 'Non défini'}
+                            {userPrefecture?.name || userData.prefecture || 'Non défini'}
                           </h3>
                           {userData.prefectureCode && (
                             <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-2 sm:mb-3">
@@ -722,26 +965,10 @@ export default function TerreAdam() {
                     </div>
                   )}
 
-                  {/* Code complet - affiché sur toutes les sous-pages */}
-                  <div className="mt-3 sm:mt-4 md:mt-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-200 rounded-lg p-3 sm:p-4 md:p-6 overflow-hidden">
-                    <label className="block text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                      📍 Code géographique complet
-                    </label>
-                    <div className="text-xs sm:text-sm md:text-base lg:text-lg font-mono font-bold text-blue-600 break-all overflow-wrap-anywhere">
-                      {userData.continentCode || ''}{userData.paysCode || ''}{userData.regionCode || ''}{userData.prefectureCode || ''}{userData.sousPrefectureCode || ''}{userData.quartierCode || ''}
-                    </div>
-                    <p className="text-[10px] sm:text-xs text-gray-600 mt-1.5 sm:mt-2 break-words">
-                      Ce code fait partie de votre NumeroH : <strong className="break-all">{userData.numeroH}</strong>
-                    </p>
-                  </div>
                 </div>
-              ) : (
+              ) : isAdmin ? null : (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-                  <p className="text-yellow-800">
-                    <strong>⚠️ Aucune localisation enregistrée</strong>
-                    <br />
-                    Vous n'avez pas encore enregistré vos informations géographiques lors de l'inscription.
-                  </p>
+                  <p className="text-yellow-800">Aucune localisation enregistrée.</p>
                 </div>
               )}
             </div>
@@ -754,20 +981,11 @@ export default function TerreAdam() {
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 overflow-hidden">
               <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
                 <span className="text-base sm:text-lg md:text-xl">{getRegionIcon(userData?.regionCode, userRegion?.name || userData?.region || userData?.regionOrigine)}</span>
-                <span className="text-[11px] sm:text-xs md:text-sm break-words">Ma Région : {userRegion?.name || userData?.region || userData?.regionOrigine || 'Région'}</span>
+                <span className="text-[11px] sm:text-xs md:text-sm break-words">{userRegion?.name || userData?.region || userData?.regionOrigine || 'Région'}</span>
               </h2>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-6">
-                Votre région enregistrée lors de l'inscription
-              </p>
-              
+
               {userData?.regionCode ? (
                 <div className="space-y-2 sm:space-y-3 md:space-y-4 overflow-hidden">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-2 sm:p-3 md:p-4 rounded overflow-hidden">
-                    <p className="text-[10px] sm:text-xs md:text-sm text-blue-800 mb-1.5 sm:mb-2 md:mb-4 break-words">
-                      <strong>ℹ️ Information :</strong> Ces informations ont été enregistrées lors de votre inscription.
-                    </p>
-                  </div>
-
                   <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-3 sm:p-4 md:p-6 overflow-hidden">
                     <div className="text-center overflow-hidden">
                       <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">{getRegionIcon(userData.regionCode, userRegion?.name || userData.region || userData.regionOrigine)}</div>
@@ -819,47 +1037,21 @@ export default function TerreAdam() {
         {activeTab === 'pays' && (
           <div className="space-y-3 sm:space-y-4 md:space-y-6 overflow-hidden">
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 overflow-hidden">
-              {/* Afficher le titre avec le drapeau et le nom SEULEMENT si un pays est enregistré */}
-              {userData?.paysCode && userCountry ? (
-                <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
-                  <span className="text-base sm:text-lg md:text-xl lg:text-2xl">{getCountryFlag(userData.paysCode, userCountry.name)}</span>
-                  <span className="text-[11px] sm:text-xs md:text-sm break-words">Mon Pays : {userCountry.name}</span>
-                </h2>
-              ) : (
-                <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
-                  <span className="text-base sm:text-lg md:text-xl lg:text-2xl">🏳️</span>
-                  <span className="text-[11px] sm:text-xs md:text-sm break-words">Mon Pays</span>
-                </h2>
-              )}
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-6">
-                Votre pays enregistré lors de l'inscription
-              </p>
-              
+              <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
+                <span className="text-base sm:text-lg md:text-xl lg:text-2xl">{userData?.paysCode ? getCountryFlag(userData.paysCode, userCountry?.name) : '🏳️'}</span>
+                <span className="text-[11px] sm:text-xs md:text-sm break-words">{userCountry?.name || 'Pays'}</span>
+              </h2>
+
               {userData?.paysCode && userCountry ? (
                 <div className="space-y-2 sm:space-y-3 md:space-y-4 overflow-hidden">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-2 sm:p-3 md:p-4 rounded overflow-hidden">
-                    <p className="text-[10px] sm:text-xs md:text-sm text-blue-800 mb-1.5 sm:mb-2 md:mb-4 break-words">
-                      <strong>ℹ️ Information :</strong> Ces informations ont été enregistrées lors de votre inscription.
-                    </p>
-                  </div>
-
-                  {/* Carte principale avec drapeau et nom du pays */}
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-3 sm:p-4 md:p-6 overflow-hidden">
                     <div className="text-center overflow-hidden">
-                      {/* Utiliser le paysCode pour obtenir le drapeau correct */}
                       <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">
                         {getCountryFlag(userData.paysCode, userCountry.name)}
                       </div>
-                      <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 mb-1.5 sm:mb-2">Mon Pays</h3>
-                      {/* Afficher SEULEMENT le nom du pays trouvé par findLocationByCode */}
                       <p className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-purple-600 mb-2 sm:mb-3 break-words">
                         {userCountry.name}
                       </p>
-                      {userData.paysCode && (
-                        <p className="text-[10px] sm:text-xs text-gray-500 mb-2 sm:mb-3">
-                          Code : <span className="font-mono font-semibold">{userData.paysCode}</span>
-                        </p>
-                      )}
                     </div>
                   </div>
 
@@ -894,20 +1086,11 @@ export default function TerreAdam() {
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 overflow-hidden">
               <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
                 <span className="text-base sm:text-lg md:text-xl">{getContinentIcon(userData?.continentCode, userContinent?.name)}</span>
-                <span className="text-[11px] sm:text-xs md:text-sm break-words">Mon Continent : {userContinent?.name || userData?.continent || 'Continent'}</span>
+                <span className="text-[11px] sm:text-xs md:text-sm break-words">{userContinent?.name || userData?.continent || 'Continent'}</span>
               </h2>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-6">
-                Votre continent enregistré lors de l'inscription
-              </p>
-              
+
               {userData?.continentCode ? (
                 <div className="space-y-2 sm:space-y-3 md:space-y-4 overflow-hidden">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-2 sm:p-3 md:p-4 rounded overflow-hidden">
-                    <p className="text-[10px] sm:text-xs md:text-sm text-blue-800 mb-1.5 sm:mb-2 md:mb-4 break-words">
-                      <strong>ℹ️ Information :</strong> Ces informations ont été enregistrées lors de votre inscription.
-                    </p>
-                  </div>
-
                   <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-lg p-3 sm:p-4 md:p-6 overflow-hidden">
                     <div className="text-center overflow-hidden">
                       <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">{getContinentIcon(userData.continentCode, userContinent?.name)}</div>
@@ -960,15 +1143,9 @@ export default function TerreAdam() {
                 <span className="text-base sm:text-lg md:text-xl">🌎</span>
                 <span className="text-[11px] sm:text-xs md:text-sm">Mondial</span>
               </h2>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-6 break-words">
-                Accédez à l'espace communautaire mondial - Tous les membres de la Terre ADAM
-              </p>
-              
+
               <div className="text-center py-3 sm:py-4 md:py-6 lg:py-8 overflow-hidden">
                 <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">🌎</div>
-                <p className="text-[10px] sm:text-xs md:text-sm lg:text-base text-gray-700 mb-3 sm:mb-4 md:mb-6 break-words">
-                  Bienvenue dans l'espace mondial de la Terre ADAM
-                </p>
                 <button
                   onClick={() => {
                     alert('Accès à l\'espace mondial');

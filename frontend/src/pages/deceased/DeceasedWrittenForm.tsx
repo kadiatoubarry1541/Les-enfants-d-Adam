@@ -66,7 +66,6 @@ interface DeceasedFormData {
   generation: string
 }
 
-import { FAMILLES, ETHNIES, ETHNIE_CODES, FAMILLE_CODES } from '../../utils/constants'
 const REGIONS = ['Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière']
 const RELIGIONS = ['Islam', 'Christianisme', 'Animisme', 'Autre']
 const STATUTS_SOCIAUX = ['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf / Veuve', 'Autre']

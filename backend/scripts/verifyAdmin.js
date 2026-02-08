@@ -10,8 +10,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '..', 'config.env') });
 
-const ADMIN_NUMERO_H = 'G0C0P0R0E0F0 0';
-const ADMIN_PASSWORD = 'Neneyaya1';
+const ADMIN_NUMERO_H = process.env.ADMIN_NUMERO_H || 'G0C0P0R0E0F0 0';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+// Vérifier que le mot de passe admin est défini
+if (!ADMIN_PASSWORD) {
+  console.error('❌ ERREUR: La variable d\'environnement ADMIN_PASSWORD n\'est pas définie!');
+  console.error('💡 Ajoutez ADMIN_PASSWORD=votre_mot_de_passe dans le fichier backend/config.env');
+  process.exit(1);
+}
 
 async function verifyAdmin() {
   try {

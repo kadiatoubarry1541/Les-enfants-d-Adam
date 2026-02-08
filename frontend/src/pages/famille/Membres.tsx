@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
 interface UserData {
@@ -40,7 +40,16 @@ export default function Membres() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="mb-6">
+        <Link
+          to="/famille"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors shadow-sm border border-gray-200 dark:border-gray-600"
+        >
+          <span aria-hidden>←</span>
+          Retour à Famille
+        </Link>
+      </div>
       <div className="card">
         <h2 className="text-2xl font-bold mb-2">📋 Membres invités ({membres.length})</h2>
         {membres.length === 0 ? (

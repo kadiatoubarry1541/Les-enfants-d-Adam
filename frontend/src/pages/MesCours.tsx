@@ -60,7 +60,7 @@ interface CoursePermission {
 
 export default function MesCours() {
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState<'cours' | 'audio' | 'video' | 'ecrit' | 'bibliotheque' | 'progres' | 'certificats'>('cours');
+  const [activeTab, setActiveTab] = useState<'cours' | 'audio' | 'video' | 'ecrit' | 'bibliotheque' | 'publier' | 'progres' | 'certificats'>('cours');
   const [courses, setCourses] = useState<Course[]>([]);
   const [audioCourses, setAudioCourses] = useState<Course[]>([]);
   const [videoCourses, setVideoCourses] = useState<Course[]>([]);
@@ -366,6 +366,53 @@ export default function MesCours() {
     }
   };
 
+  /** Publication de contenu par tout utilisateur connecté (onglet Publier) */
+  const publishContent = async () => {
+    if (!newCourse.title?.trim()) {
+      alert('Veuillez saisir un titre.');
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append('title', newCourse.title.trim());
+      formData.append('description', newCourse.description || '');
+      formData.append('type', newCourse.type === 'exercise' ? 'test' : newCourse.type);
+      formData.append('duration', newCourse.duration || '');
+      formData.append('level', newCourse.level || 'débutant');
+      formData.append('category', newCourse.category || '');
+      if (newCourse.mediaFile) {
+        formData.append('media', newCourse.mediaFile);
+      }
+      const token = localStorage.getItem("token");
+      const response = await fetch('/api/education/courses/publish', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      if (response.ok) {
+        alert('Contenu publié avec succès !');
+        setNewCourse({
+          title: '',
+          description: '',
+          type: 'audio',
+          duration: '',
+          level: 'débutant',
+          category: '',
+          mediaFile: null
+        });
+        loadData();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Erreur lors de la publication');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur lors de la publication du contenu');
+    }
+  };
+
   const grantPermission = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -483,6 +530,7 @@ export default function MesCours() {
               { id: 'video', label: '🎥 Vidéo', emoji: '🎥' },
               { id: 'ecrit', label: '📝 Écrit', emoji: '📝' },
               { id: 'bibliotheque', label: '📖 Bibliothèque', emoji: '📖' },
+              ...(isAdmin || coursePermissions.length > 0 ? [{ id: 'publier', label: '➕ Publier', emoji: '➕' }] : []),
               { id: 'progres', label: '📊 Progrès', emoji: '📊' },
               { id: 'certificats', label: '🏅 Certificats', emoji: '🏅' }
             ].map(tab => (
@@ -495,6 +543,7 @@ export default function MesCours() {
                   if (tab.id === 'ecrit') loadEcritCourses();
                   if (tab.id === 'bibliotheque') loadBooks();
                   if (tab.id === 'certificats') loadCertificates();
+                  if (tab.id === 'publier') setShowCreateForm(false);
                 }}
                 className={`px-4 py-2 rounded-t-lg font-medium transition-colors duration-200 whitespace-nowrap ${
                   activeTab === tab.id
@@ -647,6 +696,126 @@ export default function MesCours() {
               <div className="text-center text-gray-500 py-12 col-span-full">
                 <p>Aucun livre disponible dans la bibliothèque.</p>
               </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'publier' && (
+          <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+            {!(isAdmin || coursePermissions.length > 0) ? (
+              <div className="text-center py-8 text-gray-600">
+                <p className="text-lg font-medium mb-2">🔒 Accès réservé</p>
+                <p>Seuls les professeurs et les administrateurs peuvent publier du contenu ici.</p>
+              </div>
+            ) : (
+              <>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">➕ Publier un cours, une vidéo, un audio ou un exercice</h3>
+            <p className="text-gray-600 mb-6">Remplissez le formulaire ci-dessous pour publier du contenu pédagogique (cours, vidéo, audio, écrit ou exercice).</p>
+            <div className="space-y-4 max-w-2xl">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Titre *</label>
+                <input
+                  type="text"
+                  value={newCourse.title}
+                  onChange={(e) => setNewCourse({...newCourse, title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ex: Introduction à la programmation"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                <textarea
+                  value={newCourse.description}
+                  onChange={(e) => setNewCourse({...newCourse, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Description du contenu..."
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Type de contenu *</label>
+                  <select
+                    value={newCourse.type}
+                    onChange={(e) => setNewCourse({...newCourse, type: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="audio">🎧 Audio</option>
+                    <option value="video">🎥 Vidéo</option>
+                    <option value="written">📝 Écrit</option>
+                    <option value="library">📖 Bibliothèque</option>
+                    <option value="exercise">✏️ Exercice</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Niveau</label>
+                  <select
+                    value={newCourse.level}
+                    onChange={(e) => setNewCourse({...newCourse, level: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="débutant">Débutant</option>
+                    <option value="intermédiaire">Intermédiaire</option>
+                    <option value="avancé">Avancé</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Durée (minutes)</label>
+                  <input
+                    type="number"
+                    value={newCourse.duration}
+                    onChange={(e) => setNewCourse({...newCourse, duration: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: 60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
+                  <input
+                    type="text"
+                    value={newCourse.category}
+                    onChange={(e) => setNewCourse({...newCourse, category: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: Mathématiques"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fichier média (optionnel)</label>
+                <input
+                  type="file"
+                  accept={newCourse.type === 'audio' ? 'audio/*' : newCourse.type === 'video' ? 'video/*' : newCourse.type === 'written' ? '.pdf,.doc,.docx' : 'image/*'}
+                  onChange={(e) => setNewCourse({...newCourse, mediaFile: e.target.files?.[0] || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={publishContent}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
+                >
+                  📤 Publier le contenu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewCourse({
+                    title: '',
+                    description: '',
+                    type: 'audio',
+                    duration: '',
+                    level: 'débutant',
+                    category: '',
+                    mediaFile: null
+                  })}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200"
+                >
+                  Effacer
+                </button>
+              </div>
+            </div>
+              </>
             )}
           </div>
         )}

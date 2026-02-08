@@ -174,7 +174,7 @@ addSlide('Technologies Utilisées', [
   '',
   'Fonctionnalités:',
   '  • Upload de médias',
-  '  • Paiement mobile (Orange Money, MTN)',
+  '  • Paiement mobile (MTN)',
   '  • Système de badges et logos'
 ]);
 
@@ -208,7 +208,7 @@ addSlide('Modèle Économique', [
   '  🏛️ Subventions (si applicable)',
   '',
   'Partenaires:',
-  '  • Opérateurs mobiles (Orange Money, MTN)',
+  '  • Opérateurs mobiles (MTN)',
   '  • Organisations guinéennes',
   '  • Institutions religieuses et éducatives'
 ]);

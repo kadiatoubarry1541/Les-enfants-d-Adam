@@ -147,10 +147,10 @@ export default function LivresDeDieu() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button
-        onClick={() => navigate('/solidarite')}
+        onClick={() => navigate('/moi')}
         className="mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
       >
-        ← Retour à Foi
+        ← Retour
       </button>
 
       <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-yellow-500 border border-slate-200 p-6 hover:shadow-md transition-shadow duration-200">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminPanel } from "../components/AdminPanel";
-import { getSessionUser, isAdmin } from "../utils/auth";
+import { getSessionUser, isAdmin, isMasterAdmin } from "../utils/auth";
 import { getStats, getAllUsers, getAllFamilies } from "../utils/adminApi";
 
 interface UserData {
@@ -151,14 +151,6 @@ export default function AdminDashboard() {
         </button>
         
         <button
-          onClick={() => navigate("/solidarite")}
-          className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-all duration-200 text-center"
-        >
-          <div className="text-3xl mb-2">🤝</div>
-          <div className="text-sm font-medium text-gray-700">Solidarité</div>
-        </button>
-        
-        <button
           onClick={() => navigate("/activite")}
           className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-all duration-200 text-center"
         >
@@ -227,14 +219,16 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Panneau d'administration principal */}
+      {/* Panneau d'administration principal — badge couronne réservé à l'admin principal */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6" data-admin-panel>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800">⚙️ Administration Système</h2>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
-              👑 Administrateur Principal
-            </span>
+            {isMasterAdmin(userData) && (
+              <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
+                👑 Administrateur Principal
+              </span>
+            )}
             <button
               onClick={() => window.history.back()}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200"

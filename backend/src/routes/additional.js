@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
-import { HistorySection, FamilyMember, FamilyTree, Document, EmergencyCall, LocationCheck, Donation, ZakatCalculation, SecurityAgent } from '../models/index.js';
+import { HistorySection, FamilyMember, FamilyTree, Document, EmergencyCall, LocationCheck, Donation, ZakatCalculation, SecurityAgent, Hospital, Doctor, HealthProduct, Supplier, ExchangeProduct } from '../models/index.js';
 
 const router = express.Router();
 
@@ -88,6 +88,45 @@ router.get('/health/hospitals', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Erreur lors du chargement des hôpitaux:', error);
     res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Inscription d'un hôpital pour plus de visibilité (créateur = utilisateur connecté, isActive: false jusqu'à validation admin)
+router.post('/health/register-hospital', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    const { name, type, region, city, address, phone, emergencyPhone } = req.body;
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nom de l\'établissement est obligatoire'
+      });
+    }
+    const hospital = await Hospital.create({
+      name: String(name).trim(),
+      type: type || 'centre de santé',
+      region: region || '',
+      city: city || '',
+      address: address || '',
+      phone: phone ? String(phone).trim() : null,
+      emergencyPhone: emergencyPhone ? String(emergencyPhone).trim() : null,
+      services: [],
+      specialties: [],
+      createdBy: user.numeroH,
+      isActive: false,
+      isEmergency: !!emergencyPhone
+    });
+    res.status(201).json({
+      success: true,
+      message: 'Établissement enregistré. Il sera visible après validation par l\'administrateur.',
+      hospital
+    });
+  } catch (error) {
+    console.error('Erreur inscription hôpital:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'inscription de l\'établissement'
+    });
   }
 });
 
@@ -211,13 +250,27 @@ router.post('/etats/permissions', authenticateToken, requireAdmin, async (req, r
 });
 
 // Routes pour la Sécurité
+router.get('/security/countries', authenticateToken, async (req, res) => {
+  try {
+    const countries = await SecurityAgent.getCountriesWithAgents();
+    res.json({ countries: countries.length ? countries : ['Guinée'] });
+  } catch (error) {
+    console.error('Erreur lors du chargement des pays:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/security/agents', authenticateToken, async (req, res) => {
   try {
+    const user = req.user;
+    // Chaque utilisateur ne voit que les agents de son pays (sécurité de son pays uniquement)
+    const userCountry = (user.pays || user.nationalite || 'Guinée').trim() || 'Guinée';
+    const where = { isActive: true, country: userCountry };
     const agents = await SecurityAgent.findAll({
-      where: { isActive: true },
-      order: [['rating', 'DESC']]
+      where,
+      order: [['rating', 'DESC'], ['name', 'ASC']]
     });
-    res.json({ agents });
+    res.json({ agents, country: userCountry });
   } catch (error) {
     console.error('Erreur lors du chargement des agents:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -286,7 +339,7 @@ router.get('/zakat/poor-people', authenticateToken, async (req, res) => {
       where: { isActive: true },
       order: [['urgency', 'DESC'], ['createdAt', 'DESC']]
     });
-    res.json({ people });
+    res.json({ poorPeople: people });
   } catch (error) {
     console.error('Erreur lors du chargement des pauvres:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -312,6 +365,33 @@ router.post('/zakat/donations', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Erreur lors du don:', error);
     res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Route make-donation utilisée par le frontend Solidarité
+router.post('/zakat/make-donation', authenticateToken, async (req, res) => {
+  try {
+    const { donor, donorName, recipient, recipientName, amount, currency, type, description, donationType } = req.body;
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Montant invalide' });
+    }
+    const donation = await Donation.create({
+      donor,
+      donorName,
+      recipient,
+      recipientName,
+      amount,
+      currency: currency || 'FG',
+      type: type || 'money',
+      description: description || '',
+      donationType: donationType || 'sadaqah',
+      status: 'completed',
+      createdAt: new Date()
+    });
+    res.status(201).json({ success: true, donation });
+  } catch (error) {
+    console.error('Erreur lors du don:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur lors du don' });
   }
 });
 

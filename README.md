@@ -24,7 +24,7 @@
 
 ### 💼 Échanges Commerciaux
 - Marché en ligne pour produits primaires, secondaires et tertiaires
-- Paiement mobile intégré (Orange Money)
+- Paiement mobile intégré
 - Comparaison de prix
 - Gestion des ventes et achats
 

@@ -1,0 +1,10 @@
+### Créer le compte admin
+POST http://localhost:5003/api/education/create-admin
+Content-Type: application/json
+
+{
+  "email": "kadiatou1541.kb@gmail.com",
+  "password": "Neneyaya1",
+  "nomComplet": "Admin Diangou"
+}
+

@@ -1,44 +1,93 @@
 // API utilities for admin operations
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 
-// Helper function to get auth token
+// Helper function to get auth token (session_user.token ou clé token séparée)
 const getAuthToken = (): string | null => {
   const sessionData = localStorage.getItem('session_user');
-  if (!sessionData) return null;
-  
-  try {
-    const parsed = JSON.parse(sessionData);
-    return parsed.token || null;
-  } catch {
-    return null;
+  if (sessionData) {
+    try {
+      const parsed = JSON.parse(sessionData);
+      const token = parsed.token ?? parsed.userData?.token ?? null;
+      if (token) return token;
+    } catch {
+      // ignore
+    }
   }
+  return localStorage.getItem('token');
+};
+
+// Vérifier si le token est un fallback (non-JWT) généré hors-ligne
+const isFallbackToken = (token: string): boolean => {
+  return token.startsWith('fallback_');
+};
+
+// Récupérer le numéroH de la session
+const getSessionNumeroH = (): string | null => {
+  const sessionData = localStorage.getItem('session_user');
+  if (sessionData) {
+    try {
+      const parsed = JSON.parse(sessionData);
+      return parsed.numeroH || parsed.userData?.numeroH || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 };
 
 // Helper function for authenticated requests
 const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
   const token = getAuthToken();
-  
+
   if (!token) {
-    throw new Error('Non authentifié');
+    throw new Error('Non authentifié - veuillez vous reconnecter');
   }
-  
-  const headers = {
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
-  
-  const response = await fetch(`${API_URL}${url}`, {
-    ...options,
-    headers,
-  });
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Erreur inconnue' }));
-    throw new Error(error.message || `Erreur ${response.status}`);
+
+  // Si le token est un fallback (connexion hors-ligne), utiliser le header x-admin-numero-h
+  // au lieu du Bearer token, car le backend ne peut pas vérifier un faux JWT
+  if (isFallbackToken(token)) {
+    const numeroH = getSessionNumeroH();
+    if (numeroH) {
+      headers['x-admin-numero-h'] = numeroH;
+    } else {
+      throw new Error('Session invalide - veuillez vous reconnecter');
+    }
+  } else {
+    headers['Authorization'] = `Bearer ${token}`;
+    // Ajouter aussi le header admin comme fallback en cas de token expiré
+    const numeroH = getSessionNumeroH();
+    if (numeroH) {
+      headers['x-admin-numero-h'] = numeroH;
+    }
   }
-  
-  return response.json();
+
+  try {
+    const response = await fetch(`${API_URL}${url}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Erreur inconnue' }));
+      throw new Error(error.message || `Erreur ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error: any) {
+    // Erreur réseau : le backend n'est pas joignable
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      throw new Error(
+        'Impossible de contacter le serveur backend. Vérifiez que le serveur est démarré (port ' +
+        API_URL.split(':').pop() + ').'
+      );
+    }
+    throw error;
+  }
 };
 
 // Get all users with optional filters

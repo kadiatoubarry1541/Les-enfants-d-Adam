@@ -65,7 +65,7 @@ interface HolyBook {
 
 export default function Solidarite() {
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState<'dons' | 'zaka' | 'livres'>('dons');
+  const [activeTab, setActiveTab] = useState<'dons' | 'zaka' | 'livres' | 'realite'>('dons');
   const [donsSubTab, setDonsSubTab] = useState<'pauvres' | 'mes-dons'>('pauvres');
   const [poorPeople, setPoorPeople] = useState<PoorPerson[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
@@ -79,6 +79,18 @@ export default function Solidarite() {
   const [selectedUrgency, setSelectedUrgency] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const navigate = useNavigate();
+
+  // Etats pour la section Réalité
+  const [realityPosts, setRealityPosts] = useState<any[]>([]);
+  const [selectedContentType, setSelectedContentType] = useState<string | null>(null);
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [newPost, setNewPost] = useState({
+    title: '',
+    content: '',
+    category: 'message' as 'video' | 'photo' | 'message',
+    type: 'text' as string
+  });
 
   const [donationForm, setDonationForm] = useState({
     amount: '',
@@ -217,7 +229,7 @@ export default function Solidarite() {
   const loadPoorPeople = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/zakat/poor-people', {
+      const response = await fetch(`${API_URL}/api/zakat/poor-people`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -239,7 +251,7 @@ export default function Solidarite() {
   const loadDonations = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/zakat/donations', {
+      const response = await fetch(`${API_URL}/api/zakat/donations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -274,7 +286,7 @@ export default function Solidarite() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/zakat/make-donation', {
+      const response = await fetch(`${API_URL}/api/zakat/make-donation`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -339,7 +351,7 @@ export default function Solidarite() {
   const loadHolyBooks = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/faith/books', {
+      const response = await fetch(`${API_URL}/api/faith/books`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -358,13 +370,88 @@ export default function Solidarite() {
     }
   };
 
+  // --- Fonctions Réalité ---
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+
+  const loadRealityPosts = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/api/reality/posts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setRealityPosts(data.posts || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des publications:', error);
+    }
+  };
+
+  const getPostsByCategory = (category: string) => {
+    return realityPosts.filter((post: any) => post.category === category);
+  };
+
+  const handleCreatePost = () => {
+    setNewPost({ title: '', content: '', category: 'message', type: 'text' });
+    setSelectedFile(null);
+    setShowCreatePost(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSelectedFile(file);
+  };
+
+  const submitCreatePost = async () => {
+    if (!newPost.title.trim() || !newPost.content.trim()) {
+      alert('Veuillez remplir le titre et le contenu');
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('title', newPost.title);
+      formData.append('content', newPost.content);
+      formData.append('category', newPost.category);
+      formData.append('type', newPost.type);
+      formData.append('author', userData?.numeroH || '');
+      formData.append('authorName', `${userData?.prenom || ''} ${userData?.nomFamille || ''}`);
+      if (selectedFile) {
+        formData.append('media', selectedFile);
+      }
+      const response = await fetch(`${API_URL}/api/reality/create-post`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      if (response.ok) {
+        alert('Publication créée avec succès !');
+        setShowCreatePost(false);
+        setSelectedFile(null);
+        setNewPost({ title: '', content: '', category: 'message', type: 'text' });
+        loadRealityPosts();
+      } else {
+        const data = await response.json().catch(() => ({ message: 'Erreur' }));
+        alert(data.message || 'Erreur lors de la publication');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la publication:', error);
+      alert('Erreur lors de la publication');
+    }
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
       await Promise.all([
         loadPoorPeople(),
         loadDonations(),
-        loadHolyBooks()
+        loadHolyBooks(),
+        loadRealityPosts()
       ]);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
@@ -435,7 +522,8 @@ export default function Solidarite() {
             {[
               { id: 'dons', label: 'Dons', icon: '🤝' },
               { id: 'zaka', label: 'Zaka (Musulmans)', icon: '🤲' },
-              { id: 'livres', label: 'Les Livres de Dieu Unique', icon: '📖' }
+              { id: 'livres', label: 'Les Livres de Dieu Unique', icon: '📖' },
+              { id: 'realite', label: 'Réalité', icon: '📷' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -651,12 +739,7 @@ export default function Solidarite() {
             <div className="bg-white rounded-lg shadow-sm p-8 text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">🤲 Zaka (Musulmans)</h2>
               <p className="text-gray-600 mb-6">Aumône obligatoire pour les musulmans uniquement</p>
-              <button
-                onClick={() => navigate('/zaka')}
-                className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-              >
-                Accéder à la page Zaka
-              </button>
+              <p className="text-gray-600">Page indisponible pour le moment.</p>
             </div>
           </div>
         )}
@@ -667,19 +750,19 @@ export default function Solidarite() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">📖 Les Livres de Dieu Unique</h2>
               </div>
-              
+
               <div className="mb-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
                 <p className="text-sm text-blue-800">
                   <strong>💡 Réfléchissons ensemble :</strong> Prenez le temps de méditer sur les passages qui vous marquent dans chaque livre sacré. La réflexion nous aide à mieux comprendre et à grandir spirituellement.
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {holyBooks.map((book) => (
                   <div key={book.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">{book.title}</h3>
                     <p className="text-gray-600 mb-4">{book.description}</p>
-                    
+
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center text-sm text-gray-600">
                         <span className="mr-2">✍️</span>
@@ -694,7 +777,7 @@ export default function Solidarite() {
                         <span>{book.category}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex flex-col space-y-2">
                       <div className="flex space-x-2">
                         <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
@@ -704,7 +787,7 @@ export default function Solidarite() {
                           📥 Télécharger
                         </button>
                       </div>
-                      <button 
+                      <button
                         onClick={() => {
                           setSelectedBookForReflexions(book);
                           setShowReflexionsModal(true);
@@ -717,6 +800,126 @@ export default function Solidarite() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'realite' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">📷 Réalité (Publications Admin)</h2>
+              {userData?.numeroH === 'G0C0P0R0E0F0 0' || userData?.role === 'admin' ? (
+                <div className="bg-blue-50 rounded-lg p-6 mb-6">
+                  <h3 className="font-semibold text-blue-900 mb-2">Vous êtes administrateur</h3>
+                  <p className="text-blue-800 text-sm mb-4">Vous pouvez publier des vidéos, photos et textes.</p>
+                  <button
+                    onClick={handleCreatePost}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    + Publier du contenu
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <p className="text-gray-600 text-center">Seuls les administrateurs peuvent publier du contenu ici.</p>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-lg p-6 border-2 border-gray-200">
+                  <div className="text-4xl mb-4">📹</div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Vidéos de sensibilisation</h3>
+                  <p className="text-gray-600 text-sm mb-4">Découvrez les campagnes de sensibilisation</p>
+                  <button
+                    onClick={() => setSelectedContentType('video')}
+                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Voir les vidéos ({getPostsByCategory('video').length})
+                  </button>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border-2 border-gray-200">
+                  <div className="text-4xl mb-4">🖼️</div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Photos de sensibilisation</h3>
+                  <p className="text-gray-600 text-sm mb-4">Images de sensibilisation</p>
+                  <button
+                    onClick={() => setSelectedContentType('photo')}
+                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Voir les photos ({getPostsByCategory('photo').length})
+                  </button>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border-2 border-gray-200">
+                  <div className="text-4xl mb-4">📄</div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Messages importants</h3>
+                  <p className="text-gray-600 text-sm mb-4">Communiqués officiels</p>
+                  <button
+                    onClick={() => setSelectedContentType('message')}
+                    className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Lire les messages ({getPostsByCategory('message').length})
+                  </button>
+                </div>
+              </div>
+
+              {selectedContentType && (
+                <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {selectedContentType === 'video' ? '📹 Vidéos de sensibilisation' :
+                       selectedContentType === 'photo' ? '🖼️ Photos de sensibilisation' :
+                       '📄 Messages importants'}
+                    </h3>
+                    <button
+                      onClick={() => setSelectedContentType(null)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ✕ Fermer
+                    </button>
+                  </div>
+
+                  {getPostsByCategory(selectedContentType).length > 0 ? (
+                    <div className="space-y-4">
+                      {getPostsByCategory(selectedContentType).map((post: any) => (
+                        <div key={post.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">{post.title}</h4>
+                              <p className="text-sm text-gray-600">{post.authorName}</p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(post.created_at || post.createdAt).toLocaleDateString('fr-FR')}
+                              </p>
+                            </div>
+                          </div>
+
+                          {post.mediaUrl && (
+                            <div className="mb-3">
+                              {post.type === 'video' ? (
+                                <video controls className="w-full max-w-2xl rounded-lg">
+                                  <source src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} type="video/mp4" />
+                                </video>
+                              ) : post.type === 'image' ? (
+                                <img src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} alt={post.title} className="max-w-2xl rounded-lg" />
+                              ) : null}
+                            </div>
+                          )}
+
+                          <p className="text-gray-800">{post.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg">
+                      <div className="text-6xl mb-4">
+                        {selectedContentType === 'video' ? '📹' :
+                         selectedContentType === 'photo' ? '🖼️' : '📄'}
+                      </div>
+                      <p className="text-gray-500 text-lg mb-4">
+                        Aucun {selectedContentType === 'video' ? 'vidéo' :
+                                selectedContentType === 'photo' ? 'photo' : 'message'} publié pour le moment
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -820,10 +1023,10 @@ export default function Solidarite() {
                 }}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
               >
-                ×
+                x
               </button>
             </div>
-            
+
             <div className="mb-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
               <p className="text-sm text-blue-800">
                 <strong>💡 Invitation à la réflexion :</strong> Prenez le temps de méditer sur ces passages et points importants de ce livre sacré. Réfléchissez sur les passages qui vous marquent et notez vos pensées.
@@ -839,7 +1042,7 @@ export default function Solidarite() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  <p className="mb-4">Aucune réflexion n'a encore été ajoutée pour ce livre.</p>
+                  <p className="mb-4">Aucune réflexion n&apos;a encore été ajoutée pour ce livre.</p>
                   <p className="text-sm">Les réflexions vous aideront à méditer sur les passages importants et les enseignements de ce livre sacré.</p>
                 </div>
               )}
@@ -854,6 +1057,100 @@ export default function Solidarite() {
                 className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
               >
                 Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de création de post Réalité */}
+      {showCreatePost && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              📝 Publier du contenu
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Catégorie *
+                </label>
+                <select
+                  value={newPost.category}
+                  onChange={(e) => {
+                    const category = e.target.value as 'video' | 'photo' | 'message';
+                    setNewPost({
+                      ...newPost,
+                      category,
+                      type: category === 'video' ? 'video' : category === 'photo' ? 'image' : 'text'
+                    });
+                  }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="message">📄 Message</option>
+                  <option value="photo">🖼️ Photo</option>
+                  <option value="video">📹 Vidéo</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Titre *
+                </label>
+                <input
+                  type="text"
+                  value={newPost.title}
+                  onChange={(e) => setNewPost({...newPost, title: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Titre du contenu..."
+                />
+              </div>
+
+              {(newPost.category === 'photo' || newPost.category === 'video') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {newPost.category === 'photo' ? '🖼️' : '📹'} Fichier média *
+                  </label>
+                  <input
+                    type="file"
+                    accept={newPost.category === 'photo' ? 'image/*' : 'video/*'}
+                    onChange={handleFileChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {selectedFile && (
+                    <p className="mt-2 text-sm text-green-600">Fichier sélectionné : {selectedFile.name}</p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Contenu *
+                </label>
+                <textarea
+                  value={newPost.content}
+                  onChange={(e) => setNewPost({...newPost, content: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={6}
+                  placeholder="Rédigez votre contenu..."
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreatePost(false);
+                  setSelectedFile(null);
+                }}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={submitCreatePost}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+              >
+                Publier
               </button>
             </div>
           </div>

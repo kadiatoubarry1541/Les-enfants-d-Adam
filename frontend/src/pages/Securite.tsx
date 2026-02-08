@@ -15,6 +15,7 @@ interface SecurityAgent {
   name: string;
   agency: string;
   badgeNumber?: string;
+  country?: string;
   region: string;
   city: string;
   address?: string;
@@ -36,6 +37,8 @@ interface SecurityAgent {
 
 export default function Securite() {
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [userCountry, setUserCountry] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('');
   const [activeTab, setActiveTab] = useState<'policiers' | 'gendarmes' | 'pompiers' | 'agents'>('policiers');
   const [agents, setAgents] = useState<SecurityAgent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,9 @@ export default function Securite() {
   const [selectedCity, setSelectedCity] = useState('');
   const navigate = useNavigate();
   const { t } = useI18n();
+
+  // Liste des pays disponibles
+  const countries = ['Guinée', 'Sénégal', 'Mali', 'Côte d\'Ivoire', 'Burkina Faso', 'Niger', 'France', 'Canada'];
 
   useEffect(() => {
     const session = localStorage.getItem("session_user");
@@ -59,35 +65,34 @@ export default function Securite() {
         navigate("/login");
         return;
       }
-      
       setUserData(user);
-      loadAgents();
+      const country = (user.pays || user.nationalite || 'Guinée').trim() || 'Guinée';
+      setUserCountry(country);
     } catch {
       navigate("/login");
     }
-  }, [navigate, activeTab]);
+  }, [navigate]);
+
+  useEffect(() => {
+    if (userCountry) loadAgents();
+  }, [userCountry, activeTab]);
 
   const loadAgents = async () => {
+    if (!userCountry) return;
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
       const response = await fetch('http://localhost:5002/api/security/agents', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       if (response.ok) {
         const data = await response.json();
         setAgents(data.agents || []);
       } else {
-        // Si l'API n'existe pas encore, utiliser des données par défaut
         setAgents(getDefaultAgents());
       }
     } catch (error) {
       console.error('Erreur lors du chargement des agents:', error);
-      alert('Erreur lors du chargement des agents');
-      // Si l'API n'existe pas encore, utiliser des données par défaut
       setAgents(getDefaultAgents());
     } finally {
       setLoading(false);
@@ -101,6 +106,7 @@ export default function Securite() {
         name: 'Capitaine Mamadou Diallo',
         agency: 'Police Nationale',
         badgeNumber: 'PN-001234',
+        country: 'Guinée',
         region: 'Conakry',
         city: 'Conakry',
         address: 'Commissariat Central, Kaloum',
@@ -118,6 +124,7 @@ export default function Securite() {
         name: 'Lieutenant Fatoumata Bah',
         agency: 'Gendarmerie Nationale',
         badgeNumber: 'GN-005678',
+        country: 'Guinée',
         region: 'Conakry',
         city: 'Conakry',
         address: 'Gendarmerie, Dixinn',
@@ -134,6 +141,7 @@ export default function Securite() {
         name: 'Adjudant Ibrahima Camara',
         agency: 'Sapeurs-Pompiers',
         badgeNumber: 'SP-009012',
+        country: 'Guinée',
         region: 'Conakry',
         city: 'Conakry',
         address: 'Caserne Centrale, Matam',
@@ -150,6 +158,7 @@ export default function Securite() {
         name: 'Agent Alpha Barry',
         agency: 'Agent de Sécurité Privée',
         badgeNumber: 'ASP-001',
+        country: 'Guinée',
         region: 'Conakry',
         city: 'Conakry',
         address: 'Zone industrielle',
@@ -161,10 +170,12 @@ export default function Securite() {
         rating: 4.2
       },
       {
+        
         id: '5',
         name: 'Capitaine Aissatou Diallo',
         agency: 'Police Nationale',
         badgeNumber: 'PN-002345',
+        country: 'Guinée',
         region: 'Fouta-Djallon',
         city: 'Labé',
         address: 'Commissariat de Labé',
@@ -187,28 +198,34 @@ export default function Securite() {
     };
 
     return defaultAgents.filter(agent => {
-      if (activeTab === 'agents') {
-        return agent.agency.includes('Sécurité Privée');
-      }
+      if (activeTab === 'agents') return (agent.agency || '').includes('Sécurité Privée');
       return agent.agency === agencyFilter[activeTab];
-    });
+    }).map(a => ({ ...a, country: a.country || 'Guinée' }));
+  };
+
+  const agencyFilter: Record<string, string | ((a: SecurityAgent) => boolean)> = {
+    'policiers': 'Police Nationale',
+    'gendarmes': 'Gendarmerie Nationale',
+    'pompiers': 'Sapeurs-Pompiers',
+    'agents': (a) => (a.agency || '').includes('Sécurité Privée')
   };
 
   const filteredAgents = agents.filter(agent => {
-    const matchesSearch = !searchTerm || 
+    const matchesTab = activeTab === 'agents'
+      ? (agencyFilter.agents as (a: SecurityAgent) => boolean)(agent)
+      : agent.agency === agencyFilter[activeTab];
+    const matchesSearch = !searchTerm ||
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agent.agency.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agent.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agent.phone.includes(searchTerm);
-    
+      (agent.agency || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (agent.city || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (agent.phone || '').includes(searchTerm);
     const matchesRegion = !selectedRegion || agent.region === selectedRegion;
     const matchesCity = !selectedCity || agent.city === selectedCity;
-    
-    return matchesSearch && matchesRegion && matchesCity;
+    return matchesTab && matchesSearch && matchesRegion && matchesCity;
   });
 
-  const regions = Array.from(new Set(agents.map(a => a.region))).sort();
-  const cities = Array.from(new Set(agents.filter(a => !selectedRegion || a.region === selectedRegion).map(a => a.city))).sort();
+  const regions = Array.from(new Set(agents.map(a => a.region).filter(Boolean))).sort();
+  const cities = Array.from(new Set(agents.filter(a => !selectedRegion || a.region === selectedRegion).map(a => a.city).filter(Boolean))).sort();
 
   const handleCall = (phone: string) => {
     window.location.href = `tel:${phone}`;
@@ -249,7 +266,37 @@ export default function Securite() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Onglets */}
+        {/* Choix du pays – chaque pays a sa propre sécurité */}
+        <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            🌍 Pays
+          </label>
+          <select
+            value={selectedCountry}
+            onChange={(e) => {
+              setSelectedCountry(e.target.value);
+              setSelectedRegion('');
+              setSelectedCity('');
+            }}
+            className="w-full max-w-xs border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+          >
+            <option value="">Choisir un pays</option>
+            {countries.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Chaque pays a ses propres forces de sécurité. Sélectionnez un pays pour voir les agents.
+          </p>
+        </div>
+
+        {!selectedCountry ? (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6 text-center text-amber-800 dark:text-amber-200">
+            <p className="font-medium">Choisissez un pays ci-dessus pour afficher les agents de sécurité.</p>
+          </div>
+        ) : (
+          <>
+        {/* Onglets (par type d'agent dans le pays choisi) */}
         <div className="mb-6">
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex space-x-8 overflow-x-auto">
@@ -449,6 +496,8 @@ export default function Securite() {
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

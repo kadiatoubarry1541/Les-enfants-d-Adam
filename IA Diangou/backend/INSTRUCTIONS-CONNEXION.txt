@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════════════════
+  SOLUTION : Base de données non connectée
+═══════════════════════════════════════════════════════════════
+
+PROBLÈME : Vous voyez "diangou" dans pgAdmin mais l'app dit "non connectée"
+
+CAUSE : Le mot de passe PostgreSQL n'est pas configuré dans config.env
+
+SOLUTION :
+
+1. Ouvrez le fichier : backend/config.env
+
+2. Trouvez la ligne :
+   DB_PASSWORD=
+
+3. Mettez votre mot de passe PostgreSQL (celui que vous utilisez dans pgAdmin) :
+   DB_PASSWORD=votre_mot_de_passe_ici
+
+   ⚠️ Si vous n'avez PAS de mot de passe (rare), laissez vide :
+   DB_PASSWORD=
+
+4. Sauvegardez le fichier
+
+5. Redémarrez le serveur backend :
+   cd backend
+   npm run start
+
+6. Vous devriez voir :
+   ✅ PostgreSQL connecté avec succès à la base de données "diangou"
+   ✅ Base de données connectée et prête
+
+═══════════════════════════════════════════════════════════════
+
+Si vous ne connaissez pas votre mot de passe PostgreSQL :
+
+1. Ouvrez pgAdmin
+2. Regardez le mot de passe que vous utilisez pour vous connecter
+3. C'est ce mot de passe qu'il faut mettre dans config.env
+
+═══════════════════════════════════════════════════════════════
+

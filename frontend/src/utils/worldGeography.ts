@@ -613,6 +613,106 @@ export function findLocationByCode(code: string): GeographicLocation | null {
   return null;
 }
 
+/** Retourne le chemin hiérarchique (continent → … → lieu) pour un code. */
+function findPathToCode(nodes: GeographicLocation[], code: string, path: GeographicLocation[]): GeographicLocation[] | null {
+  for (const node of nodes) {
+    const newPath = [...path, node];
+    if (node.code === code) return newPath;
+    if (node.children?.length) {
+      const found = findPathToCode(node.children, code, newPath);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+export function getLocationPath(code: string): GeographicLocation[] | null {
+  if (!code) return null;
+  return findPathToCode(WORLD_GEOGRAPHY, code, []);
+}
+
+const LEVEL_LABELS: Record<number, string> = {
+  0: 'Continent',
+  1: 'Pays',
+  2: 'Région',
+  3: 'Préfecture',
+  4: 'Sous-préfecture',
+  5: 'Quartier'
+};
+
+/** Nom court = nom du lieu (ex. Kaloum). */
+export function getLocationShortName(code: string): string {
+  const loc = findLocationByCode(code);
+  return loc ? loc.name : code;
+}
+
+/** Chemin des noms uniquement : "Afrique · Guinée · Conakry · Conakry · Conakry Centre · Kaloum". */
+export function getLocationPathNames(code: string): string {
+  const path = getLocationPath(code);
+  if (!path?.length) return code;
+  return path.map((n) => n.name).join(' · ');
+}
+
+/** Nom complet pour affichage groupe (avec libellés) : "Quartier Kaloum · Sous-préfecture Conakry Centre · …". */
+export function getLocationDisplayName(code: string): string {
+  const path = getLocationPath(code);
+  if (!path?.length) return code;
+  const labels = path.map((n, i) => (LEVEL_LABELS[i] ? `${LEVEL_LABELS[i]} ` : '') + n.name);
+  return labels.join(' · ');
+}
+
+/** Même que getLocationDisplayName mais version courte (noms seuls) pour liste. */
+export function getLocationDisplayShort(code: string): string {
+  return getLocationPathNames(code);
+}
+
+/** Titre suggéré pour un groupe : "Quartier Kaloum" ou "Sous-préfecture Conakry Centre". */
+export function getLocationGroupTitle(code: string): string {
+  const path = getLocationPath(code);
+  if (!path?.length) return code;
+  const last = path[path.length - 1];
+  const levelLabel = LEVEL_LABELS[path.length - 1];
+  return levelLabel ? `${levelLabel} ${last.name}` : last.name;
+}
+
+/** Liste plate de tous les lieux (quartiers, sous-préfectures, préfectures…) avec code pour sélection. */
+export function getAllLocationsForGroups(): { code: string; name: string; title: string }[] {
+  const out: { code: string; name: string; title: string }[] = [];
+  for (const continent of WORLD_GEOGRAPHY) {
+    for (const country of continent.children || []) {
+      for (const region of country.children || []) {
+        for (const prefecture of region.children || []) {
+          for (const sousPrefecture of prefecture.children || []) {
+            for (const quartier of sousPrefecture.children || []) {
+              out.push({
+                code: quartier.code,
+                name: quartier.name,
+                title: getLocationGroupTitle(quartier.code)
+              });
+            }
+            out.push({
+              code: sousPrefecture.code,
+              name: sousPrefecture.name,
+              title: getLocationGroupTitle(sousPrefecture.code)
+            });
+          }
+          out.push({
+            code: prefecture.code,
+            name: prefecture.name,
+            title: getLocationGroupTitle(prefecture.code)
+          });
+        }
+        out.push({
+          code: region.code,
+          name: region.name,
+          title: getLocationGroupTitle(region.code)
+        });
+      }
+    }
+  }
+  return out;
+}
+
 // Fonction pour obtenir le code complet d'une localisation
 export function getLocationCode(path: {
   continent?: string;
