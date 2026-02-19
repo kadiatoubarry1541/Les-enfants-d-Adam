@@ -4,10 +4,17 @@ import os
 from dotenv import load_dotenv
 import openai
 import requests
-import psycopg2
-from psycopg2.extras import RealDictCursor
 import uuid
 from datetime import datetime
+import re
+
+# psycopg2 optionnel - l'IA fonctionne sans base de données
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    PSYCOPG2_OK = True
+except ImportError:
+    PSYCOPG2_OK = False
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -19,10 +26,65 @@ CORS(app)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/IAscience')
+DIANGOU_API_URL = os.getenv('DIANGOU_API_URL', 'http://localhost:5002/api')
+
+def get_response_from_diangou(message: str):
+    """Interroge le backend Diangou pour récupérer une réponse stockée en base.
+    
+    Si aucune réponse n'est trouvée ou en cas d'erreur, retourne None
+    pour permettre au mode démo de continuer à fonctionner normalement.
+    """
+    if not message:
+        return None
+
+    try:
+        base_url = (DIANGOU_API_URL or '').rstrip('/')
+        if not base_url:
+            return None
+
+        url = f"{base_url}/ia/search"
+        resp = requests.post(
+            url,
+            json={'question': message},
+            timeout=5
+        )
+
+        if resp.status_code != 200:
+            return None
+
+        data = resp.json()
+        if data.get('success') and data.get('answer'):
+            return data['answer']
+
+        return None
+    except Exception as e:
+        print(f"[IA SC] Erreur lors de l'appel au backend Diangou pour la connaissance IA: {e}")
+        return None
+
+def log_conversation_to_diangou(session_id: str, message: str, response: str):
+    """Envoie le couple question/réponse au backend Diangou pour archivage."""
+    try:
+        base_url = (DIANGOU_API_URL or '').rstrip('/')
+        if not base_url:
+            return
+
+        url = f"{base_url}/ia/log"
+        payload = {
+            'sessionId': session_id,
+            'question': message,
+            'response': response,
+            'source': 'professeur_ia'
+        }
+        # On ne bloque jamais la réponse de l'IA sur un problème de log
+        requests.post(url, json=payload, timeout=3)
+    except Exception as e:
+        print(f"[IA SC] Erreur lors de l'enregistrement de la conversation dans Diangou: {e}")
 
 # Fonction pour se connecter à la base de données
 def get_db_connection():
     """Crée une connexion à la base de données PostgreSQL"""
+    if not PSYCOPG2_OK:
+        return None
     try:
         conn = psycopg2.connect(DATABASE_URL)
         return conn
@@ -39,143 +101,64 @@ if OPENAI_API_KEY:
         # Fallback pour ancienne version de la bibliothèque
         openai.api_key = OPENAI_API_KEY
 
-# Prompt système pour Professeur Professionnel de FRANÇAIS - Version Simple et Précise
-PROFESSEUR_PROMPT = """Tu es un professeur EXCEPTIONNEL de FRANÇAIS. Tu ENSEIGNES la langue française de manière TRÈS SIMPLE et PRÉCISE.
+# Prompt système — Professeur Expert FRANÇAIS et MATHÉMATIQUES — Niveau STPL
+PROFESSEUR_PROMPT = """Tu es un professeur EXPERT en FRANÇAIS et en MATHÉMATIQUES, spécialisé dans le programme officiel du lycée de la SECONDE jusqu'en TERMINALE STPL (Sciences et Technologies du Produit et du Laboratoire). Tu as un niveau d'excellence absolue (100%) dans ces deux matières et tu prépares les élèves au baccalauréat STPL.
 
-🎯 TA SPÉCIALITÉ : ENSEIGNER LE FRANÇAIS
-Tu es un expert en langue française. Tu maîtrises parfaitement :
-- La grammaire française (verbes, conjugaison, genres, pluriels, accords, articles, pronoms, adjectifs)
-- L'orthographe française (accents, règles d'orthographe, pluriels, exceptions)
-- Le vocabulaire français (synonymes, antonymes, familles de mots, expressions)
-- La syntaxe française (structure des phrases, types de phrases, ordre des mots)
-- La prononciation française (sons, phonétique, règles de prononciation)
-- Les temps verbaux (présent, passé composé, imparfait, futur, plus-que-parfait, conditionnel, subjonctif)
-- La conjugaison (tous les groupes de verbes, verbes réguliers et irréguliers)
+🔴 RÈGLES FONDAMENTALES :
+- Tu réponds UNIQUEMENT en français. Toutes tes réponses sont en français.
+- Tu enseignes UNIQUEMENT le FRANÇAIS et les MATHÉMATIQUES.
+- Tu couvres TOUS les niveaux : Seconde, Première STPL, Terminale STPL.
+- Si la question porte sur une autre matière, dis : "Je suis spécialisé en français et mathématiques du niveau Seconde à Terminale STPL."
 
-RÈGLE D'OR : SIMPLICITÉ ET PRÉCISION EN FRANÇAIS
-- Réponds de manière TRÈS SIMPLE : utilise des mots faciles en français
-- Sois PRÉCIS : va droit au but, pas de blabla
-- ENSEIGNE vraiment le français : explique clairement ce que l'élève demande
-- Partir TOUJOURS de zéro : assume que l'élève ne connaît rien du français
+📐 MATHÉMATIQUES STPL — CE QUE TU MAÎTRISES À 100% :
 
-STRUCTURE SIMPLE DE TON ENSEIGNEMENT :
-1. Salue et encourage : "Excellente question !" (1 phrase)
-2. Définis simplement : Qu'est-ce que c'est ? (2-3 phrases simples)
-3. Explique avec un exemple concret : Donne 1 exemple de la vie quotidienne
-4. Résume en 1 phrase : Le point clé à retenir
-5. Encourage : "Continue comme ça !" (1 phrase)
+Seconde : nombres (ℕ, ℤ, ℚ, ℝ), puissances, racines ; équations 1er/2nd degré, systèmes ; fonctions de référence (affine, carré, inverse, racine) ; vecteurs, géométrie analytique ; statistiques (moyenne, médiane, quartiles, variance, écart-type) ; probabilités de base.
 
-IMPORTANT - FORMATAGE POUR LA LISIBILITÉ :
-✅ Après CHAQUE phrase, tu reviens à la ligne (saut de ligne)
-✅ Chaque phrase doit être sur sa propre ligne
-✅ Utilise des retours à la ligne fréquents pour aérer le texte
-✅ Cela permet au lecteur de mieux comprendre ce que tu dis
-✅ Organise bien tes réponses avec des espaces entre les idées
+Première STPL : dérivées (règles : somme, produit, quotient, composée) ; tableaux de variations, extrema, tangente ; suites arithmétiques et géométriques ; trigonométrie (sin, cos, tan, valeurs remarquables, radians) ; exponentielle eˣ et logarithme ln(x) ; loi binomiale B(n,p) : formule, E(X), V(X).
 
-🎯 TON OBJECTIF PRINCIPAL :
-- Enseigner le FRANÇAIS avec clarté et compétence
-- Motiver l'élève à apprendre et progresser en français
-- Répondre TOUJOURS facilement et directement aux questions sur le français
-- Adapter ton niveau d'explication au niveau de l'élève en français
-- Créer un environnement d'apprentissage positif et encourageant pour le français
-- Satisfaire complètement l'élève dans son apprentissage du français
-- Enseigner du niveau DÉBUTANT (zéro connaissance) jusqu'au niveau COMPÉTENT (maîtrise complète)
-- Suivre la progression de l'élève et adapter ton enseignement à son niveau
-- Faire progresser l'élève étape par étape jusqu'à ce qu'il devienne compétent en français
+Terminale STPL : calcul intégral (primitives, intégrales définies, valeur moyenne, aires) ; équations différentielles y' = ay et y' = ay + b ; loi normale N(μ, σ) : standardisation, table, intervalle de confiance ; matrices (opérations, déterminant, inverse, résolution de systèmes AX = B) ; logarithmes et exponentielles approfondis.
 
-🧩 1. COMMENCER PAR LE TRÈS SIMPLE (ADAPTATION DU NIVEAU)
-- Tu évalues automatiquement le niveau de l'élève d'après sa question
-- Tu pars TOUJOURS des bases, même si l'élève semble avancé
-- Tu expliques chaque mot clé comme si l'élève ne le connaissait pas
-- Tu construis progressivement : bases → intermédiaire → avancé
-- Exemple : Si on te demande "algorithme", tu expliques d'abord "résoudre un problème", puis "étapes", puis "algorithme"
+📚 FRANÇAIS LYCÉE — CE QUE TU MAÎTRISES À 100% :
 
-🗣️ 2. EXPLIQUER AVEC CLARTÉ MAXIMALE
-- Tu utilises un langage SIMPLE et ACCESSIBLE
-- Tu structures tes explications : Introduction → Développement → Exemples → Résumé
-- Tu utilises des phrases courtes et claires
-- Tu évites le jargon technique sauf si tu l'expliques immédiatement
-- Tu répètes les points clés naturellement dans ta réponse
+Langue : conjugaison complète (tous temps/modes), accord du participe passé (avec être, avec avoir selon le COD), verbes pronominaux, orthographe avancée (homophones, pièges), registres de langue.
 
-📚 3. EXEMPLES CONCRETS ET ANALOGIES
-- Chaque concept abstrait est relié à la vie quotidienne
-- Tu utilises des analogies que l'élève peut visualiser facilement
-- Tu donnes au moins 2-3 exemples concrets par explication
-- Exemple : "Une variable en programmation, c'est comme une boîte avec une étiquette. Tu mets quelque chose dedans et tu peux le récupérer plus tard"
+Analyse littéraire : figures de style (métaphore, comparaison, hyperbole, anaphore, antithèse, oxymore, litote, euphémisme, personnification, allégorie, gradation, chiasme, allitération, assonance) ; genres (roman, poésie, théâtre, essai) ; registres (lyrique, épique, tragique, comique, satirique) ; point de vue, focalisation, schéma narratif.
 
-✋ 4. MOTIVATION CONSTANTE
-- Tu encourages l'élève à chaque étape : "Excellente question !", "Tu progresses bien !", "Continue comme ça !"
-- Tu valorises chaque effort : "C'est normal de se poser cette question", "Bravo pour ta curiosité !"
-- Tu crées un sentiment de réussite : "Tu comprends bien !", "C'est parfait !"
-- Tu montres l'utilité de ce qu'on apprend : "C'est important car...", "Ça te servira pour..."
+Mouvements littéraires : Humanisme (Rabelais, Montaigne) ; Baroque ; Classicisme (Molière, Racine, La Fontaine) ; Lumières (Voltaire, Rousseau, Diderot) ; Romantisme (Hugo, Lamartine) ; Réalisme (Balzac, Flaubert, Stendhal) ; Naturalisme (Zola) ; Symbolisme (Baudelaire, Verlaine, Rimbaud) ; Surréalisme (Breton, Aragon).
 
-🧮 5. PRATIQUE IMMÉDIATE
-- Après chaque explication, tu proposes un exemple pratique ou un mini-exercice
-- Tu vérifies la compréhension en posant une question simple (sans attendre de réponse)
-- Tu donnes des exercices progressifs : facile → moyen → difficile
-- Tu rappelles : "Apprendre, c'est faire !"
+Méthodes EAF (Première) : commentaire composé (accroche + problématique + plan → procédés + citations + effets → conclusion) ; dissertation (analyse du sujet → problématique → plan dialectique thèse/antithèse/synthèse) ; analyse linéaire (mouvements + procédés + effets + sens).
 
-❤️ 6. PATIENCE ET BIENVEILLANCE ABSOLUES
-- Tu ne montres JAMAIS d'impatience ou de frustration
-- Tu utilises un ton chaleureux et rassurant
-- Tu dis souvent : "Prends ton temps", "C'est normal", "On y arrive ensemble"
-- Tu transformes les erreurs en opportunités d'apprendre
-- Tu restes positif même si l'élève ne comprend pas
+Terminale : Grand Oral (structure, conseils, exemples de questions STPL) ; argumentation avancée (types d'arguments, connecteurs logiques, réfutation).
 
-🔁 7. RÉVISION ET CONSOLIDATION
-- Tu fais des liens avec les concepts précédents
-- Tu reviens sur les points importants naturellement
-- Tu crées une progression logique dans l'apprentissage
-- Tu résumes régulièrement ce qui a été appris
+🎯 MÉTHODE PÉDAGOGIQUE :
+1. Identifier le niveau (Seconde / Première / Terminale STPL)
+2. Définir clairement le concept demandé
+3. Expliquer la règle ou la méthode, avec formules si nécessaire
+4. Donner 1 ou 2 exemples concrets et bien choisis
+5. Signaler les erreurs fréquentes et les pièges
+6. Encourager l'élève
 
-💡 8. COMPÉTENCE ET EXPERTISE
-- Tu montres une maîtrise parfaite de tous les sujets
-- Tu donnes des informations précises et vérifiées
-- Tu adaptes la profondeur selon le besoin : explication simple ou détaillée
-- Tu restes à jour avec les meilleures pratiques pédagogiques
+📝 FORMAT :
+- Titres en gras (**Titre**)
+- Tableaux pour formules et conjugaisons
+- Formules mathématiques clairement présentées
+- Citations littéraires entre guillemets « »
+- Sauts de ligne pour aérer
 
-TON STYLE DE COMMUNICATION :
-- Professionnel mais chaleureux
-- Clair, précis et structuré
-- Très doux, attentionné et encourageant
-- Toujours en français
-- Tu appelles l'élève "mon élève", "cher(e) élève", "mon cher(e) élève"
-- Tu utilises des emojis pédagogiques avec modération (📚 ✨ 💡 🎯)
+✅ RÈGLES D'OR :
+✅ Réponds DIRECTEMENT et COMPLÈTEMENT
+✅ Sois PRÉCIS et RIGOUREUX (formules mathématiques exactes, citations correctes)
+✅ Adapte le niveau à l'élève (Seconde / Première / Terminale STPL)
+✅ Montre TOUTES les étapes de calcul en maths
+✅ Identifie les PROCÉDÉS STYLISTIQUES en français (ne pas paraphraser)
+✅ Encourage avec bienveillance
 
-RÈGLES SIMPLES ET PRÉCISES :
-✅ Réponds DIRECTEMENT - jamais de "précise ta question"
-✅ Utilise des mots SIMPLES - pas de jargon compliqué
-✅ Sois PRÉCIS - va droit au but, pas de phrases inutiles
-✅ ENSEIGNE vraiment - explique ce que l'élève demande
-✅ Pars de ZÉRO - assume qu'il ne connaît rien
-✅ Donne 1 EXEMPLE concret - de la vie quotidienne
-✅ Encourage - termine par un mot positif
+❌ Ne dis JAMAIS "je ne peux pas répondre"
+❌ Ne donne JAMAIS une liste de 20 exercices
+❌ Ne paraphrase JAMAIS un texte littéraire sans analyser les procédés
+❌ N'invente JAMAIS une formule mathématique incorrecte
 
-❌ Ne demande JAMAIS de clarifications
-❌ Ne dis JAMAIS "je ne peux pas"
-❌ Ne fatigue JAMAIS l'élève
-❌ Pas de phrases trop longues
-❌ Pas de jargon technique sans explication
-
-EXEMPLE DE BONNE RÉPONSE (SIMPLE ET PRÉCISE) :
-Question : "c'est quoi français"
-Réponse : "Excellente question ! ✨
-
-Le français, c'est une langue.
-
-Une langue, c'est un moyen de communiquer avec des mots.
-
-Le français utilise 26 lettres comme l'anglais.
-
-Mais avec des accents spéciaux : é, è, ç.
-
-Exemple : le mot 'café' a un accent é.
-
-En résumé : le français est une langue avec des règles de grammaire et des accents.
-
-Continue comme ça ! 💪"
-
-Tu es un professeur de FRANÇAIS SIMPLE, PRÉCIS et EFFICACE. Tu enseignes le français clairement sans compliquer. Tu es COMPÉTENT et SATISFAISANT dans l'enseignement du français. Tu réponds à TOUTES les questions sur le français avec excellence."""
+Tu es un PROFESSEUR EXPERT, BIENVEILLANT et RIGOUREUX qui prépare les élèves au baccalauréat STPL avec excellence."""
 
 def get_response_openai(message, conversation_history):
     """Utilise OpenAI pour générer une réponse"""
@@ -195,26 +178,83 @@ def get_response_openai(message, conversation_history):
         # Utiliser la nouvelle API OpenAI si disponible
         if openai_client:
             response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",  # Modèle plus puissant pour le niveau STPL
                 messages=messages,
-                temperature=0.7,  # Équilibré pour enseigner clairement
-                max_tokens=1500  # Réponses plus détaillées pour bien enseigner
+                temperature=0.4,  # Bas pour précision et rigueur (maths et français)
+                max_tokens=3000,  # Réponses détaillées pour enseigner à 100%
+                frequency_penalty=0.3,
+                presence_penalty=0.2
             )
             return response.choices[0].message.content.strip()
         else:
             # Fallback pour ancienne version
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=messages,
-                temperature=0.7,
-                max_tokens=1500
+                temperature=0.4,
+                max_tokens=3000
             )
             return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Cher(e) élève, je rencontre un petit problème technique : {str(e)}. Peux-tu réessayer dans un instant ?"
 
+def calculer_expression(expression):
+    """Calcule une expression mathématique simple (+, -, *, /, parenthèses, nombres décimaux)."""
+    try:
+        # Nettoyer : symboles × ÷ et virgule, et "x" uniquement entre nombres (multiplication)
+        expr = expression.replace('×', '*').replace('÷', '/').replace(',', '.')
+        expr = re.sub(r'(\d)\s*x\s*(\d)', r'\1*\2', expr, flags=re.IGNORECASE)
+        expr = ''.join(c for c in expr if c in '0123456789+-*/(). ')
+        if not expr or not re.search(r'[+*/-]', expr) or not re.search(r'\d', expr):
+            return None
+        resultat = eval(expr, {"__builtins__": {}}, {})
+        return resultat if isinstance(resultat, (int, float)) and not isinstance(resultat, bool) else None
+    except Exception:
+        return None
+
+
+def reponse_calcul_if_any(message):
+    """
+    Si le message contient un calcul mathématique, retourne la réponse formatée.
+    Sinon retourne None (pour laisser les autres handlers répondre).
+    """
+    if not message or not message.strip():
+        return None
+    # Détection : au moins un opérateur et des chiffres (avec x, ×, ÷ possibles)
+    if not re.search(r'\d', message) or not any(op in message for op in ['+', '-', '*', '/', 'x', '×', '÷']):
+        return None
+    # Extraire une expression (chiffres, opérateurs, espaces, parenthèses, point)
+    calcul_match = re.search(r'([0-9+\-*/().\sx×÷]+)', message)
+    if not calcul_match:
+        return None
+    expression = calcul_match.group(1).strip()
+    resultat = calculer_expression(expression)
+    if resultat is None:
+        return None
+    return f"""Excellente question ! ✨
+
+**Calcul :** {expression}
+
+**Résultat :** {resultat}
+
+**Explication :**
+J'ai calculé l'expression mathématique que tu m'as donnée.
+
+Continue comme ça ! 💪"""
+
 def get_response_demo(message):
-    """Mode démonstration : réponses pédagogiques basiques sans API - répond directement"""
+    """Mode démonstration : réponses pédagogiques basiques sans API - répond directement.
+    
+    Avant d'utiliser les règles codées en dur, on vérifie d'abord si une réponse
+    existe dans la base de données Diangou (via le backend Node).
+    """
+    # 1) Essayer d'abord de répondre avec le contenu stocké dans la base Diangou
+    db_answer = get_response_from_diangou(message)
+    if db_answer:
+        return db_answer
+
+    # 2) Sinon, on applique les règles de démo intégrées en Python
+    # (Les calculs sont déjà gérés en priorité dans la route /chat via reponse_calcul_if_any)
     message_lower = message.lower().strip()
     
     # Détection de questions sur saluer / politesse - RÉPONSE PÉDAGOGIQUE COMPLÈTE (AVANT les simples salutations)
@@ -2829,35 +2869,7 @@ Configure une clé API OpenAI dans le fichier .env pour avoir des explications e
 
 Mais pour le français, je peux répondre directement ! Pose-moi ta question maintenant ! 📚✨"""
         else:
-            return f"""Excellente question ! ✨
-
-Tu me demandes : "{message}"
-
-Je comprends ta question ! 
-
-**Je peux t'aider !**
-
-**Si c'est une question sur le français, je peux répondre directement !**
-Je peux t'expliquer :
-- La grammaire française (verbes, conjugaison, genres, pluriels, accords)
-- L'orthographe (accents, règles d'orthographe)
-- Le vocabulaire (synonymes, antonymes)
-- La syntaxe (structure des phrases)
-- La prononciation (sons, règles de prononciation)
-- Les temps verbaux (présent, passé composé, imparfait, futur, conditionnel)
-- Les verbes irréguliers, les prépositions, les nombres
-- Et bien plus encore !
-
-**Pose-moi ta question de manière plus précise, par exemple :**
-- "C'est quoi un verbe ?"
-- "Comment conjuguer au présent ?"
-- "Qu'est-ce que le pluriel ?"
-- "Comment utiliser les accents ?"
-
-**Pour d'autres sujets :**
-Configure une clé API OpenAI dans le fichier .env pour avoir des explications encore plus détaillées.
-
-Mais pour le français, je peux répondre directement ! Pose-moi ta question maintenant ! 📚✨"""
+            return "Je suis désolé, je ne peux pas répondre à cette question pour le moment."
     
 def get_response_huggingface(message):
     """Utilise Hugging Face pour générer une réponse (alternative gratuite)"""
@@ -2901,16 +2913,19 @@ def chat():
         if not message:
             return jsonify({'error': 'Message vide'}), 400
         
-        # Choisir quelle API utiliser
-        if OPENAI_API_KEY and OPENAI_API_KEY != "sk-votre_cle_ici":
-            response = get_response_openai(message, conversation_history)
-        elif HUGGINGFACE_API_KEY:
-            response = get_response_huggingface(message)
-        else:
-            # Mode démonstration avec réponses basiques mais pédagogiques
-            response = get_response_demo(message)
+        # Répondre aux calculs mathématiques en priorité (sans appeler l'API)
+        response = reponse_calcul_if_any(message)
+        if response is None:
+            # Choisir quelle API utiliser
+            if OPENAI_API_KEY and OPENAI_API_KEY != "sk-votre_cle_ici":
+                response = get_response_openai(message, conversation_history)
+            elif HUGGINGFACE_API_KEY:
+                response = get_response_huggingface(message)
+            else:
+                # Mode démonstration avec réponses basiques mais pédagogiques
+                response = get_response_demo(message)
         
-        # Sauvegarder dans la base de données
+        # Sauvegarder dans la base de données propre à l'IA (PostgreSQL IAscience)
         conn = get_db_connection()
         if conn:
             try:
@@ -2942,6 +2957,13 @@ def chat():
             except Exception as db_error:
                 print(f"Erreur lors de la sauvegarde en base: {db_error}")
                 # On continue même si la sauvegarde échoue
+
+        # Sauvegarder également la conversation dans la base Diangou (backend Node)
+        try:
+            log_conversation_to_diangou(session_id, message, response)
+        except Exception as log_error:
+            # Par sécurité, on ne bloque jamais la réponse pour un problème de log
+            print(f"Erreur lors du log dans Diangou: {log_error}")
         
         return jsonify({
             'response': response,
@@ -2987,5 +3009,23 @@ def get_history(session_id):
         }), 500
 
 if __name__ == '__main__':
+    # Afficher le mode utilisé au démarrage
+    if OPENAI_API_KEY and OPENAI_API_KEY != "sk-votre_cle_ici":
+        print("✅ Mode OpenAI activé - Réponses intelligentes complètes")
+    elif HUGGINGFACE_API_KEY:
+        print("✅ Mode HuggingFace activé")
+    else:
+        print("📚 Mode démonstration - Réponses pédagogiques intégrées (sans API)")
+        print("   Pour des réponses à toute question : ajoutez OPENAI_API_KEY dans .env")
+    
+    conn = get_db_connection()
+    if conn:
+        print("✅ Base de données connectée - Historique sauvegardé")
+        conn.close()
+    else:
+        print("ℹ️  Base de données non connectée - L'IA fonctionne sans historique")
+        print("   Créez la base IAscience avec database.sql pour sauvegarder les conversations")
+    
+    print("\n🚀 Serveur IA sur http://127.0.0.1:5000 - Prêt à recevoir des questions !\n")
     app.run(debug=True, host='127.0.0.1', port=5000, threaded=True)
 

@@ -10,6 +10,14 @@ import uuid
 from datetime import datetime
 import re
 
+# Import des bases de connaissances locales
+try:
+    from cours_francais import COURS_FRANCAIS, rechercher_cours
+    from cours_mathematiques import COURS_MATHEMATIQUES, rechercher_cours_maths, MOTS_CLES_MATHS
+    COURS_DISPONIBLES = True
+except ImportError:
+    COURS_DISPONIBLES = False
+
 # Charger les variables d'environnement
 # D'abord charger depuis le dossier ia-sc (pour OPENAI_API_KEY)
 load_dotenv()
@@ -133,14 +141,110 @@ if OPENAI_API_KEY:
         # Fallback pour ancienne version de la bibliothèque
         openai.api_key = OPENAI_API_KEY
 
-# Prompt système pour Professeur Professionnel de FRANÇAIS - Version 100% Complète
-PROFESSEUR_PROMPT = """Tu es un professeur EXCEPTIONNEL et COMPLET de FRANÇAIS. Tu ENSEIGNES la langue française à 100% de manière TRÈS SIMPLE, PRÉCISE et EXHAUSTIVE.
+# Prompt système : Professeur FRANÇAIS et MATHÉMATIQUES — Niveau Première et Terminale STPL
+PROFESSEUR_PROMPT = """Tu es un professeur expert en FRANÇAIS et en MATHÉMATIQUES, spécialisé dans le programme officiel du lycée de la PREMIÈRE ANNÉE jusqu'en TERMINALE STPL (Sciences et Technologies du Produit et du Laboratoire). Tu as un niveau d'excellence absolue (100%) dans ces deux matières.
 
-🔴 RÈGLE ABSOLUE - 100% EN FRANÇAIS :
-- Tu réponds UNIQUEMENT en français. Toutes tes réponses, explications, exemples, exercices, consignes et encouragements sont 100% en français.
-- Si l'élève pose une question dans une autre langue (anglais, etc.), tu réponds quand même entièrement en français et tu enseignes le français ; tu peux éventuellement indiquer la traduction du mot demandé en français, puis continuer en français.
-- Aucune phrase, titre ou instruction en anglais ou autre langue dans tes réponses. Tout doit être en français correct et pédagogique.
-- Ton rôle exclusif est d'enseigner le français : grammaire, orthographe, conjugaison, vocabulaire, syntaxe, prononciation, du niveau débutant au niveau avancé.
+🔴 RÈGLES FONDAMENTALES :
+- Tu réponds UNIQUEMENT en français. Toutes tes réponses sont EXCLUSIVEMENT en français.
+- Tu enseignes le FRANÇAIS et les MATHÉMATIQUES uniquement.
+- Si la question porte sur une autre matière, dis poliment : "Je suis spécialisé en français et en mathématiques du niveau Seconde jusqu'en Terminale STPL. Pose-moi une question sur le français ou les maths !"
+- Tu adaptes TOUJOURS ton niveau à l'élève : Seconde / Première STPL / Terminale STPL.
+
+📐 MATHÉMATIQUES — PROGRAMME STPL COMPLET (Seconde → Terminale) :
+
+**SECONDE :**
+- Nombres et calculs : ensembles ℕ, ℤ, ℚ, ℝ ; puissances ; racines carrées ; fractions
+- Équations et inéquations du 1er et 2nd degré ; systèmes linéaires
+- Fonctions de référence : affine, carré, inverse, racine carrée ; domaine de définition ; parité
+- Vecteurs et géométrie : coordonnées, distance, milieu, équations de droite
+- Statistiques : moyenne, médiane, quartiles, variance, écart-type, boîte à moustaches
+- Probabilités : univers, événements, probabilité conditionnelle, indépendance
+
+**PREMIÈRE STPL :**
+- Dérivées : définition, règles de calcul (somme, produit, quotient, composée)
+- Tableaux de variations ; extrema ; équation de tangente
+- Suites numériques : arithmétiques et géométriques ; limite ; récurrence
+- Trigonométrie : sin, cos, tan ; valeurs remarquables ; identités fondamentales ; radians
+- Fonctions exponentielle (eˣ) et logarithme népérien (ln x)
+- Loi binomiale B(n,p) : formule, espérance, variance
+
+**TERMINALE STPL :**
+- Calcul intégral : primitives, intégrales définies, interprétation géométrique, valeur moyenne
+- Équations différentielles : y' = ay et y' = ay + b ; applications (radioactivité, loi de Newton)
+- Loi normale N(μ, σ) : standardisation Z, table, intervalles de confiance
+- Matrices : opérations, déterminant, inverse, résolution de systèmes
+- Logarithmes et exponentielles approfondis ; croissances comparées
+
+📚 FRANÇAIS — PROGRAMME LYCÉE COMPLET (Seconde → Terminale STPL) :
+
+**LANGUE ET GRAMMAIRE :**
+- Conjugaison complète : tous temps et modes (indicatif, subjonctif, conditionnel, impératif)
+- Accord du participe passé : avec être, avec avoir (règle du COD avant), verbes pronominaux
+- Syntaxe : COD, COI, compléments circonstanciels, subordination, types de propositions
+- Orthographe : homophones, règles d'accord, pièges (leur/leurs, tout/toute, même)
+- Registres de langue : familier, courant, soutenu, littéraire
+
+**ANALYSE LITTÉRAIRE (Seconde → Première) :**
+- Figures de style : métaphore, comparaison, hyperbole, anaphore, antithèse, oxymore, litote, euphémisme, personnification, allégorie, gradation, chiasme, allitération, assonance
+- Genres littéraires : roman, nouvelle, poésie (versification, rimes), théâtre (tragédie, comédie), essai
+- Registres littéraires : lyrique, épique, tragique, comique, satirique, pathétique, fantastique
+- Types de textes : narratif (schéma narratif, point de vue, focalisation), descriptif, argumentatif
+
+**MOUVEMENTS LITTÉRAIRES :**
+- Humanisme (XVIe), Baroque (fin XVIe-XVIIe), Classicisme (XVIIe), Lumières (XVIIIe)
+- Romantisme, Réalisme, Naturalisme (XIXe)
+- Symbolisme, Surréalisme (XIXe-XXe)
+- Auteurs et œuvres clés : Molière, Racine, Hugo, Balzac, Zola, Flaubert, Baudelaire, Voltaire, Rousseau
+
+**MÉTHODES RÉDACTIONNELLES (Première — EAF) :**
+- Commentaire composé : introduction (accroche + problématique + plan) + développement (procédés + citations + effets) + conclusion
+- Dissertation : analyse du sujet + problématique + plan dialectique (thèse/antithèse/synthèse)
+- Analyse linéaire : découpage en mouvements + procédés + effets + sens
+- Argumentation : types d'arguments, connecteurs logiques, réfutation
+
+**TERMINALE :**
+- Grand Oral : structure (5 min exposé + échange), conseils, questions possibles
+- Argumentation avancée : connecteurs, réfutation, plan dialectique
+- Orthographe expert : accords complexes, pièges avancés
+
+🎯 COMMENT TU ENSEIGNES (MÉTHODE PÉDAGOGIQUE) :
+1. **Identifier le niveau** : Seconde / Première / Terminale STPL
+2. **Aller au cœur du sujet** : définir clairement le concept demandé
+3. **Expliquer la règle** ou **la méthode** de façon précise et structurée
+4. **Donner 1 ou 2 exemples concrets** et bien choisis (pas une liste exhaustive)
+5. **Montrer les erreurs fréquentes** et comment les éviter
+6. **Encourager** l'élève avec un mot positif
+
+📝 FORMAT DE TES RÉPONSES :
+- Structure claire avec des titres en gras (**Titre**)
+- Tableaux quand c'est utile (formules, conjugaisons, valeurs)
+- Formules mathématiques clairement présentées
+- Citations littéraires entre guillemets « »
+- Saut de ligne après chaque idée importante
+- Longueur adaptée : ni trop courte (incomplet), ni trop longue (indigeste)
+
+🧮 POUR LES CALCULS MATHÉMATIQUES :
+- Montre TOUTES les étapes intermédiaires
+- Explique CHAQUE étape (pourquoi on fait ça)
+- Vérifie le résultat quand c'est possible
+- Donne l'interprétation en contexte si c'est un problème
+
+✅ RÈGLES D'OR :
+✅ Réponds DIRECTEMENT et COMPLÈTEMENT
+✅ Sois PRÉCIS et RIGOUREUX (formules mathématiques exactes)
+✅ Sois CLAIR et STRUCTURÉ
+✅ Adapte le niveau à l'élève (Seconde / Première / Terminale STPL)
+✅ Cite TOUJOURS tes sources textuelles entre guillemets
+✅ Montre les ÉTAPES de calcul en maths
+✅ Identifie les PROCÉDÉS STYLISTIQUES en français
+✅ Encourage l'élève avec bienveillance
+
+❌ Ne dis JAMAIS "je ne peux pas répondre à ça"
+❌ Ne donne JAMAIS de longues listes d'exercices ou de tests
+❌ Ne paraphrase JAMAIS un texte littéraire sans analyser les procédés
+❌ N'invente JAMAIS une formule mathématique incorrecte
+
+Tu es un PROFESSEUR EXPERT, BIENVEILLANT et RIGOUREUX. Ton objectif : que chaque élève comprenne parfaitement et réussisse son baccalauréat STPL avec excellence.
 
 🎯 TA SPÉCIALITÉ EXCLUSIVE : ENSEIGNER LE FRANÇAIS À 100%
 Tu es un MAÎTRE ABSOLU en langue française. Tu maîtrises PARFAITEMENT et COMPLÈTEMENT :
@@ -203,22 +307,19 @@ Tu es un MAÎTRE ABSOLU en langue française. Tu maîtrises PARFAITEMENT et COMP
 RÈGLE D'OR : SIMPLICITÉ, PRÉCISION ET EXHAUSTIVITÉ À 100%
 - Réponds de manière TRÈS SIMPLE : utilise des mots faciles en français
 - Sois PRÉCIS : va droit au but, pas de blabla
-- Sois EXHAUSTIF : couvre TOUS les aspects de la question (100% complet)
+- Sois CLAIR et CONCIS : règles et 1 à 2 exemples, sans surcharge
 - ENSEIGNE vraiment le français : explique clairement et COMPLÈTEMENT ce que l'élève demande
 - Partir TOUJOURS de zéro : assume que l'élève ne connaît rien du français
-- Donne TOUJOURS des exemples multiples : au moins 3-5 exemples concrets
-- Explique TOUTES les exceptions et cas particuliers
-- Couvre TOUS les niveaux : débutant à avancé dans chaque réponse
+- Donne 1 à 2 exemples concrets par explication, pas de longue liste
+- Pas d'exercices multiples, pas de quiz, pas d'examen
 
-STRUCTURE COMPLÈTE DE TON ENSEIGNEMENT (100%) :
-1. Salue et encourage : "Excellente question !" (1 phrase)
-2. Définis simplement : Qu'est-ce que c'est ? (2-3 phrases simples)
-3. Explique COMPLÈTEMENT : Tous les aspects, règles, exceptions (5-10 phrases)
-4. Donne MULTIPLES exemples : Au moins 3-5 exemples concrets de la vie quotidienne
-5. Explique les EXCEPTIONS : Toutes les exceptions importantes
-6. Donne des EXERCICES : Propose 2-3 exercices pratiques
-7. Résume en 2-3 phrases : Les points clés à retenir
-8. Encourage : "Continue comme ça !" (1 phrase)
+STRUCTURE SIMPLE (sans surcharge d'exercices ni de tests) :
+1. Salue : "Excellente question !" (1 phrase)
+2. Définis simplement : Qu'est-ce que c'est ? (2-3 phrases)
+3. Explique les règles principales avec 1 ou 2 exemples au plus
+4. Résume en 1 phrase
+5. Encourage : "Continue comme ça !"
+Ne donne pas d'exercices multiples, ni de quiz, ni d'examen.
 
 IMPORTANT - FORMATAGE POUR LA LISIBILITÉ :
 ✅ Après CHAQUE phrase, tu reviens à la ligne (saut de ligne)
@@ -229,7 +330,7 @@ IMPORTANT - FORMATAGE POUR LA LISIBILITÉ :
 
 🎯 TON OBJECTIF PRINCIPAL (100% COMPLET) :
 - Enseigner le FRANÇAIS à 100% avec clarté, compétence et exhaustivité
-- Couvrir TOUS les aspects de chaque question (règles, exceptions, exemples, exercices)
+- Répondre de façon claire et concise (règles et 1-2 exemples, sans longue liste d'exercices)
 - Motiver l'élève à apprendre et progresser en français
 - Répondre TOUJOURS facilement, directement et COMPLÈTEMENT aux questions sur le français
 - Adapter ton niveau d'explication au niveau de l'élève en français
@@ -257,7 +358,7 @@ IMPORTANT - FORMATAGE POUR LA LISIBILITÉ :
 📚 3. EXEMPLES CONCRETS ET ANALOGIES (MULTIPLES)
 - Chaque concept abstrait est relié à la vie quotidienne
 - Tu utilises des analogies que l'élève peut visualiser facilement
-- Tu donnes TOUJOURS au moins 5-7 exemples concrets par explication
+- Tu donnes 1 à 2 exemples concrets au plus par explication
 - Tu donnes des exemples pour CHAQUE règle et CHAQUE exception
 - Exemple : "Une variable en programmation, c'est comme une boîte avec une étiquette. Tu mets quelque chose dedans et tu peux le récupérer plus tard"
 - Tu varies les exemples : vie quotidienne, école, travail, famille, etc.
@@ -268,13 +369,9 @@ IMPORTANT - FORMATAGE POUR LA LISIBILITÉ :
 - Tu crées un sentiment de réussite : "Tu comprends bien !", "C'est parfait !"
 - Tu montres l'utilité de ce qu'on apprend : "C'est important car...", "Ça te servira pour..."
 
-🧮 5. PRATIQUE IMMÉDIATE (EXERCICES MULTIPLES)
-- Après chaque explication, tu proposes TOUJOURS 3-5 exercices pratiques
-- Tu donnes des exercices pour CHAQUE règle expliquée
-- Tu vérifies la compréhension en posant des questions simples (sans attendre de réponse)
-- Tu donnes des exercices progressifs : facile → moyen → difficile
-- Tu donnes les CORRIGÉS des exercices pour que l'élève puisse s'auto-évaluer
-- Tu rappelles : "Apprendre, c'est faire !"
+🧮 5. PRATIQUE LÉGÈRE
+- Au plus 1 exemple pratique à la fin. Pas de liste d'exercices, pas de test, pas d'examen.
+- Reste concis pour ne pas fatiguer l'élève.
 
 ❤️ 6. PATIENCE ET BIENVEILLANCE ABSOLUES
 - Tu ne montres JAMAIS d'impatience ou de frustration
@@ -294,9 +391,7 @@ IMPORTANT - FORMATAGE POUR LA LISIBILITÉ :
 - Tu donnes des informations précises, vérifiées et COMPLÈTES
 - Tu adaptes la profondeur selon le besoin : explication simple ou détaillée, mais TOUJOURS complète
 - Tu restes à jour avec les meilleures pratiques pédagogiques
-- Tu couvres 100% de chaque sujet demandé (règles + exceptions + exemples + exercices)
-- Tu donnes TOUJOURS au moins 5-7 exemples concrets et variés
-- Tu proposes TOUJOURS 3-5 exercices avec corrigés détaillés
+- Tu expliques le sujet avec 1 à 2 exemples au plus. Pas d'exercices multiples ni de tests.
 
 TON STYLE DE COMMUNICATION :
 - Professionnel mais chaleureux
@@ -310,17 +405,16 @@ RÈGLES SIMPLES, PRÉCISES ET EXHAUSTIVES (100%) :
 ✅ Réponds DIRECTEMENT - jamais de "précise ta question"
 ✅ Utilise des mots SIMPLES - pas de jargon compliqué
 ✅ Sois PRÉCIS - va droit au but, pas de phrases inutiles
-✅ Sois EXHAUSTIF - couvre 100% du sujet (règles + exceptions + exemples + exercices)
+✅ Sois CLAIR et CONCIS - règles et 1 à 2 exemples, pas d'exercices multiples
 ✅ ENSEIGNE vraiment - explique COMPLÈTEMENT ce que l'élève demande
 ✅ Pars de ZÉRO - assume qu'il ne connaît rien
-✅ Donne 5-7 EXEMPLES concrets - de la vie quotidienne, variés
-✅ Explique TOUTES les exceptions - pas seulement les règles générales
-✅ Donne 3-5 EXERCICES pratiques - avec corrigés détaillés
+✅ Donne 1 à 2 EXEMPLES concrets au plus
+✅ Explique les règles principales, pas de longue liste d'exercices ni de tests
 ✅ Encourage - termine par un mot positif
 ✅ Détecte TOUJOURS le niveau de l'élève et adapte ta réponse
-✅ Donne des EXEMPLES pour CHAQUE règle et CHAQUE exception
-✅ Structure ta réponse : Définition → Règles → Exceptions → Exemples → Exercices → Résumé
-✅ Utilise des TABLEAUX et LISTES pour clarifier les informations
+✅ Donne 1 à 2 exemples au plus par règle
+✅ Structure ta réponse : Définition → Règles (et 1-2 exemples) → Résumé
+✅ Reste concis, pas de longue liste d'exercices ni de tests
 ✅ Donne des ASTUCES mnémotechniques pour mémoriser
 
 ❌ Ne demande JAMAIS de clarifications
@@ -826,6 +920,276 @@ Je peux t'aider ! Pose-moi ta question de manière plus précise, par exemple :
 
 Mais même sans clé API, je peux répondre à beaucoup de questions ! Essaie de reformuler ta question, je ferai de mon mieux ! 📚"""
     
+    # ========== MATHÉMATIQUES STPL (SECONDET → TERMINALE) ==========
+
+    # Recherche dans la base de cours de maths (si disponible)
+    elif COURS_DISPONIBLES and any(mot in message_lower for mot in MOTS_CLES_MATHS):
+        resultats_maths = rechercher_cours_maths(message_lower)
+        if resultats_maths:
+            cours = resultats_maths[0]['cours']
+            niveau_affiche = resultats_maths[0]['niveau'].replace('_', ' ').upper()
+            return f"""Excellente question ! 📐
+
+**{cours['titre']}** — Niveau : {niveau_affiche}
+
+{cours['contenu']}
+
+**Exemples :**
+{chr(10).join('- ' + ex for ex in cours['exemples'])}
+
+Continue comme ça, tu progresses en maths ! 💪"""
+
+        # Réponses spécifiques pour les maths STPL les plus demandées
+        if any(mot in message_lower for mot in ['dérivée', 'derivee', 'dériver', 'dérivation', 'règle dérivée']):
+            return """Excellente question ! 📐
+
+**Les Dérivées — Première/Terminale STPL**
+
+La dérivée f'(x) mesure la vitesse de variation d'une fonction.
+
+**Dérivées des fonctions de base :**
+| Fonction f(x) | Dérivée f'(x) |
+|---------------|---------------|
+| c (constante) | 0 |
+| xⁿ | n × xⁿ⁻¹ |
+| √x | 1/(2√x) |
+| eˣ | eˣ |
+| ln(x) | 1/x |
+| sin(x) | cos(x) |
+| cos(x) | -sin(x) |
+
+**Règles de calcul :**
+- **(u + v)' = u' + v'**
+- **(k × u)' = k × u'**
+- **(u × v)' = u'v + uv'** ← produit
+- **(u/v)' = (u'v - uv') / v²** ← quotient
+- **[u(v(x))]' = v'(x) × u'(v(x))** ← composée
+
+**Exemple complet :**
+f(x) = x³ - 3x + 2
+→ f'(x) = 3x² - 3
+→ f'(x) = 0 quand 3x² = 3, soit x = ±1
+→ f(-1) = 4 (maximum local), f(1) = 0 (minimum local)
+
+**Équation de la tangente en x₀ :**
+y = f'(x₀)(x - x₀) + f(x₀)
+
+Continue comme ça, tu maîtrises les dérivées ! 💪"""
+
+        elif any(mot in message_lower for mot in ['intégrale', 'integrale', 'primitive', 'intégration', 'calcul intégral']):
+            return """Excellente question ! 📐
+
+**Calcul Intégral — Terminale STPL**
+
+**Primitives usuelles :**
+| f(x) | F(x) primitive |
+|------|---------------|
+| k (constante) | kx + C |
+| xⁿ (n ≠ -1) | xⁿ⁺¹/(n+1) + C |
+| eˣ | eˣ + C |
+| 1/x | ln|x| + C |
+| sin(x) | -cos(x) + C |
+| cos(x) | sin(x) + C |
+
+**Intégrale définie :**
+∫[a→b] f(x) dx = F(b) - F(a)
+
+**Exemple :**
+∫[0→2] x² dx = [x³/3]₀² = 8/3 - 0 = **8/3**
+
+**Interprétation :** Si f(x) ≥ 0 sur [a;b], l'intégrale = aire sous la courbe.
+
+**Valeur moyenne :**
+m = 1/(b-a) × ∫[a→b] f(x) dx
+
+Continue comme ça ! 💪"""
+
+        elif any(mot in message_lower for mot in ['loi normale', 'normale', 'gaussienne', 'écart-type normal', 'distribution normale']):
+            return """Excellente question ! 📐
+
+**Loi Normale N(μ, σ) — Terminale STPL**
+
+**Caractéristiques :**
+- μ = espérance (moyenne) — centre de la cloche
+- σ = écart-type — largeur de la cloche
+- Courbe en cloche, symétrique autour de μ
+
+**Règle empirique :**
+- 68% des valeurs ∈ [μ - σ ; μ + σ]
+- 95% des valeurs ∈ [μ - 2σ ; μ + 2σ]
+- 99,7% des valeurs ∈ [μ - 3σ ; μ + 3σ]
+
+**Standardisation (centrage-réduction) :**
+Z = (X - μ) / σ  →  Z ~ N(0, 1)
+
+**Table de la loi normale centrée réduite :**
+- P(Z ≤ 0) = 0,5
+- P(Z ≤ 1,96) ≈ 0,975
+- P(-1,96 ≤ Z ≤ 1,96) ≈ 0,95
+
+**Intervalle de confiance (niveau 95%) :**
+IC = [f̂ ± 1,96 × √(f̂(1-f̂)/n)]
+
+**Exemple :**
+X ~ N(100 ; 15) : P(70 ≤ X ≤ 130) = P(|Z| ≤ 2) ≈ 95%
+
+Continue comme ça ! 💪"""
+
+        elif any(mot in message_lower for mot in ['binomiale', 'loi binomiale', 'bernoulli', 'b(n,p)', 'probabilité binomiale']):
+            return """Excellente question ! 📐
+
+**Loi Binomiale B(n, p) — Première STPL**
+
+n répétitions indépendantes d'une épreuve de Bernoulli.
+p = probabilité de succès, q = 1 - p.
+
+**Formule :**
+P(X = k) = C(n,k) × pᵏ × qⁿ⁻ᵏ
+
+où C(n,k) = n! / (k! × (n-k)!) = "k parmi n"
+
+**Paramètres :**
+- Espérance : **E(X) = n × p**
+- Variance : **V(X) = n × p × q**
+- Écart-type : **σ = √(npq)**
+
+**Exemple :**
+X ~ B(10 ; 0,4) :
+- P(X = 3) = C(10,3) × 0,4³ × 0,6⁷ = 120 × 0,064 × 0,028 ≈ 0,215
+- E(X) = 10 × 0,4 = **4**
+- V(X) = 10 × 0,4 × 0,6 = **2,4**
+
+**C(n,k) — Comment calculer :**
+C(10,3) = 10! / (3! × 7!) = (10×9×8)/(3×2×1) = 120
+
+Continue comme ça ! 💪"""
+
+        elif any(mot in message_lower for mot in ['équation différentielle', 'equation differentielle', "y' = ay", "y'=ay", "différentielle"]):
+            return """Excellente question ! 📐
+
+**Équations Différentielles — Terminale STPL**
+
+**Type 1 : y' = ay**
+Solution générale : **y = C × eᵃˣ**
+(C est une constante réelle quelconque)
+
+Si y(0) = y₀ → **y = y₀ × eᵃˣ**
+
+**Type 2 : y' = ay + b**
+1. Solution particulière (constante) : yₚ = -b/a
+2. Solution homogène : yₕ = C × eᵃˣ
+3. Solution générale : **y = C × eᵃˣ - b/a**
+
+**Exemple :**
+y' = -2y + 6, y(0) = 4
+- yₚ = 6/2 = 3 (solution particulière)
+- y = Ce⁻²ˣ + 3
+- y(0) = 4 → C + 3 = 4 → C = 1
+- **Solution : y = e⁻²ˣ + 3**
+
+**Applications :**
+- Radioactivité : N(t) = N₀ × e⁻ᵏᵗ
+- Refroidissement : T(t) = T_env + (T₀ - T_env) × e⁻ᵏᵗ
+- Demi-vie : t½ = ln(2)/k
+
+Continue comme ça ! 💪"""
+
+        elif any(mot in message_lower for mot in ['matrice', 'matrices', 'déterminant', 'determinant', 'inverse matrice']):
+            return """Excellente question ! 📐
+
+**Calcul Matriciel — Terminale STPL**
+
+**Déterminant d'une matrice 2×2 :**
+A = [[a, b], [c, d]]
+**det(A) = a×d - b×c**
+
+**Matrice inverse (si det ≠ 0) :**
+A⁻¹ = (1/det(A)) × [[d, -b], [-c, a]]
+
+**Produit de matrices :**
+C = A × B → cᵢⱼ = somme des aᵢₖ × bₖⱼ
+
+**Résolution d'un système avec les matrices :**
+AX = B → **X = A⁻¹ × B**
+
+**Exemple complet :**
+{ 2x + y = 5
+{ x - y = 1
+A = [[2,1],[1,-1]], det(A) = -2 - 1 = -3
+A⁻¹ = (-1/3) × [[-1,-1],[-1,2]]
+B = [[5],[1]]
+X = A⁻¹B → x = 2, y = 1
+
+**Vérification :** 2(2) + 1 = 5 ✓ et 2 - 1 = 1 ✓
+
+Continue comme ça ! 💪"""
+
+        elif any(mot in message_lower for mot in ['suite', 'suites', 'arithmétique', 'géométrique', 'raison suite', 'terme général']):
+            return """Excellente question ! 📐
+
+**Suites Numériques — Première STPL**
+
+**Suite arithmétique (raison r) :**
+- uₙ₊₁ = uₙ + r
+- Terme général : **uₙ = u₀ + n × r**
+- Somme n termes : **Sₙ = n × (u₀ + uₙ₋₁) / 2**
+
+**Suite géométrique (raison q) :**
+- uₙ₊₁ = uₙ × q
+- Terme général : **uₙ = u₀ × qⁿ**
+- Somme n termes (q ≠ 1) : **Sₙ = u₀ × (1 - qⁿ) / (1 - q)**
+
+**Exemple arithmétique :**
+u₀ = 3, r = 4 → u₅ = 3 + 5 × 4 = **23**
+
+**Exemple géométrique :**
+u₀ = 2, q = 3 → u₄ = 2 × 3⁴ = 2 × 81 = **162**
+
+**Limite d'une suite géométrique :**
+- |q| < 1 → qⁿ → 0 (converge vers 0)
+- q > 1 → qⁿ → +∞ (diverge)
+- q = 1 → suite constante
+
+Continue comme ça ! 💪"""
+
+        else:
+            return """Excellente question ! 📐
+
+Je suis ton professeur de **Mathématiques niveau STPL** (Seconde → Terminale).
+
+**Programme que je maîtrise à 100% :**
+
+**Seconde :**
+- Nombres et calculs (puissances, racines, fractions)
+- Équations du 1er et 2nd degré, systèmes
+- Fonctions de référence (affine, carré, inverse, racine)
+- Vecteurs et géométrie dans le plan
+- Statistiques (moyenne, médiane, écart-type)
+- Probabilités de base
+
+**Première STPL :**
+- Dérivées : règles de calcul, tableaux de variations, extrema
+- Suites arithmétiques et géométriques
+- Trigonométrie (sin, cos, tan, valeurs remarquables)
+- Fonctions eˣ et ln(x)
+- Loi binomiale B(n,p)
+
+**Terminale STPL :**
+- Calcul intégral (primitives, intégrales, valeur moyenne)
+- Équations différentielles (y' = ay et y' = ay + b)
+- Loi normale N(μ, σ) et intervalle de confiance
+- Matrices (opérations, déterminant, inverse, systèmes)
+
+**Pose-moi tes questions de maths, par exemple :**
+- "Calcule la dérivée de x³ - 2x"
+- "Explique-moi la loi binomiale"
+- "C'est quoi une intégrale ?"
+- "Comment résoudre une équation différentielle ?"
+
+Pour des calculs numériques et des exercices complets, configure une clé API OpenAI.
+
+Continue, pose-moi tes questions ! 💪"""
+
     # Détection de questions sur la programmation - RÉPONSE SIMPLE ET PRÉCISE
     elif any(mot in message_lower for mot in ['programmation', 'code', 'python', 'javascript', 'algorithme', 'coder', 'programmer']):
         return """Excellente question ! ✨
