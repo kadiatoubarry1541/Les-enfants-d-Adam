@@ -51,6 +51,7 @@ frontend/uploads/
 # OS files
 Thumbs.db
 .DS_Store
+nul
 
 # Python
 __pycache__/

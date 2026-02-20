@@ -219,15 +219,28 @@ router.get('/groups/:id/messages', async (req, res) => {
     }
     
     const members = group.members || [];
-    if (!members.includes(req.user.numeroH)) {
+
+    const isAdminUser =
+      req.user &&
+      (
+        req.user.role === 'admin' ||
+        req.user.role === 'super-admin' ||
+        req.user.isMasterAdmin ||
+        req.user.canViewAll
+      );
+
+    // Les utilisateurs classiques doivent être membres du groupe.
+    // Les administrateurs (admin, super-admin, master admin) peuvent voir tous les messages
+    // sans condition d'appartenance, afin de mieux superviser la plateforme.
+    if (!isAdminUser && !members.includes(req.user.numeroH)) {
       return res.status(403).json({
         success: false,
         message: 'Vous n\'êtes pas membre de ce organisation'
       });
     }
-    
+
     const messages = await ResidenceMessage.getGroupMessages(id, parseInt(limit), parseInt(offset));
-    
+
     // Ajouter les noms des auteurs
     const messagesWithAuthors = await Promise.all(
       messages.map(async (msg) => {
@@ -238,7 +251,7 @@ router.get('/groups/:id/messages', async (req, res) => {
         };
       })
     );
-    
+
     res.json({
       success: true,
       messages: messagesWithAuthors

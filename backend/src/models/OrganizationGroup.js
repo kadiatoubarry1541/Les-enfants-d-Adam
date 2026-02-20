@@ -29,7 +29,7 @@ OrganizationGroup.init({
     type: DataTypes.TEXT
   },
   type: {
-    type: DataTypes.STRING // ENUM converti en STRING ('hommes', 'femmes', 'enfants', 'recentes', 'recherches', 'anciens'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('hommes', 'femmes', 'enfants', 'recentes', 'recherches', 'anciens'),
     allowNull: false
   },
   members: {

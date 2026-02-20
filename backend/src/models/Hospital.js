@@ -37,11 +37,11 @@ Hospital.init({
     allowNull: false
   },
   type: {
-    type: DataTypes.STRING // ENUM converti en STRING ('hôpital', 'clinique', 'centre de santé', 'dispensaire'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('hôpital', 'clinique', 'centre de santé', 'dispensaire'),
     allowNull: false
   },
   region: {
-    type: DataTypes.STRING // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('Basse-Guinée', 'Fouta-Djallon', 'Haute-Guinée', 'Guinée forestière'),
     allowNull: false
   },
   city: {

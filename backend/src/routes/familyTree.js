@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import User from '../models/User.js';
 import DeceasedMember from '../models/DeceasedMember.js';
 import FamilyTreeConfirmation from '../models/FamilyTreeConfirmation.js';
+import FamilyTreeMessage from '../models/FamilyTreeMessage.js';
 import { FamilyTree } from '../models/additional.js';
 import { Op } from 'sequelize';
 
@@ -444,6 +445,121 @@ router.post('/add-deceased', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de l\'ajout du décédé'
+    });
+  }
+});
+
+// ========== MESSAGERIE FAMILIALE (type WhatsApp) ==========
+
+// @route   GET /api/family-tree/messages
+// @desc    Récupérer les messages familiaux (par nom de famille)
+//          - Utilisateur classique : uniquement sa propre famille (nomFamille)
+//          - Admin / super-admin / master-admin : peut passer ?familyName=XXX pour tout voir
+// @access  Authentifié
+router.get('/messages', async (req, res) => {
+  try {
+    const user = req.user;
+    const {
+      familyName: requestedFamilyName,
+      limit = 100,
+      offset = 0
+    } = req.query;
+
+    const isAdmin =
+      user.role === 'admin' ||
+      user.role === 'super-admin' ||
+      user.numeroH === 'G0C0P0R0E0F0 0' ||
+      user.isMasterAdmin ||
+      user.canViewAll;
+
+    const familyName =
+      (isAdmin && requestedFamilyName) ||
+      user.nomFamille ||
+      user.familyName;
+
+    if (!familyName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nom de famille introuvable pour l\'utilisateur connecté'
+      });
+    }
+
+    const messages = await FamilyTreeMessage.getFamilyMessages(
+      familyName,
+      parseInt(limit as string, 10),
+      parseInt(offset as string, 10)
+    );
+
+    const messagesWithAuthors = await Promise.all(
+      messages.map(async (msg) => {
+        const author = await User.findOne({ where: { numeroH: msg.numeroH } });
+        return {
+          ...msg.toJSON(),
+          authorName: author ? `${author.prenom} ${author.nomFamille}` : 'Membre de la famille',
+          familyName
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      familyName,
+      messages: messagesWithAuthors
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des messages familiaux:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des messages familiaux'
+    });
+  }
+});
+
+// @route   POST /api/family-tree/messages
+// @desc    Envoyer un message dans la conversation familiale
+// @access  Authentifié
+router.post('/messages', async (req, res) => {
+  try {
+    const user = req.user;
+    const { content, messageType = 'text', mediaUrl } = req.body;
+
+    const familyName = user.nomFamille || user.familyName;
+
+    if (!familyName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nom de famille introuvable pour l\'utilisateur connecté'
+      });
+    }
+
+    if ((!content || !String(content).trim()) && !mediaUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le contenu du message est requis'
+      });
+    }
+
+    const message = await FamilyTreeMessage.create({
+      familyName,
+      numeroH: user.numeroH,
+      messageType: messageType || 'text',
+      content: String(content || '').trim(),
+      mediaUrl: mediaUrl || null
+    });
+
+    res.status(201).json({
+      success: true,
+      message: {
+        ...message.toJSON(),
+        authorName: `${user.prenom} ${user.nomFamille}`,
+        familyName
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi du message familial:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'envoi du message familial'
     });
   }
 });

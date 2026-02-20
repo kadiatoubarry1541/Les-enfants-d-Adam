@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DefiEducatifContent from '../components/DefiEducatifContent';
 import { config } from '../config/api';
+import ProSection from '../components/ProSection';
 
 interface UserData {
   numeroH: string;
@@ -194,6 +195,7 @@ export default function Education() {
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', contact: '', description: '' });
   const [schoolLoading, setSchoolLoading] = useState(false);
   const [schoolMessage, setSchoolMessage] = useState<string | null>(null);
+  const [showSchoolForm, setShowSchoolForm] = useState(false);
   const [publishForm, setPublishForm] = useState({
     type: 'written' as 'written' | 'video' | 'audio' | 'test' | 'library',
     title: '',
@@ -962,13 +964,19 @@ export default function Education() {
               <h1 className="text-3xl font-bold text-gray-900">🎓 Éducation</h1>
               <p className="mt-2 text-gray-600">Formations, professeurs et cours</p>
             </div>
-            <div className="flex space-x-4">
-      <button
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => { setShowSchoolForm(true); setTimeout(() => document.getElementById('section-school')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
+                className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                + S&apos;inscrire (Écoles)
+              </button>
+              <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
-      >
-        ← Retour
-      </button>
+              >
+                ← Retour
+              </button>
             </div>
           </div>
         </div>
@@ -1098,7 +1106,7 @@ export default function Education() {
                   <h3 className="text-xl font-bold text-gray-900">📖 Je suis apprenant</h3>
                   <button type="button" onClick={() => setInscriptionStep('choice')} className="text-sm text-emerald-600 hover:text-emerald-800">Changer de type</button>
                 </div>
-                <p className="text-gray-700 mb-4">Inscrivez-vous aux formations et suivez vos cours dans l&apos;onglet <strong>Formation scientifique</strong>. Vous y trouverez les formations, les cours (audio, vidéo, écrit) et le Professeur IA de français.</p>
+                <p className="text-gray-700 mb-4">Inscrivez-vous aux formations et suivez vos cours dans l&apos;onglet <strong>Formation scientifique</strong>. Vous y trouverez les formations, les cours (audio, vidéo, écrit) et l&apos;Assistant IA.</p>
                 <div className="mb-6">
                   <p className="text-gray-700 mb-3 font-medium">Indiquez les NumeroH de vos parents pour qu&apos;ils puissent suivre votre progression.</p>
                   <form onSubmit={handleRegisterParents} className="space-y-3 max-w-xl">
@@ -1212,162 +1220,29 @@ export default function Education() {
 
         {activeTab === 'formation-scientifique' && (
           <div className="space-y-8">
-            {/* Section 0: Professeur IA 100% Disponible - EN PREMIER */}
+            {/* Section 0: Assistant IA - Français et Mathématiques */}
             <div className="bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50 rounded-xl shadow-xl p-8 border-4 border-cyan-400 relative overflow-hidden">
-              {/* Effet de brillance animé */}
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
-              
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-4xl shadow-lg animate-bounce">
+                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-4xl shadow-lg">
                     🤖
                   </div>
                   <div>
                     <h2 className="text-4xl font-bold text-gray-900 mb-2">
-                      Professeur IA 100% Disponible
+                      Assistant IA
                     </h2>
                     <p className="text-lg text-gray-600">
-                      Votre assistant d'apprentissage intelligent - Toujours disponible, toujours prêt à vous aider !
+                      Capable de vous assister en <strong>Français</strong> et en <strong>Mathématiques</strong>.
                     </p>
                   </div>
                   <div className="ml-auto">
-                    <span className="px-4 py-2 bg-green-500 text-white rounded-full text-sm font-bold animate-pulse">
-                      ✅ 100% DISPONIBLE
-                    </span>
+                    <button
+                      onClick={() => navigate('/professeur-ia')}
+                      className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white py-3 px-6 rounded-lg font-bold text-lg transition-all shadow-lg"
+                    >
+                      Commencer
+                    </button>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  {/* Carte principale du professeur IA */}
-                  <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-cyan-300">
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-4xl">
-                        🎓
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                          Professeur IA - Assistant Intelligent
-                        </h3>
-                        <p className="text-gray-600 mb-3">
-                          Un professeur virtuel disponible 24/7 pour vous aider dans votre apprentissage. 
-                          Posez vos questions et recevez des explications claires et détaillées.
-                        </p>
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                            📚 Toutes matières
-                          </span>
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                            ⏰ 24/7 Disponible
-                          </span>
-                          <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                            🎯 Adaptatif
-                          </span>
-                          <span className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm font-medium">
-                            💬 Conversation naturelle
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <span className="text-xl">✨</span>
-                        <span className="text-sm"><strong>Spécialités :</strong> Français, Mathématiques, Sciences, Histoire, Géographie, et bien plus...</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <span className="text-xl">🎯</span>
-                        <span className="text-sm"><strong>Niveau :</strong> Du débutant à l'avancé - S'adapte à votre niveau</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <span className="text-xl">💡</span>
-                        <span className="text-sm"><strong>Tarif :</strong> <span className="text-green-600 font-bold">GRATUIT</span> - Disponible pour tous</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <span className="text-xl">⭐</span>
-                        <span className="text-sm"><strong>Note :</strong> 5.0/5 - Toujours disponible et efficace</span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => {
-                          // Ouvrir le professeur IA dans un nouvel onglet ou intégrer directement
-                          window.open('/ia-sc', '_blank');
-                        }}
-                        className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white py-3 px-6 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg"
-                      >
-                        🚀 Commencer avec le Professeur IA
-                      </button>
-                      <button
-                        onClick={() => {
-                          // Option pour ouvrir dans une modal ou iframe
-                          alert('Le professeur IA sera bientôt intégré directement ici !');
-                        }}
-                        className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
-                      >
-                        ℹ️ En savoir plus
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Avantages du professeur IA */}
-                  <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-purple-300">
-                    <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <span>🌟</span> Pourquoi choisir le Professeur IA ?
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl">✅</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">Disponibilité 24/7</p>
-                          <p className="text-sm text-gray-600">Apprenez quand vous voulez, jour et nuit</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl">🎯</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">Adaptation à votre niveau</p>
-                          <p className="text-sm text-gray-600">S'adapte automatiquement à vos connaissances</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl">💬</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">Conversation naturelle</p>
-                          <p className="text-sm text-gray-600">Posez vos questions comme à un vrai professeur</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl">📚</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">Toutes les matières</p>
-                          <p className="text-sm text-gray-600">Français, Maths, Sciences, Histoire, etc.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl">💰</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">100% Gratuit</p>
-                          <p className="text-sm text-gray-600">Aucun coût, accessible à tous les apprenants</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl">⚡</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">Réponses instantanées</p>
-                          <p className="text-sm text-gray-600">Pas d'attente, réponses immédiates</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Message d'encouragement */}
-                <div className="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg p-4 border-l-4 border-yellow-500">
-                  <p className="text-gray-800 font-medium">
-                    💡 <strong>Astuce :</strong> Le Professeur IA est parfait pour réviser, comprendre des concepts difficiles, 
-                    ou simplement poser des questions à tout moment. N'hésitez pas à l'utiliser autant que vous le souhaitez !
-                  </p>
                 </div>
               </div>
             </div>
@@ -2043,6 +1918,17 @@ export default function Education() {
           </div>
         )}
 
+      {/* Section Écoles & Professeurs (approuvés par l'admin) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <ProSection
+          type="school"
+          title="Écoles & Professeurs"
+          icon="🎓"
+          description=""
+          showForm={showSchoolForm}
+          onShowFormChange={setShowSchoolForm}
+        />
+      </div>
     </div>
   );
 }

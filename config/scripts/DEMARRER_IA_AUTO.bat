@@ -118,7 +118,7 @@ echo.
 echo [4/4] Préparation de l'environnement IA...
 echo ──────────────────────────────────────
 
-cd /d "%~dp0..\..\ia-sc"
+cd /d "%~dp0..\..\IA SC"
 
 if not exist "venv" (
     echo Création de l'environnement virtuel Python...
@@ -174,7 +174,7 @@ echo.
 echo 🚀 Démarrage de l'IA Professeur sur http://localhost:5000...
 echo.
 
-start "🔷 IA Professeur - Port 5000" cmd /k "title IA Professeur - Port 5000 && cd /d %~dp0..\..\ia-sc && call venv\Scripts\activate.bat && %PYTHON_CMD% app.py"
+start "🔷 IA Professeur - Port 5000" cmd /k "title IA Professeur - Port 5000 && cd /d %~dp0..\..\IA SC && (if exist venv\Scripts\activate.bat call venv\Scripts\activate.bat) && %PYTHON_CMD% app.py"
 
 timeout /t 3 /nobreak >nul
 

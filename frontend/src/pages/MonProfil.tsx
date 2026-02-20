@@ -4,6 +4,7 @@ import IdentiteModal from "../components/IdentiteModal";
 import EditProfileModal from "../components/EditProfileModal";
 import { AdminPanel } from "../components/AdminPanel";
 import { config } from "../config/api";
+import { getPhotoUrl } from "../utils/auth";
 
 interface UserLogo {
   id: string;
@@ -41,7 +42,7 @@ export default function MonProfil() {
   const [showAdmin, setShowAdmin] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadUserData = () => {
     const raw = localStorage.getItem("session_user");
     if (!raw) {
       navigate("/login");
@@ -55,13 +56,23 @@ export default function MonProfil() {
     } catch {
       navigate("/login");
     }
+  };
+
+  useEffect(() => {
+    loadUserData();
+
+    // Écouter les mises à jour de session (ex: après modification du profil)
+    const handleSessionUpdate = () => loadUserData();
+    window.addEventListener("session-updated", handleSessionUpdate);
+    return () => window.removeEventListener("session-updated", handleSessionUpdate);
   }, [navigate]);
 
   const loadUserLogos = async (numeroH?: string) => {
     if (!numeroH) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('http://localhost:5002/api/logos/my-logos', {
+      const API_BASE = config.API_BASE_URL || 'http://localhost:5002/api';
+      const response = await fetch(`${API_BASE}/logos/my-logos`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -98,24 +109,24 @@ export default function MonProfil() {
             {/* Avatar avec gradient professionnel */}
             <div className="relative">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-3xl font-bold shadow-lg border-4 border-white relative overflow-hidden">
-              {userData.photo ? (
-                <img
-                  src={userData.photo.startsWith('data:') ? userData.photo : (userData.photo.startsWith('http') ? userData.photo : `${config.API_BASE_URL.replace('/api', '')}${userData.photo}`)}
-                  alt="Photo de profil"
-                  className="w-full h-full rounded-full object-cover"
-                  onError={(e) => {
-                    // Si la photo ne peut pas être chargée, afficher l'initiale
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.textContent = userData.prenom?.charAt(0) || "👤";
-                    }
-                  }}
-                />
-              ) : (
-                userData.prenom?.charAt(0) || "👤"
-              )}
+              {(() => {
+                const photoUrl = getPhotoUrl(userData.photo);
+                if (photoUrl) {
+                  return (
+                    <img
+                      key={photoUrl}
+                      src={photoUrl}
+                      alt="Photo de profil"
+                      className="w-full h-full object-cover absolute inset-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  );
+                }
+                return userData.prenom?.charAt(0) || "👤";
+              })()}
               </div>
               {/* Logos professionnels en bas de la photo (jusqu'à 3) */}
               {userLogos.slice(0, 3).map((userLogo, index) => {
@@ -200,16 +211,10 @@ export default function MonProfil() {
         onClose={() => setShowEditProfile(false)}
         userData={userData}
         onUpdate={(updatedData) => {
+          // Mettre à jour l'état local immédiatement
           setUserData(updatedData);
-          // Mettre à jour le localStorage
-          const raw = localStorage.getItem("session_user");
-          if (raw) {
-            try {
-              const parsed = JSON.parse(raw);
-              parsed.userData = updatedData;
-              localStorage.setItem("session_user", JSON.stringify(parsed));
-            } catch {}
-          }
+          // Aussi recharger depuis localStorage pour être sûr d'avoir les dernières données
+          setTimeout(() => loadUserData(), 100);
         }}
       />
 

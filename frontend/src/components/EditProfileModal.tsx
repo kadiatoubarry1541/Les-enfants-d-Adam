@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { config } from "../config/api";
+import { getPhotoUrl } from "../utils/auth";
 
 interface UserData {
   numeroH: string;
@@ -49,7 +50,7 @@ export default function EditProfileModal({
   useEffect(() => {
     if (open && userData) {
       setFormData({ ...userData });
-      setPhotoPreview(userData.photo || null);
+      setPhotoPreview(getPhotoUrl(userData.photo));
       setPhotoFile(null);
       setError(null);
     }
@@ -70,6 +71,19 @@ export default function EditProfileModal({
     }
   };
 
+  // Fonction pour appeler l'API (essaie URL directe, puis proxy Vite)
+  const apiFetch = async (path: string, options: RequestInit): Promise<Response> => {
+    const directUrl = `${config.API_BASE_URL || "http://localhost:5002/api"}${path}`;
+    try {
+      const res = await fetch(directUrl, options);
+      return res;
+    } catch {
+      // Si l'appel direct échoue, essayer via le proxy Vite (/api)
+      const proxyUrl = `/api${path}`;
+      return fetch(proxyUrl, options);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData) return;
@@ -78,73 +92,122 @@ export default function EditProfileModal({
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
-      const API_BASE_URL = config.API_BASE_URL || "http://localhost:5002/api";
+      // Récupérer le token (stocké séparément OU dans session_user)
+      let token = localStorage.getItem("token");
+      if (!token) {
+        try {
+          const session = JSON.parse(localStorage.getItem("session_user") || "{}");
+          token = session.token || null;
+        } catch { /* ignore */ }
+      }
 
-      // Mettre à jour la photo si nécessaire
+      // Variable locale pour suivre la photo uploadée
+      let uploadedPhotoUrl: string | undefined = formData.photo;
+
+      // 1. Mettre à jour la photo si une nouvelle a été choisie
       if (photoFile) {
         const photoFormData = new FormData();
         photoFormData.append("photo", photoFile);
         photoFormData.append("numeroH", formData.numeroH);
 
-        const photoResponse = await fetch(`${API_BASE_URL}/auth/profile/photo`, {
+        const photoResponse = await apiFetch("/auth/profile/photo", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: photoFormData,
         });
 
         if (!photoResponse.ok) {
-          const photoError = await photoResponse.json();
-          throw new Error(photoError.message || "Erreur lors de la mise à jour de la photo");
+          const photoError = await photoResponse.json().catch(() => ({}));
+          throw new Error(photoError.message || "Erreur lors de l'upload de la photo");
         }
 
         const photoData = await photoResponse.json();
-        formData.photo = photoData.photoUrl || formData.photo;
+        uploadedPhotoUrl = photoData.photoUrl || (photoData.user && photoData.user.photo) || uploadedPhotoUrl;
       }
 
-      // Mettre à jour les informations
-      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          numeroH: formData.numeroH,
-          prenom: formData.prenom,
-          nomFamille: formData.nomFamille,
-          email: formData.email,
-          telephone: formData.telephone || formData.tel1,
-          tel1: formData.telephone || formData.tel1,
-          genre: formData.genre,
-          dateNaissance: formData.dateNaissance,
-          age: formData.age,
-          generation: formData.generation,
-          ethnie: formData.ethnie,
-          region: formData.region,
-          pays: formData.pays,
-          nationalite: formData.nationalite,
-          prenomPere: formData.prenomPere,
-          nomFamillePere: formData.nomFamillePere,
-          numeroHPere: formData.numeroHPere,
-          prenomMere: formData.prenomMere,
-          nomFamilleMere: formData.nomFamilleMere,
-          numeroHMere: formData.numeroHMere,
-        }),
-      });
+      // 2. Mettre à jour les informations textuelles
+      let serverUser: any = {};
+      try {
+        const response = await apiFetch("/auth/profile", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            numeroH: formData.numeroH,
+            prenom: formData.prenom,
+            nomFamille: formData.nomFamille,
+            email: formData.email,
+            telephone: formData.telephone || formData.tel1,
+            tel1: formData.telephone || formData.tel1,
+            genre: formData.genre,
+            dateNaissance: formData.dateNaissance,
+            age: formData.age,
+            generation: formData.generation,
+            ethnie: formData.ethnie,
+            region: formData.region,
+            pays: formData.pays,
+            nationalite: formData.nationalite,
+            prenomPere: formData.prenomPere,
+            nomFamillePere: formData.nomFamillePere,
+            numeroHPere: formData.numeroHPere,
+            prenomMere: formData.prenomMere,
+            nomFamilleMere: formData.nomFamilleMere,
+            numeroHMere: formData.numeroHMere,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Erreur lors de la mise à jour du profil");
+        if (response.ok) {
+          const data = await response.json();
+          serverUser = (data && data.user) ? data.user : {};
+        }
+      } catch {
+        // Si la mise à jour du profil échoue mais que la photo a été uploadée,
+        // on continue quand même pour sauvegarder la photo dans le localStorage
+        console.warn("Mise à jour du profil texte échouée, mais on continue avec la photo");
       }
 
-      const data = await response.json();
-      onUpdate(data.user);
+      // 3. Construire l'utilisateur final
+      const finalPhoto = uploadedPhotoUrl || (serverUser as any).photo || formData.photo;
+      const updatedUser: UserData = {
+        ...formData,
+        ...serverUser,
+        photo: finalPhoto,
+      };
+
+      console.log('✅ Profil mis à jour - photo:', finalPhoto);
+
+      // 4. Mettre à jour le parent (MonProfil)
+      onUpdate(updatedUser);
+
+      // 5. Mettre à jour la session globale (localStorage)
+      try {
+        const rawSession = localStorage.getItem("session_user");
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession);
+          if (parsed.userData) {
+            parsed.userData = { ...parsed.userData, ...updatedUser };
+          } else {
+            Object.assign(parsed, updatedUser);
+          }
+          localStorage.setItem("session_user", JSON.stringify(parsed));
+        }
+      } catch {
+        localStorage.setItem("session_user", JSON.stringify({ userData: updatedUser }));
+      }
+
+      // 6. Notifier les autres composants
+      window.dispatchEvent(new Event("session-updated"));
+
       onClose();
     } catch (err: any) {
-      setError(err.message || "Une erreur est survenue");
+      const msg = err.message || "";
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        setError("Impossible de joindre le serveur. Vérifiez que le backend est démarré sur le port 5002.");
+      } else {
+        setError(msg || "Une erreur est survenue");
+      }
     } finally {
       setLoading(false);
     }

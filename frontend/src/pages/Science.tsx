@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QuickMediaCapture } from '../components/QuickMediaCapture';
+import ProSection from '../components/ProSection';
 
 interface UserData {
   numeroH: string;
@@ -48,6 +49,7 @@ export default function Science() {
     expiresAt: '',
     notes: ''
   });
+  const [showScientistForm, setShowScientistForm] = useState(false);
   const navigate = useNavigate();
 
   const [newPost, setNewPost] = useState({
@@ -448,6 +450,12 @@ export default function Science() {
                 </div>
               )}
               <button
+                onClick={() => { setShowScientistForm(true); setTimeout(() => document.getElementById('section-scientist')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
+                className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                + S&apos;inscrire (Scientifiques)
+              </button>
+              <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
               >
@@ -801,6 +809,18 @@ export default function Science() {
           autoPublish={true}
         />
       )}
+
+      {/* Section Scientifiques & Chercheurs (approuvés par l'admin) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <ProSection
+          type="scientist"
+          title="Scientifiques & Chercheurs"
+          icon="🔬"
+          description=""
+          showForm={showScientistForm}
+          onShowFormChange={setShowScientistForm}
+        />
+      </div>
 
       {/* Formulaire d'octroi de permission (Admin uniquement) */}
       {showPermissionForm && isAdmin && (

@@ -18,104 +18,76 @@ export const WORLD_GEOGRAPHY: GeographicLocation[] = [
         code: 'P1',
         name: 'Guinée',
         children: [
+          // 1. Basse-Guinée (Guinée maritime) - région naturelle
           {
             code: 'R1',
-            name: 'Conakry',
+            name: 'Basse-Guinée',
             children: [
               {
                 code: 'PR1',
                 name: 'Conakry',
                 children: [
-                  {
-                    code: 'SP1',
-                    name: 'Conakry Centre',
-                    children: [
-                      { code: 'Q1', name: 'Kaloum' },
-                      { code: 'Q2', name: 'Dixinn' },
-                      { code: 'Q3', name: 'Matam' },
-                      { code: 'Q4', name: 'Matoto' },
-                      { code: 'Q5', name: 'Ratoma' }
-                    ]
-                  }
+                  { code: 'SP1', name: 'Kaloum', children: [{ code: 'Q1', name: 'Kaloum Centre' }, { code: 'Q2', name: 'Sandervalia' }, { code: 'Q3', name: 'Boulbinet' }] },
+                  { code: 'SP2', name: 'Dixinn', children: [{ code: 'Q4', name: 'Dixinn' }, { code: 'Q5', name: 'Lambandji' }, { code: 'Q6', name: 'Minière' }] },
+                  { code: 'SP3', name: 'Matam', children: [{ code: 'Q7', name: 'Matam' }, { code: 'Q8', name: 'Koloma' }, { code: 'Q9', name: 'Madina' }] },
+                  { code: 'SP4', name: 'Ratoma', children: [{ code: 'Q10', name: 'Ratoma' }, { code: 'Q11', name: 'Taouyah' }, { code: 'Q12', name: 'Kipé' }] },
+                  { code: 'SP5', name: 'Matoto', children: [{ code: 'Q13', name: 'Matoto' }, { code: 'Q14', name: 'Kagbélén' }, { code: 'Q15', name: 'Sonfonia' }] }
                 ]
-              }
+              },
+              { code: 'PR2', name: 'Boffa', children: [{ code: 'SP10', name: 'Boffa-Centre', children: [{ code: 'Q16', name: 'Boffa' }] }] },
+              { code: 'PR3', name: 'Boké', children: [{ code: 'SP20', name: 'Boké-Centre', children: [{ code: 'Q20', name: 'Boké Ville' }, { code: 'Q21', name: 'Kamsar' }] }] },
+              { code: 'PR4', name: 'Fria', children: [{ code: 'SP30', name: 'Fria-Centre', children: [{ code: 'Q30', name: 'Fria Ville' }] }] },
+              { code: 'PR5', name: 'Gaoual', children: [{ code: 'SP40', name: 'Gaoual-Centre', children: [{ code: 'Q40', name: 'Gaoual' }] }] },
+              { code: 'PR6', name: 'Koundara', children: [{ code: 'SP50', name: 'Koundara-Centre', children: [{ code: 'Q50', name: 'Koundara' }] }] },
+              { code: 'PR7', name: 'Coyah', children: [{ code: 'SP60', name: 'Coyah-Centre', children: [{ code: 'Q60', name: 'Coyah' }] }] },
+              { code: 'PR8', name: 'Dubréka', children: [{ code: 'SP70', name: 'Dubréka-Centre', children: [{ code: 'Q70', name: 'Dubréka' }] }] },
+              { code: 'PR9', name: 'Forécariah', children: [{ code: 'SP80', name: 'Forécariah-Centre', children: [{ code: 'Q80', name: 'Forécariah' }] }] },
+              { code: 'PR10', name: 'Kindia', children: [{ code: 'SP90', name: 'Kindia-Centre', children: [{ code: 'Q90', name: 'Kindia Ville' }] }] },
+              { code: 'PR11', name: 'Télimélé', children: [{ code: 'SP100', name: 'Télimélé-Centre', children: [{ code: 'Q100', name: 'Télimélé' }] }] }
             ]
           },
+          // 2. Moyenne-Guinée (Fouta-Djallon) - région naturelle
           {
             code: 'R2',
-            name: 'Basse-Guinée',
-            children: [
-              {
-                code: 'PR2',
-                name: 'Boké',
-                children: [
-                  {
-                    code: 'SP2',
-                    name: 'Boké Centre',
-                    children: [
-                      { code: 'Q6', name: 'Boké Ville' },
-                      { code: 'Q7', name: 'Kamsar' }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            code: 'R3',
             name: 'Fouta-Djallon',
             children: [
-              {
-                code: 'PR3',
-                name: 'Labé',
-                children: [
-                  {
-                    code: 'SP3',
-                    name: 'Labé Centre',
-                    children: [
-                      { code: 'Q8', name: 'Labé Ville' }
-                    ]
-                  }
-                ]
-              }
+              { code: 'PR12', name: 'Koubia', children: [{ code: 'SP110', name: 'Koubia-Centre', children: [{ code: 'Q110', name: 'Koubia' }] }] },
+              { code: 'PR13', name: 'Labé', children: [{ code: 'SP120', name: 'Labé-Centre', children: [{ code: 'Q120', name: 'Labé Ville' }] }] },
+              { code: 'PR14', name: 'Lélouma', children: [{ code: 'SP130', name: 'Lélouma-Centre', children: [{ code: 'Q130', name: 'Lélouma' }] }] },
+              { code: 'PR15', name: 'Mali', children: [{ code: 'SP140', name: 'Mali-Centre', children: [{ code: 'Q140', name: 'Mali' }] }] },
+              { code: 'PR16', name: 'Tougué', children: [{ code: 'SP150', name: 'Tougué-Centre', children: [{ code: 'Q150', name: 'Tougué' }] }] },
+              { code: 'PR17', name: 'Dalaba', children: [{ code: 'SP160', name: 'Dalaba-Centre', children: [{ code: 'Q160', name: 'Dalaba' }] }] },
+              { code: 'PR18', name: 'Mamou', children: [{ code: 'SP170', name: 'Mamou-Centre', children: [{ code: 'Q170', name: 'Mamou Ville' }] }] },
+              { code: 'PR19', name: 'Pita', children: [{ code: 'SP180', name: 'Pita-Centre', children: [{ code: 'Q180', name: 'Pita Ville' }] }] }
             ]
           },
+          // 3. Haute-Guinée - région naturelle
           {
-            code: 'R4',
+            code: 'R3',
             name: 'Haute-Guinée',
             children: [
-              {
-                code: 'PR4',
-                name: 'Kankan',
-                children: [
-                  {
-                    code: 'SP4',
-                    name: 'Kankan Centre',
-                    children: [
-                      { code: 'Q9', name: 'Kankan Ville' }
-                    ]
-                  }
-                ]
-              }
+              { code: 'PR20', name: 'Dabola', children: [{ code: 'SP190', name: 'Dabola-Centre', children: [{ code: 'Q190', name: 'Dabola' }] }] },
+              { code: 'PR21', name: 'Dinguiraye', children: [{ code: 'SP200', name: 'Dinguiraye-Centre', children: [{ code: 'Q200', name: 'Dinguiraye' }] }] },
+              { code: 'PR22', name: 'Faranah', children: [{ code: 'SP210', name: 'Faranah-Centre', children: [{ code: 'Q210', name: 'Faranah Ville' }] }] },
+              { code: 'PR23', name: 'Kissidougou', children: [{ code: 'SP220', name: 'Kissidougou-Centre', children: [{ code: 'Q220', name: 'Kissidougou Ville' }] }] },
+              { code: 'PR24', name: 'Kankan', children: [{ code: 'SP230', name: 'Kankan-Centre', children: [{ code: 'Q230', name: 'Kankan Ville' }] }] },
+              { code: 'PR25', name: 'Kérouané', children: [{ code: 'SP240', name: 'Kérouané-Centre', children: [{ code: 'Q240', name: 'Kérouané' }] }] },
+              { code: 'PR26', name: 'Kouroussa', children: [{ code: 'SP250', name: 'Kouroussa-Centre', children: [{ code: 'Q250', name: 'Kouroussa Ville' }] }] },
+              { code: 'PR27', name: 'Mandiana', children: [{ code: 'SP260', name: 'Mandiana-Centre', children: [{ code: 'Q260', name: 'Mandiana' }] }] },
+              { code: 'PR28', name: 'Siguiri', children: [{ code: 'SP270', name: 'Siguiri-Centre', children: [{ code: 'Q270', name: 'Siguiri Ville' }] }] }
             ]
           },
+          // 4. Guinée forestière - région naturelle
           {
-            code: 'R5',
+            code: 'R4',
             name: 'Guinée forestière',
             children: [
-              {
-                code: 'PR5',
-                name: 'N\'Zérékoré',
-                children: [
-                  {
-                    code: 'SP5',
-                    name: 'N\'Zérékoré Centre',
-                    children: [
-                      { code: 'Q10', name: 'N\'Zérékoré Ville' }
-                    ]
-                  }
-                ]
-              }
+              { code: 'PR29', name: 'Beyla', children: [{ code: 'SP280', name: 'Beyla-Centre', children: [{ code: 'Q280', name: 'Beyla' }] }] },
+              { code: 'PR30', name: 'Guéckédou', children: [{ code: 'SP290', name: 'Guéckédou-Centre', children: [{ code: 'Q290', name: 'Guéckédou Ville' }] }] },
+              { code: 'PR31', name: 'Lola', children: [{ code: 'SP300', name: 'Lola-Centre', children: [{ code: 'Q300', name: 'Lola' }] }] },
+              { code: 'PR32', name: 'Macenta', children: [{ code: 'SP310', name: 'Macenta-Centre', children: [{ code: 'Q310', name: 'Macenta Ville' }] }] },
+              { code: 'PR33', name: 'Nzérékoré', children: [{ code: 'SP320', name: 'Nzérékoré-Centre', children: [{ code: 'Q320', name: 'Nzérékoré Ville' }] }] },
+              { code: 'PR34', name: 'Yomou', children: [{ code: 'SP330', name: 'Yomou-Centre', children: [{ code: 'Q330', name: 'Yomou' }] }] }
             ]
           }
         ]

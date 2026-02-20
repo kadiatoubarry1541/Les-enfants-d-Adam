@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProSection from '../components/ProSection';
 import {
   findLocationByCode,
   getLocationGroupTitle,
@@ -51,6 +52,9 @@ export default function TerreAdam() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   
+  // ✅ Étiquettes dynamiques pour afficher les véritables noms des lieux
+  const [tabLabels, setTabLabels] = useState<string>('Quartier');
+  
   // États pour le système de messagerie
   const [groups, setGroups] = useState<ResidenceGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<ResidenceGroup | null>(null);
@@ -65,14 +69,13 @@ export default function TerreAdam() {
   const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  // ✅ Vérifier si l'utilisateur est journaliste
+  const [isJournalist, setIsJournalist] = useState(false);
   const [filterScope, setFilterScope] = useState<'all' | 'quartier'>('quartier');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   // Filtre du fil quartier : tout ou par besoin (décès, mariage, baptême, etc.)
   const [feedFilter, setFeedFilter] = useState<string>('all');
-  const [createGroupOpen, setCreateGroupOpen] = useState(false);
-  const [newGroupForm, setNewGroupForm] = useState({ locationCode: '', description: '' });
-  const locationOptionsForCreate = getAllLocationsForGroups();
-  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [showJournalistForm, setShowJournalistForm] = useState(false);
 
   // Récupérer les informations géographiques de l'utilisateur depuis la session
   const userContinent = userData?.continentCode ? findLocationByCode(userData.continentCode) : null;
@@ -81,6 +84,13 @@ export default function TerreAdam() {
   const userPrefecture = userData?.prefectureCode ? findLocationByCode(userData.prefectureCode) : null;
   const userSousPrefecture = userData?.sousPrefectureCode ? findLocationByCode(userData.sousPrefectureCode) : null;
   const userQuartier = userData?.quartierCode ? findLocationByCode(userData.quartierCode) : null;
+
+  /** Liste des codes des 1 à 3 quartiers de l'utilisateur (formulaire d'inscription) */
+  const userQuartierCodes = [
+    userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1,
+    userData?.quartierCode2 || userData?.lieu2 || userData?.lieuResidence2,
+    userData?.quartierCode3 || userData?.lieu3 || userData?.lieuResidence3
+  ].filter(Boolean) as string[];
 
   useEffect(() => {
     const session = localStorage.getItem("session_user");
@@ -107,7 +117,15 @@ export default function TerreAdam() {
       setUserData(user);
       const admin = user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0';
       setIsAdmin(admin);
+      // ✅ Vérifier si l'utilisateur est journaliste
+      const journalist = user.role === 'journalist' || user.isJournalist || admin;
+      setIsJournalist(journalist);
       if (admin) setFilterScope('all');
+      
+      // ✅ Dynamiquement renommer le label du quartier
+      const quartierName = user.quartierCode ? findLocationByCode(user.quartierCode)?.name : 'Quartier';
+      setTabLabels(quartierName || 'Quartier');
+      
       if (activeTab === 'lieux' && activeLieuTab === 'quartier') {
         loadGroups();
       } else {
@@ -132,33 +150,48 @@ export default function TerreAdam() {
 
   const loadGroups = async () => {
     if (!userData) return;
-    
+
+    const token = localStorage.getItem("token");
     try {
-      const quartier = userData.quartier || userData.lieu1 || userData.lieuResidence1;
-      const token = localStorage.getItem("token");
-      // Admin avec filtre "Tout voir" : demander tous les groupes (location vide)
-      const locationParam = (isAdmin && filterScope === 'all') ? '' : (quartier || '');
-      const response = await fetch(`http://localhost:5002/api/residences/groups?location=${encodeURIComponent(locationParam)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      
-      let filteredGroups = (data.groups || []).map((g: any) => {
-        const displayName = findLocationByCode(g.location) ? getLocationGroupTitle(g.location) : (g.title || g.name);
-        return { ...g, name: displayName, title: displayName, members: g.members || [] };
-      });
-      
-      // Si l'utilisateur n'est pas admin, filtrer par quartier
-      if (!isAdmin && quartier) {
-        filteredGroups = filteredGroups.filter((g: ResidenceGroup) => 
-          g.location === quartier || g.location === userData.lieu1 || g.location === userData.lieuResidence1
-        );
+      // Admin avec filtre "Tout voir" : tous les groupes
+      if (isAdmin && filterScope === 'all') {
+        const response = await fetch(`http://localhost:5002/api/residences/groups?location=`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        const mapped = (data.groups || []).map((g: any) => {
+          const displayName = findLocationByCode(g.location) ? getLocationGroupTitle(g.location) : (g.title || g.name);
+          return { ...g, name: displayName, title: displayName, members: g.members || [] };
+        });
+        setGroups(mapped);
+        setLoading(false);
+        return;
       }
-      
-      setGroups(filteredGroups);
+
+      // Utilisateur : groupes de ses 1 à 3 quartiers (lieu1, lieu2, lieu3)
+      const quartiersToLoad = userQuartierCodes.length > 0 ? userQuartierCodes : [userData.quartier || userData.lieu1 || userData.lieuResidence1].filter(Boolean);
+      if (quartiersToLoad.length === 0) {
+        setGroups([]);
+        setLoading(false);
+        return;
+      }
+
+      const allGroups: any[] = [];
+      const seenIds = new Set<string>();
+      for (const loc of quartiersToLoad) {
+        const response = await fetch(`http://localhost:5002/api/residences/groups?location=${encodeURIComponent(loc)}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        for (const g of data.groups || []) {
+          if (seenIds.has(g.id)) continue;
+          seenIds.add(g.id);
+          const displayName = findLocationByCode(g.location) ? getLocationGroupTitle(g.location) : (g.title || g.name);
+          allGroups.push({ ...g, name: displayName, title: displayName, members: g.members || [] });
+        }
+      }
+
+      setGroups(allGroups);
     } catch (error) {
       console.error('Erreur lors du chargement des groupes:', error);
       setGroups([]);
@@ -167,46 +200,6 @@ export default function TerreAdam() {
     }
   };
 
-  const createGroup = async () => {
-    if (!isAdmin || !newGroupForm.locationCode.trim()) {
-      alert('Veuillez choisir un lieu (quartier, sous-préfecture, préfecture…).');
-      return;
-    }
-    const title = getLocationGroupTitle(newGroupForm.locationCode.trim());
-    setCreatingGroup(true);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('http://localhost:5002/api/residences/groups', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          location: newGroupForm.locationCode.trim(),
-          title,
-          description: newGroupForm.description.trim() || undefined
-        })
-      });
-      const data = await response.json();
-      if (data.success && data.group) {
-        const g = data.group;
-        const displayName = getLocationGroupTitle(g.location);
-        const newG = { ...g, name: displayName, title: displayName, members: g.members || [] };
-        setGroups((prev) => [newG, ...prev]);
-        setSelectedGroup(newG);
-        setNewGroupForm({ locationCode: '', description: '' });
-        setCreateGroupOpen(false);
-      } else {
-        alert(data.message || 'Erreur lors de la création du groupe.');
-      }
-    } catch (e: any) {
-      console.error(e);
-      alert(e.message || 'Erreur lors de la création du groupe.');
-    } finally {
-      setCreatingGroup(false);
-    }
-  };
 
   const loadMessages = async () => {
     if (!selectedGroup) return;
@@ -290,11 +283,18 @@ export default function TerreAdam() {
   const sendMessage = async () => {
     if (!selectedGroup) return;
     
-    const quartier = userData?.quartier || userData?.lieu1 || userData?.lieuResidence1;
-    
-    // Vérifier si l'utilisateur est admin ou si le groupe correspond à son quartier
-    if (!isAdmin && selectedGroup.location !== quartier) {
-      alert('Vous ne pouvez publier que dans votre quartier. Contactez un administrateur pour obtenir des droits de publication dans d\'autres quartiers.');
+    // ✅ PERMISSIONS JOURNALISTES - Vérifier les droits selon le niveau
+    // - Niveau "Quartier" : Tous les utilisateurs peuvent publier dans l'un de leurs 3 quartiers
+    // - Niveau "Sous-préfecture/Préfecture/..." : Seuls les journalistes et admins
+    if (activeLieuTab !== 'quartier' && !isJournalist) {
+      alert('❌ Vous n\'avez pas les droits pour publier à ce niveau.\n\nSeuls les journalistes approuvés peuvent publier des informations au niveau Sous-préfecture, Préfecture, Région, Pays ou Continent.\n\nVous pouvez publier librement dans votre Quartier.');
+      return;
+    }
+
+    // Vérifier si l'utilisateur est admin ou si le groupe correspond à l'un de ses 1 à 3 quartiers
+    const canPublishInGroup = isAdmin || (activeLieuTab === 'quartier' && userQuartierCodes.length > 0 && userQuartierCodes.includes(selectedGroup.location));
+    if (!canPublishInGroup) {
+      alert('Vous ne pouvez publier que dans l\'un de vos quartiers (résidence 1, 2 ou 3). Contactez un administrateur pour obtenir des droits dans d\'autres quartiers.');
       return;
     }
     
@@ -373,7 +373,16 @@ export default function TerreAdam() {
                 <p className="mt-0.5 sm:mt-1 md:mt-2 text-[10px] sm:text-xs md:text-sm text-gray-600 break-words"></p>
               </div>
             </div>
-            <div className="flex space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <button
+                onClick={() => {
+                  setShowJournalistForm(true);
+                  setTimeout(() => document.getElementById('section-journalist')?.scrollIntoView({ behavior: 'smooth' }), 50);
+                }}
+                className="min-h-[40px] px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
+              >
+                + S&apos;inscrire (Journalistes)
+              </button>
               <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-1.5 sm:px-2 md:px-3 lg:px-4 py-1 sm:py-1.5 md:py-2 text-[10px] sm:text-xs md:text-sm rounded-lg transition-colors whitespace-nowrap"
@@ -467,132 +476,144 @@ export default function TerreAdam() {
                 </nav>
               </div>
 
-              {(userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode && userData?.quartierCode) || isAdmin ? (
+              {(userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode && (userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1)) || isAdmin ? (
                 <div className="space-y-4">
                   {/* Page Quartier */}
                   {activeLieuTab === 'quartier' && (
                     <div className="space-y-3 sm:space-y-4">
-                      {/* Système de messagerie */}
-                      {!selectedGroup ? (
-                        <div className="mt-4 space-y-4">
-                          <div className="flex flex-wrap justify-between items-center gap-2">
-                            <h3 className="text-lg font-bold text-gray-900">
-                              💬 Système de Messagerie – Groupes disponibles
-                              {!isAdmin && (
-                                <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-amber-700">
-                                  (Votre quartier uniquement)
-                                </span>
-                              )}
-                              {isAdmin && (
-                                <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-emerald-700">
-                                  ({filterScope === 'all' ? 'Tous les quartiers' : 'Mon quartier'})
-                                </span>
-                              )}
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              <div className="relative">
-                                <button
-                                  type="button"
-                                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-200 rounded-lg hover:border-blue-400 text-gray-700 text-sm font-medium transition-colors"
+                      {/* Affichage des 1 à 3 quartiers (formulaire d'inscription : lieu1, lieu2, lieu3) */}
+                      {(() => {
+                        const quartiers: { code: string; name: string; num: number }[] = [];
+                        const codes = [
+                          userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1,
+                          userData?.quartierCode2 || userData?.lieu2 || userData?.lieuResidence2,
+                          userData?.quartierCode3 || userData?.lieu3 || userData?.lieuResidence3
+                        ].filter(Boolean) as string[];
+                        codes.forEach((code, i) => {
+                          const loc = findLocationByCode(code);
+                          if (loc) quartiers.push({ code, name: loc.name, num: i + 1 });
+                        });
+
+                        return quartiers.length > 0 ? (
+                          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-5 sm:p-6 md:p-8 lg:p-10 overflow-hidden">
+                            <div className="text-center overflow-hidden mb-6 sm:mb-8">
+                              <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 sm:mb-4">🏘️</div>
+                              <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
+                                {quartiers.length > 1 ? 'Mes Quartiers (résidence 1, 2, 3)' : 'Mon Quartier'}
+                              </h3>
+                            </div>
+                            {/* Grille : 1, 2 ou 3 quartiers – beaucoup d'espace pour tout voir */}
+                            <div className={`grid gap-6 sm:gap-8 md:gap-10 mb-6 sm:mb-8 ${
+                              quartiers.length === 1 ? 'grid-cols-1 max-w-md mx-auto' :
+                              quartiers.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+                              'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                            }`}>
+                              {quartiers.map((q) => (
+                                <div
+                                  key={q.code}
+                                  className="bg-white rounded-xl p-5 sm:p-6 md:p-7 shadow-lg border-2 border-blue-300 flex flex-col justify-center min-h-[120px]"
                                 >
-                                  <span>🔽</span>
-                                  Filtres
-                                </button>
-                                {showFilterDropdown && (
-                                  <div className="absolute left-0 top-full mt-1 py-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                                    {isAdmin ? (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() => { setFilterScope('all'); setShowFilterDropdown(false); loadGroups(); }}
-                                          className={`w-full text-left px-4 py-2 text-sm ${filterScope === 'all' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
-                                        >
-                                          🌍 Tout voir
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => { setFilterScope('quartier'); setShowFilterDropdown(false); loadGroups(); }}
-                                          className={`w-full text-left px-4 py-2 text-sm ${filterScope === 'quartier' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
-                                        >
-                                          🏘️ Mon quartier
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => setShowFilterDropdown(false)}
-                                        className="w-full text-left px-4 py-2 text-sm text-gray-600"
-                                      >
-                                        🏘️ Mon quartier (seul filtre disponible)
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
+                                  <p className="text-sm sm:text-base text-gray-500 font-medium mb-2">
+                                    Lieu de résidence {q.num}
+                                  </p>
+                                  <p className="text-base sm:text-lg md:text-xl font-semibold text-blue-700 break-words">
+                                    {q.name}
+                                  </p>
+                                  <p className="text-xs sm:text-sm text-gray-600 mt-3 font-mono">
+                                    Code : {q.code}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-6 pt-6 border-t border-blue-300 space-y-2 sm:space-y-2.5">
+                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
+                                <strong>Sous-préfecture :</strong> {userSousPrefecture?.name || userData.sousPrefecture || 'Non défini'}
+                              </p>
+                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
+                                <strong>Préfecture :</strong> {userPrefecture?.name || userData.prefecture || 'Non défini'}
+                              </p>
+                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
+                                <strong>Région :</strong> {userRegion?.name || userData.region || userData.regionOrigine || 'Non défini'}
+                              </p>
+                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
+                                <strong>Pays :</strong> {userCountry?.name || userData.pays || 'Non défini'} {getCountryFlag(userData.paysCode, userCountry?.name)}
+                              </p>
+                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
+                                <strong>Continent :</strong> {userContinent?.name || userData.continent || 'Non défini'} {getContinentIcon(userData.continentCode, userContinent?.name)}
+                              </p>
                             </div>
                           </div>
-                          
-                          {/* Liste des groupes */}
-                          <div className="space-y-2">
-                            {groups.length === 0 ? (
-                              <div className="space-y-4">
-                                <div className="bg-gray-50 rounded-lg p-6 text-center">
-                                  <p className="text-gray-600 mb-4">Aucun groupe pour le moment.</p>
-                                  {isAdmin && (
+                        ) : null;
+                      })()}
+
+                      {/* Système de messagerie – après les 3 quartiers */}
+                      <div className="mt-8 sm:mt-10 space-y-4">
+                        {/* En-tête avec filtres */}
+                        <div className="flex flex-wrap justify-between items-center gap-2">
+                          <h3 className="text-lg font-bold text-gray-900">
+                            💬 Système de Messagerie – Groupes disponibles
+                            {!isAdmin && (
+                              <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-amber-700">
+                                {userQuartierCodes.length > 1 ? '(Vos quartiers : résidence 1, 2 et 3)' : '(Votre quartier uniquement)'}
+                              </span>
+                            )}
+                            {isAdmin && (
+                              <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-emerald-700">
+                                ({filterScope === 'all' ? 'Tous les quartiers' : 'Mon quartier'})
+                              </span>
+                            )}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-200 rounded-lg hover:border-blue-400 text-gray-700 text-sm font-medium transition-colors"
+                              >
+                                <span>🔽</span>
+                                Filtres
+                              </button>
+                              {showFilterDropdown && (
+                                <div className="absolute left-0 top-full mt-1 py-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                  {isAdmin ? (
                                     <>
-                                      {!createGroupOpen ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => setCreateGroupOpen(true)}
-                                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
-                                        >
-                                          Créer un groupe
-                                        </button>
-                                      ) : (
-                                        <div className="max-w-md mx-auto text-left bg-white rounded-lg p-4 border border-gray-200 space-y-3">
-                                          <label className="block text-sm font-medium text-gray-700">Lieu du groupe (quartier, sous-préfecture, préfecture…)</label>
-                                          <select
-                                            value={newGroupForm.locationCode}
-                                            onChange={(e) => setNewGroupForm((f) => ({ ...f, locationCode: e.target.value }))}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                          >
-                                            <option value="">Choisir un lieu</option>
-                                            {locationOptionsForCreate.map((loc) => (
-                                              <option key={loc.code} value={loc.code}>
-                                                {loc.title}
-                                              </option>
-                                            ))}
-                                          </select>
-                                          <input
-                                            type="text"
-                                            value={newGroupForm.description}
-                                            onChange={(e) => setNewGroupForm((f) => ({ ...f, description: e.target.value }))}
-                                            placeholder="Description (optionnel)"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                          />
-                                          <div className="flex gap-2">
-                                            <button
-                                              type="button"
-                                              onClick={createGroup}
-                                              disabled={creatingGroup || !newGroupForm.locationCode.trim()}
-                                              className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-sm"
-                                            >
-                                              {creatingGroup ? 'Création…' : 'Créer'}
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => { setCreateGroupOpen(false); setNewGroupForm({ locationCode: '', description: '' }); }}
-                                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                            >
-                                              Annuler
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => { setFilterScope('all'); setShowFilterDropdown(false); loadGroups(); }}
+                                        className={`w-full text-left px-4 py-2 text-sm ${filterScope === 'all' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                                      >
+                                        🌍 Tout voir
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => { setFilterScope('quartier'); setShowFilterDropdown(false); loadGroups(); }}
+                                        className={`w-full text-left px-4 py-2 text-sm ${filterScope === 'quartier' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                                      >
+                                        🏘️ {userQuartierCodes.length > 1 ? 'Mes quartiers' : 'Mon quartier'}
+                                      </button>
                                     </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowFilterDropdown(false)}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-600"
+                                    >
+                                      🏘️ {userQuartierCodes.length > 1 ? 'Mes quartiers' : 'Mon quartier'} (seul filtre disponible)
+                                    </button>
                                   )}
                                 </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {!selectedGroup ? (
+                          /* Liste des groupes */
+                          <div className="space-y-2">
+                            {groups.length === 0 ? (
+                              <div className="bg-gray-50 rounded-lg p-6 text-center">
+                                <p className="text-gray-600">Aucun groupe pour le moment.</p>
+                                <p className="text-sm text-gray-500 mt-2">Les groupes sont créés automatiquement par le système.</p>
                               </div>
                             ) : (
                               groups.map((group) => (
@@ -620,8 +641,7 @@ export default function TerreAdam() {
                               ))
                             )}
                           </div>
-                        </div>
-                      ) : (
+                        ) : (
                         /* Interface même système que page Activité : blocs besoins + filtre + messages */
                         <div className="mt-4 space-y-4">
                           {/* Blocs besoins du quartier (Décès, Mariage, Baptême, etc.) */}
@@ -879,6 +899,7 @@ export default function TerreAdam() {
                         </div>
                         </div>
                       )}
+                      </div>
                     </div>
                   )}
 
@@ -966,9 +987,13 @@ export default function TerreAdam() {
                   )}
 
                 </div>
-              ) : isAdmin ? null : (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-                  <p className="text-yellow-800">Aucune localisation enregistrée.</p>
+              ) : (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 sm:p-3 md:p-4 rounded overflow-hidden">
+                  <p className="text-[10px] sm:text-xs md:text-sm text-yellow-800 break-words">
+                    <strong>⚠️ Aucun lieu de résidence enregistré</strong>
+                    <br />
+                    Vous n'avez pas encore enregistré vos lieux de résidence lors de l'inscription.
+                  </p>
                 </div>
               )}
             </div>
@@ -1159,6 +1184,17 @@ export default function TerreAdam() {
             </div>
           </div>
         )}
+
+        {/* Section Journalistes Professionnels (approuvés par l'admin) */}
+        <ProSection
+          type="journalist"
+          title="Journalistes"
+          icon="📰"
+          description=""
+          showForm={showJournalistForm}
+          onShowFormChange={setShowJournalistForm}
+          hideEmptyMessage
+        />
       </div>
     </div>
   );

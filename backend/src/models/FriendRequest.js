@@ -40,7 +40,7 @@ FriendRequest.init({
     comment: 'Message accompagnant la demande'
   },
   status: {
-    type: DataTypes.STRING // ENUM converti en STRING ('pending', 'accepted', 'rejected'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'accepted', 'rejected'),
     defaultValue: 'pending'
   }
 }, {

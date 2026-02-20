@@ -50,7 +50,6 @@ export default function BasseGuinee() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [groups, setGroups] = useState<RegionGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<RegionGroup | null>(null);
   const [showEventForm, setShowEventForm] = useState(false);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
@@ -63,13 +62,6 @@ export default function BasseGuinee() {
   const [permissions, setPermissions] = useState<any[]>([]);
   const [showMembersList, setShowMembersList] = useState(false);
   const navigate = useNavigate();
-
-  const [newGroup, setNewGroup] = useState({
-    name: '',
-    description: '',
-    city: '',
-    district: ''
-  });
 
   const [newMessage, setNewMessage] = useState({
     content: '',
@@ -378,31 +370,6 @@ export default function BasseGuinee() {
     }
   ];
 
-  const createGroup = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('http://localhost:5002/api/regions/basse-guinee/groups', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...newGroup,
-          region: 'Basse-Guinée',
-          createdBy: userData?.numeroH
-        })
-      });
-      
-      alert('Organisation créé avec succès !');
-      setShowCreateGroup(false);
-      setNewGroup({ name: '', description: '', city: '', district: '' });
-      loadGroups();
-    } catch (error: any) {
-      console.error('Erreur:', error);
-      alert(error.message || 'Erreur lors de la création du Organisation');
-    }
-  };
 
 
 
@@ -515,12 +482,6 @@ export default function BasseGuinee() {
         {/* Actions */}
         <div className="flex gap-4 mb-6 flex-wrap">
           <button
-            onClick={() => setShowCreateGroup(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2"
-          >
-            ➕ Créer un Organisation
-          </button>
-          <button
             onClick={() => setShowEventForm(true)}
             className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center gap-2"
           >
@@ -561,74 +522,6 @@ export default function BasseGuinee() {
           </div>
         </div>
 
-        {/* Formulaire de création de Organisation */}
-        {showCreateGroup && (
-          <div className="bg-gray-50 rounded-lg p-6 mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Créer un nouveau Organisation</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nom du Organisation</label>
-                <input
-                  type="text"
-                  value={newGroup.name}
-                  onChange={(e) => setNewGroup({...newGroup, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: Conakry Connect"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ville</label>
-                <select
-                  value={newGroup.city}
-                  onChange={(e) => setNewGroup({...newGroup, city: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Sélectionner une ville</option>
-                  <option value="Conakry">Conakry</option>
-                  <option value="Kindia">Kindia</option>
-                  <option value="Boké">Boké</option>
-                  <option value="Coyah">Coyah</option>
-                  <option value="Dubréka">Dubréka</option>
-                  <option value="Autre">Autre</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">District/Quartier</label>
-                <input
-                  type="text"
-                  value={newGroup.district}
-                  onChange={(e) => setNewGroup({...newGroup, district: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: Kaloum, Dixinn..."
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  value={newGroup.description}
-                  onChange={(e) => setNewGroup({...newGroup, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Description du Organisation..."
-                />
-              </div>
-            </div>
-            <div className="flex gap-4 mt-4">
-              <button
-                onClick={createGroup}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              >
-                ✅ Créer le Organisation
-              </button>
-              <button
-                onClick={() => setShowCreateGroup(false)}
-                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200"
-              >
-                ❌ Annuler
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Formulaire d'événement */}
         {showEventForm && (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
+import ProSection from './ProSection';
 
 const API_ORIGIN = (config.API_BASE_URL || '').replace(/\/api\/?$/, '') || '';
 
@@ -51,6 +52,7 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
   const [previewPrimaire, setPreviewPrimaire] = useState<PreviewProduct[]>(APERÇU_PRIMAIRE);
   const [previewSecondaire, setPreviewSecondaire] = useState<PreviewProduct[]>(APERÇU_SECONDAIRE);
   const [loadingPreview, setLoadingPreview] = useState(true);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -97,12 +99,20 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <button
-        onClick={() => navigate('/activite')}
-        className="mb-4 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2 text-sm"
-      >
-        ← Retour
-      </button>
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => { setShowSupplierForm(true); setTimeout(() => document.getElementById('section-supplier')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
+          className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          + S&apos;inscrire (Fournisseurs)
+        </button>
+        <button
+          onClick={() => navigate('/activite')}
+          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2 text-sm"
+        >
+          ← Retour
+        </button>
+      </div>
 
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Échanges</h1>
@@ -194,6 +204,16 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
           </div>
         </div>
       </div>
+
+      {/* Section Fournisseurs Professionnels (approuvés par l'admin) */}
+      <ProSection
+        type="supplier"
+        title="Fournisseurs"
+        icon="📦"
+        description=""
+        showForm={showSupplierForm}
+        onShowFormChange={setShowSupplierForm}
+      />
     </div>
   );
 }

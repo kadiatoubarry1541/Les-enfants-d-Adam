@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getPhotoUrl } from "../utils/auth";
 
 interface UserData {
   numeroH: string;
@@ -36,6 +37,8 @@ export default function IdentiteModal({
   if (!open) return null;
   if (open && !userData) return null;
 
+  const photoUrl = getPhotoUrl(userData?.photo);
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -57,11 +60,25 @@ export default function IdentiteModal({
 
         <div className="mt-4 flex gap-6 items-start">
           <div className="relative">
-            {userData!.photo ? (
+            {photoUrl ? (
               <img
-                src={userData!.photo}
+                src={photoUrl}
                 alt="Photo de profil"
                 className="w-28 h-28 rounded-full object-cover"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  // Si l'image ne charge pas, masquer l'img et afficher l'initiale
+                  target.style.display = "none";
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector(".avatar-placeholder")) {
+                    const placeholder = document.createElement("div");
+                    placeholder.className =
+                      "w-28 h-28 rounded-full bg-emerald-500 text-white flex items-center justify-center text-4xl font-bold avatar-placeholder";
+                    placeholder.textContent =
+                      userData!.prenom?.charAt(0) || "👤";
+                    parent.appendChild(placeholder);
+                  }
+                }}
               />
             ) : (
               <div className="w-28 h-28 rounded-full bg-emerald-500 text-white flex items-center justify-center text-4xl font-bold">

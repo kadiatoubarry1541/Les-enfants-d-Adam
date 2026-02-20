@@ -48,6 +48,11 @@ const EchangeMedicament = lazy(() => import("./pages/EchangeMedicament"));
 const EchangeSecondaire = lazy(() => import("./pages/EchangeSecondaire"));
 const Science = lazy(() => import("./pages/Science"));
 const ProfesseurIA = lazy(() => import("./pages/ProfesseurIA"));
+const InscriptionPro = lazy(() => import("./pages/InscriptionPro"));
+const ListeProfessionnels = lazy(() => import("./pages/ListeProfessionnels"));
+const MesComptesPro = lazy(() => import("./pages/MesComptesPro"));
+const EspacePro = lazy(() => import("./pages/EspacePro"));
+const PrendreRendezVous = lazy(() => import("./pages/PrendreRendezVous"));
 
 // Composant de chargement optimisé
 const LoadingSpinner = () => (
@@ -129,8 +134,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/login-membre" element={<LoginMembre />} />
           <Route path="/compte" element={<Account />} />
-          <Route path="/moi" element={<Moi />} />
+          <Route path="/moi" element={<Navigate to="/compte" replace />} />
           <Route path="/moi/profil" element={<MonProfil />} />
+          <Route path="/moi/arbre" element={<Navigate to="/famille/moi/arbre" replace />} />
+          <Route path="/moi/arbre/membres" element={<Navigate to="/famille/moi/arbre/membres" replace />} />
           <Route path="/sante" element={<Sante />} />
           <Route path="/securite" element={<Securite />} />
           <Route path="/mes-amours" element={<Navigate to="/famille/mes-amours" replace />} />
@@ -153,8 +160,13 @@ function App() {
           <Route path="/famille/femmes" element={<Partenaire />} />
           <Route path="/famille/mari" element={<Partenaire />} />
           <Route path="/famille/enfants" element={<Enfants />} />
-          <Route path="/famille/arbre" element={<Arbre />} />
-          <Route path="/famille/arbre/membres" element={<Membres />} />
+          <Route path="/famille/moi" element={<Moi />}>
+            <Route index element={<Navigate to="/famille/moi/arbre" replace />} />
+            <Route path="arbre" element={<Arbre />} />
+            <Route path="arbre/membres" element={<Membres />} />
+          </Route>
+          <Route path="/famille/arbre" element={<Navigate to="/famille/moi/arbre" replace />} />
+          <Route path="/famille/arbre/membres" element={<Navigate to="/famille/moi/arbre/membres" replace />} />
           <Route path="/famille/mes-amours" element={<MesAmours />} />
           <Route path="/famille/admin" element={<FamilleAdmin />} />
           <Route path="/famille/inspir" element={<Inspir />} />
@@ -173,6 +185,11 @@ function App() {
           <Route path="/echange/secondaire" element={<EchangeSecondaire />} />
           <Route path="/ia-sc" element={<ProfesseurIA />} />
           <Route path="/professeur-ia" element={<ProfesseurIA />} />
+          <Route path="/inscription-pro" element={<InscriptionPro />} />
+          <Route path="/professionnels" element={<ListeProfessionnels />} />
+          <Route path="/mes-comptes-pro" element={<MesComptesPro />} />
+          <Route path="/espace-pro/:id" element={<EspacePro />} />
+          <Route path="/rendez-vous/:id" element={<PrendreRendezVous />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>

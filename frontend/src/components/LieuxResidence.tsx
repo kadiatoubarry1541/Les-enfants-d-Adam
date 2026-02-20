@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import "./LieuxResidence.css";
+import { config } from "../config/api";
+import { getPhotoUrl } from "../utils/auth";
 
 interface Residence {
   id: string;
@@ -25,6 +27,7 @@ interface LieuxResidenceProps {
     prenom: string;
     nomFamille: string;
     numeroH: string;
+    photo?: string;
     [key: string]: string | number | boolean | undefined;
   };
 }
@@ -41,6 +44,9 @@ export function LieuxResidence({ userData }: LieuxResidenceProps) {
   const lieu1 = userData.lieu1 || 'Non renseigné';
   const lieu2 = userData.lieu2 || 'Non renseigné';
   const lieu3 = userData.lieu3 || 'Non renseigné';
+
+  // URL de la photo de profil de l'utilisateur (si disponible)
+  const userPhotoUrl = getPhotoUrl(userData.photo as string | undefined);
 
   useEffect(() => {
     // Simuler des données de résidence pour la démo
@@ -277,8 +283,16 @@ export function LieuxResidence({ userData }: LieuxResidenceProps) {
                 {/* Simulation de membres */}
                 <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
-                      {userData.prenom?.charAt(0)}
+                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold overflow-hidden">
+                      {userPhotoUrl ? (
+                        <img
+                          src={userPhotoUrl}
+                          alt="Photo de profil"
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        userData.prenom?.charAt(0)
+                      )}
                     </div>
                     <div>
                       <p className="font-semibold text-slate-800">{userData.prenom} {userData.nomFamille}</p>
@@ -338,8 +352,16 @@ export function LieuxResidence({ userData }: LieuxResidenceProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">
-                      {userData.prenom?.charAt(0)}
+                    <div className="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center font-bold overflow-hidden">
+                      {userPhotoUrl ? (
+                        <img
+                          src={userPhotoUrl}
+                          alt="Photo de profil"
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        userData.prenom?.charAt(0)
+                      )}
                     </div>
                     <div>
                       <p className="font-semibold text-slate-800">{userData.prenom} {userData.nomFamille}</p>
@@ -399,8 +421,16 @@ export function LieuxResidence({ userData }: LieuxResidenceProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center font-bold">
-                      {userData.prenom?.charAt(0)}
+                    <div className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center font-bold overflow-hidden">
+                      {userPhotoUrl ? (
+                        <img
+                          src={userPhotoUrl}
+                          alt="Photo de profil"
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        userData.prenom?.charAt(0)
+                      )}
                     </div>
                     <div>
                       <p className="font-semibold text-slate-800">{userData.prenom} {userData.nomFamille}</p>

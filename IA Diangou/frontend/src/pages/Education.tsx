@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DefiEducatifContent from '../components/DefiEducatifContent';
+import { Header } from '../components/Header';
 
 interface UserData {
   numeroH: string;
@@ -754,25 +755,8 @@ export default function Education() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">🎓 Éducation</h1>
-              <p className="mt-2 text-gray-600">Formations, professeurs et cours</p>
-            </div>
-            <div className="flex space-x-4">
-      <button
-                onClick={() => navigate('/moi')}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
-      >
-        ← Retour
-      </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Header avec Photo de Profil */}
+      <Header userData={userData} />
 
       {/* Navigation Tabs */}
       <div className="bg-white border-b">

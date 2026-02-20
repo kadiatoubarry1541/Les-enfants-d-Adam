@@ -853,53 +853,69 @@ router.put('/profile', async (req, res) => {
 // @route   POST /api/auth/profile/photo
 // @desc    Mettre à jour la photo de profil
 // @access  Private
-router.post('/profile/photo', upload.single('photo'), async (req, res) => {
-  try {
-    const { numeroH } = req.body;
-    
-    if (!numeroH) {
+router.post('/profile/photo', (req, res) => {
+  // Wrapper multer pour attraper ses erreurs et renvoyer du JSON propre
+  upload.single('photo')(req, res, async (multerErr) => {
+    if (multerErr) {
+      console.error('Erreur multer upload photo:', multerErr);
       return res.status(400).json({
         success: false,
-        message: 'NumeroH requis'
+        message: multerErr.message || 'Erreur lors de l\'upload du fichier'
       });
     }
 
-    if (!req.file) {
-      return res.status(400).json({
+    try {
+      const { numeroH } = req.body;
+
+      if (!numeroH) {
+        return res.status(400).json({
+          success: false,
+          message: 'NumeroH requis'
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'Aucun fichier fourni'
+        });
+      }
+
+      console.log('📸 Upload photo pour:', numeroH, '- Fichier:', req.file.filename);
+
+      const user = await User.findByNumeroH(numeroH);
+
+      if (!user) {
+        console.log('❌ Utilisateur non trouvé pour photo:', numeroH);
+        return res.status(404).json({
+          success: false,
+          message: 'Utilisateur non trouvé'
+        });
+      }
+
+      const photoUrl = `/uploads/${req.file.filename}`;
+
+      await user.update({ photo: photoUrl });
+
+      const userWithoutPassword = { ...user.dataValues };
+      delete userWithoutPassword.password;
+
+      console.log('✅ Photo mise à jour:', photoUrl);
+
+      res.json({
+        success: true,
+        message: 'Photo de profil mise à jour avec succès',
+        photoUrl,
+        user: userWithoutPassword
+      });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la photo:', error);
+      res.status(500).json({
         success: false,
-        message: 'Aucun fichier fourni'
+        message: 'Erreur serveur lors de la mise à jour de la photo'
       });
     }
-
-    const user = await User.findByNumeroH(numeroH);
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Utilisateur non trouvé'
-      });
-    }
-
-    const photoUrl = `/uploads/${req.file.filename}`;
-    
-    await user.update({ photo: photoUrl });
-
-    const userWithoutPassword = { ...user.dataValues };
-    delete userWithoutPassword.password;
-
-    res.json({
-      success: true,
-      message: 'Photo de profil mise à jour avec succès',
-      photoUrl,
-      user: userWithoutPassword
-    });
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour de la photo:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la mise à jour de la photo'
-    });
-  }
+  });
 });
 
 export default router;

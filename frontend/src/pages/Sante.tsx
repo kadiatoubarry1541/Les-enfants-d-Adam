@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProSection from '../components/ProSection';
 interface UserData {
   numeroH: string;
   prenom: string;
@@ -72,6 +73,7 @@ export default function Sante() {
   });
   const [hospitalLoading, setHospitalLoading] = useState(false);
   const [hospitalMessage, setHospitalMessage] = useState<string | null>(null);
+  const [showClinicForm, setShowClinicForm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -344,7 +346,13 @@ export default function Sante() {
               <h1 className="text-3xl font-bold text-gray-900">🏥 Santé</h1>
               <p className="mt-2 text-gray-600">Hôpitaux, médecins et produits de santé</p>
             </div>
-            <div className="flex space-x-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => { setShowClinicForm(true); setTimeout(() => document.getElementById('section-clinic')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
+                className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                + S&apos;inscrire (Cliniques)
+              </button>
               <button
                 onClick={callEmergency}
                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
@@ -624,6 +632,16 @@ export default function Sante() {
             </div>
           </div>
         )}
+
+        {/* Section Professionnels de Santé (Cliniques & Hôpitaux approuvés par l'admin) */}
+        <ProSection
+          type="clinic"
+          title="Cliniques & Hôpitaux"
+          icon="🏥"
+          description=""
+          showForm={showClinicForm}
+          onShowFormChange={setShowClinicForm}
+        />
 
       </div>
     </div>

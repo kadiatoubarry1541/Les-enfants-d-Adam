@@ -73,15 +73,15 @@ router.get('/published', async (req, res) => {
     const stories = await PublishedStory.findAll({
       where,
       order: [['publishedAt', 'DESC']],
-      limit: parseInt(limit as string),
-      offset: parseInt(offset as string)
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
 
     // Filtrer par recherche si fourni
     let filteredStories = stories;
     if (search) {
-      const searchLower = (search as string).toLowerCase();
-      filteredStories = stories.filter((story: any) => 
+      const searchLower = String(search).toLowerCase();
+      filteredStories = stories.filter((story) =>
         story.content.toLowerCase().includes(searchLower) ||
         story.authorName.toLowerCase().includes(searchLower) ||
         story.sectionTitle.toLowerCase().includes(searchLower)
@@ -480,7 +480,7 @@ router.post('/publish', async (req, res) => {
     }
 
     // Trouver le titre de la section
-    const sectionTitles: Record<string, string> = {
+    const sectionTitles = {
       'naissance': 'Naissance et Enfance',
       'jeunesse': 'Jeunesse et Apprentissage',
       'mariage': 'Union et Engagement',

@@ -362,6 +362,7 @@ router.get('/activities', async (req, res) => {
           success: false,
           message: 'Accès non autorisé'
         });
+      }
       const activities = await ParentChildActivity.getActivitiesForPair(parentNumeroH, childNumeroH);
       const fromUsers = await User.findAll({
         where: { numeroH: [...new Set(activities.map(a => a.fromNumeroH))] },

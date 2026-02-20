@@ -131,7 +131,7 @@ if %errorlevel% neq 0 (
 )
 
 if not defined IA_DISABLED (
-    cd /d "%~dp0..\..\ia-sc"
+    cd /d "%~dp0..\..\IA SC"
     
     if not exist "venv" (
         echo Création de l'environnement virtuel Python...
@@ -164,6 +164,23 @@ if not defined IA_DISABLED (
     
     cd /d "%~dp0..\.."
 )
+
+REM ========================================
+REM ÉTAPE 4b: Seed des connaissances IA (leçons de français)
+REM ========================================
+echo.
+echo [4b/6] Initialisation des leçons du Professeur IA...
+echo ──────────────────────────────────────
+
+cd /d "%~dp0..\..\backend"
+call npm run seed-ia 2>nul
+if errorlevel 1 (
+    echo ⚠️  Le seed IA a échoué (la base peut ne pas être créée encore)
+    echo    L'IA fonctionnera avec les réponses par défaut
+) else (
+    echo ✅ Leçons du Professeur IA initialisées
+)
+cd /d "%~dp0..\.."
 
 REM ========================================
 REM ÉTAPE 5: Vérification des ports
@@ -227,7 +244,7 @@ timeout /t 5 /nobreak >nul
 REM Démarrer l'IA si disponible
 if not defined IA_DISABLED (
     echo 🚀 Démarrage de l'IA Professeur (Port 5000)...
-    start "🔷 IA Professeur - Port 5000" cmd /k "title IA Professeur - Port 5000 && cd /d %~dp0..\..\ia-sc && call venv\Scripts\activate.bat && %PYTHON_CMD% app.py"
+    start "🔷 IA Professeur - Port 5000" cmd /k "title IA Professeur - Port 5000 && cd /d %~dp0..\..\IA SC && (if exist venv\Scripts\activate.bat call venv\Scripts\activate.bat) && %PYTHON_CMD% app.py"
     timeout /t 2 /nobreak >nul
 ) else (
     echo ⚠️  IA non démarrée (Python non disponible)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProSection from '../components/ProSection';
 
 interface UserData {
   numeroH: string;
@@ -65,7 +66,7 @@ interface HolyBook {
 
 export default function Solidarite() {
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState<'dons' | 'zaka' | 'livres' | 'realite'>('dons');
+  const [activeTab, setActiveTab] = useState<'dons' | 'zaka' | 'livres' | 'realite' | 'ong'>('dons');
   const [donsSubTab, setDonsSubTab] = useState<'pauvres' | 'mes-dons'>('pauvres');
   const [poorPeople, setPoorPeople] = useState<PoorPerson[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
@@ -78,6 +79,7 @@ export default function Solidarite() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUrgency, setSelectedUrgency] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [showNgoForm, setShowNgoForm] = useState(false);
   const navigate = useNavigate();
 
   // Etats pour la section Réalité
@@ -503,7 +505,13 @@ export default function Solidarite() {
               <h1 className="text-3xl font-bold text-gray-900">🤝 Solidarité</h1>
               <p className="mt-2 text-gray-600">Aide aux pauvres - Solidarité pour tous, toutes religions confondues</p>
             </div>
-            <div className="flex space-x-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => { setActiveTab('ong'); setShowNgoForm(true); setTimeout(() => document.getElementById('section-ngo')?.scrollIntoView({ behavior: 'smooth' }), 100); }}
+                className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                + S&apos;inscrire (ONG)
+              </button>
               <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
@@ -523,14 +531,15 @@ export default function Solidarite() {
               { id: 'dons', label: 'Dons', icon: '🤝' },
               { id: 'zaka', label: 'Zaka (Musulmans)', icon: '🤲' },
               { id: 'livres', label: 'Les Livres de Dieu Unique', icon: '📖' },
-              { id: 'realite', label: 'Réalité', icon: '📷' }
+              { id: 'realite', label: 'Réalité', icon: '📷' },
+              { id: 'ong', label: 'ONG', icon: '🌍' }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
-                    ? (tab.id === 'zaka' || tab.id === 'dons') ? 'border-green-500 text-green-600' : 'border-blue-500 text-blue-600'
+                    ? (tab.id === 'zaka' || tab.id === 'dons') ? 'border-green-500 text-green-600' : (tab.id === 'ong' ? 'border-teal-500 text-teal-600' : 'border-blue-500 text-blue-600')
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -924,6 +933,25 @@ export default function Solidarite() {
           </div>
         )}
 
+        {activeTab === 'ong' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">🌍 ONG & Associations</h2>
+              <p className="text-gray-600 mb-6">
+                Découvrez les organisations non gouvernementales inscrites. Vous pouvez les contacter pour des projets de solidarité, prendre rendez-vous ou leur envoyer des messages.
+              </p>
+              <ProSection
+                type="ngo"
+                title="Organisations inscrites"
+                icon="🌍"
+                description=""
+                showForm={showNgoForm}
+                onShowFormChange={setShowNgoForm}
+                hideEmptyMessage={false}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal de don */}

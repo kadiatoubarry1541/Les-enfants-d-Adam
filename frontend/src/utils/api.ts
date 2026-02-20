@@ -147,6 +147,10 @@ export const api = {
           userData: result.user,
           token: result.token
         }))
+        // Stocker le token séparément pour les appels API (EditProfileModal, etc.)
+        if (result.token) {
+          localStorage.setItem('token', result.token)
+        }
         return result
       } else {
         // Fallback localStorage si backend retourne success: false

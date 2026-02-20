@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
+import ProSection from '../components/ProSection';
 
 const API_BASE_URL = config.API_BASE_URL || 'http://localhost:5002/api';
 
@@ -821,6 +822,14 @@ export default function Activite() {
               </div>
             )}
                       </div>
+
+        {/* Section Entreprises Professionnelles (approuvées par l'admin) */}
+        <ProSection
+          type="enterprise"
+          title="Entreprises"
+          icon="🏢"
+          description="Les entreprises peuvent s'inscrire ici. Après validation par l'administrateur, elles pourront publier leurs outils de travail et opportunités sur la page Activité."
+        />
 
       </div>
     </div>

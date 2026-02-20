@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 import connectDB from '../config/database.js';
 import authRoutes from './routes/auth.js';
@@ -33,6 +34,10 @@ import realityRoutes from './routes/reality.js';
 import stateMessagesRoutes from './routes/stateMessages.js';
 import stateProductsRoutes from './routes/stateProducts.js';
 import userStoriesRoutes from './routes/userStories.js';
+import professionalRoutes from './routes/professionals.js';
+import appointmentRoutes from './routes/appointments.js';
+import notificationRoutes from './routes/notifications.js';
+import iaRoutes from './routes/ia.js';
 import { handleUploadError } from './middleware/upload.js';
 import { config } from '../config.js';
 
@@ -44,6 +49,62 @@ dotenv.config({ path: path.join(path.dirname(__dirname), 'config.env') });
 
 const app = express();
 const PORT = process.env.PORT || config.PORT || 5002;
+
+// Démarrage automatique du serveur IA (Python) quand le backend démarre
+let iaProcess = null;
+
+const startIaServer = () => {
+  if (process.env.DISABLE_IA_AUTO_START === 'true') {
+    console.log('ℹ️ Démarrage automatique de l\'IA désactivé (DISABLE_IA_AUTO_START=true)');
+    return;
+  }
+
+  if (iaProcess) {
+    // IA déjà démarrée
+    return;
+  }
+
+  const iaDir = path.join(__dirname, '../../IA SC');
+  const pythonCmds = process.platform === 'win32' ? ['py', 'python'] : ['python3', 'python'];
+
+  const trySpawn = (index) => {
+    if (index >= pythonCmds.length) {
+      console.error('❌ Impossible de démarrer automatiquement le Professeur IA (Python introuvable).');
+      console.error('   Vérifiez que Python est installé, puis démarrez IA SC/app.py manuellement si nécessaire.');
+      return;
+    }
+
+    const cmd = pythonCmds[index];
+    console.log(`🔄 Tentative de démarrage du Professeur IA avec "${cmd}"...`);
+
+    try {
+      iaProcess = spawn(cmd, ['app.py'], {
+        cwd: iaDir,
+        stdio: 'inherit',
+        shell: process.platform === 'win32'
+      });
+
+      iaProcess.on('error', (err) => {
+        console.error(`❌ Erreur lors du démarrage du Professeur IA avec "${cmd}":`, err.message);
+        iaProcess = null;
+        trySpawn(index + 1);
+      });
+
+      iaProcess.on('exit', (code) => {
+        console.log(`ℹ️ Professeur IA arrêté (code: ${code}).`);
+        iaProcess = null;
+      });
+
+      console.log('✅ Professeur IA lancé automatiquement (port 5000).');
+    } catch (e) {
+      console.error(`❌ Exception lors du démarrage de l\'IA avec "${cmd}":`, e.message);
+      iaProcess = null;
+      trySpawn(index + 1);
+    }
+  };
+
+  trySpawn(0);
+};
 
 // Connexion à la base de données (async)
 connectDB().catch(error => {
@@ -79,32 +140,43 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // En production, autoriser toutes les origines si CORS_ORIGIN n'est pas défini
-    if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
-      return callback(null, true);
-    }
-    if (!origin) return callback(null, true); // requêtes same-origin ou outils
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    // En développement, être plus strict
+    // En développement : accepter localhost et 127.0.0.1 sur n'importe quel port
     if (process.env.NODE_ENV === 'development') {
-    return callback(new Error('Not allowed by CORS'));
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, true); // En dev, accepter tout pour faciliter les tests
     }
-    // En production, autoriser si l'origine correspond au pattern
+    // En production
+    if (!process.env.CORS_ORIGIN) return callback(null, true);
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(null, true);
   },
   credentials: true
 }));
 
 // Rate limiting
+// ⚠️ En développement, on assouplit fortement la limite pour éviter
+// de bloquer les tests (changement de photo de profil, reload, etc.)
+const isDev = process.env.NODE_ENV === 'development';
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limite de 100 requêtes par IP toutes les 15 minutes
+  max: isDev ? 10000 : 100, // en dev: 10 000 requêtes, en prod: 100
+  standardHeaders: true,
+  legacyHeaders: false,
   message: {
     success: false,
     message: 'Trop de requêtes, veuillez réessayer plus tard'
   }
 });
-app.use(limiter);
+
+// On applique le rate limit uniquement sur les routes API,
+// pas sur les fichiers statiques /uploads
+app.use('/api', limiter);
 
 // Middleware pour parser le JSON
 app.use(express.json({ limit: '10mb' }));
@@ -112,9 +184,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Servir les fichiers statiques
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
-// Middleware pour gérer les erreurs d'upload
-app.use(handleUploadError);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -142,6 +211,10 @@ app.use('/api/reality', realityRoutes);
 app.use('/api/state-messages', stateMessagesRoutes);
 app.use('/api/state-products', stateProductsRoutes);
 app.use('/api/user-stories', userStoriesRoutes);
+app.use('/api/professionals', professionalRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/ia', iaRoutes);
 app.use('/api', additionalRoutes);
 
 // Route de test
@@ -169,10 +242,13 @@ app.get('/api/files/:filename', (req, res) => {
   });
 });
 
-// Middleware de gestion des erreurs
+// Middleware pour gérer les erreurs d'upload (multer) - DOIT être APRÈS les routes
+app.use(handleUploadError);
+
+// Middleware de gestion des erreurs générales
 app.use((err, req, res, next) => {
   console.error('Erreur serveur:', err);
-  
+
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Erreur serveur interne',
@@ -194,6 +270,9 @@ app.listen(PORT, () => {
   console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`📁 Dossier uploads: ${path.join(__dirname, '../uploads')}`);
+
+  // Démarrer automatiquement le Professeur IA (serveur Python) en parallèle
+  startIaServer();
 });
 
 export default app;

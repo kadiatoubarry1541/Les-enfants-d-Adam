@@ -1,0 +1,53 @@
+═══════════════════════════════════════════════════════════════
+  COMMENT FAIRE FONCTIONNER L'IA - Professeur de Français
+═══════════════════════════════════════════════════════════════
+
+L'IA fonctionne SANS Python ! Tout est dans le backend Node.js.
+
+┌─────────────────────────────────────────────────────────────┐
+│  MÉTHODE RAPIDE - Double-cliquez sur :                      │
+│                                                             │
+│     FAIRE_FONCTIONNER_IA.bat                                │
+│                                                             │
+│  Ce script va :                                             │
+│  1. Charger les leçons de français (alphabet, verbes...)    │
+│  2. Démarrer le Backend (port 5002) - contient l'IA         │
+│  3. Démarrer le Frontend (port 3000)                        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  PRÉREQUIS                                                  │
+│  • PostgreSQL doit être démarré                             │
+│  • La base "enfants_adam_eve" doit exister                  │
+│    (voir RECREER_TOUTES_LES_BASES.sql si besoin)            │
+│  • Node.js installé                                         │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  UTILISER L'IA                                              │
+│  1. Ouvrez http://localhost:3000                            │
+│  2. Allez dans Éducation → Professeur IA de Français        │
+│     (ou directement /ia-sc ou /professeur-ia)               │
+│  3. Posez des questions :                                   │
+│     • "Qu'est-ce que l'alphabet ?"                          │
+│     • "Comment dire bonjour ?"                              │
+│     • "Comment conjuguer le verbe être ?"                    │
+│     • "C'est quoi les articles en français ?"               │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  MANUEL (si le .bat ne marche pas)                          │
+│                                                             │
+│  Terminal 1 - Backend :                                     │
+│    cd backend                                               │
+│    npm run seed-ia   (première fois seulement)              │
+│    npm start                                                │
+│                                                             │
+│  Terminal 2 - Frontend :                                    │
+│    cd frontend                                              │
+│    npm run dev                                              │
+└─────────────────────────────────────────────────────────────┘
+
+Pour des réponses à TOUTES les questions (avec OpenAI) :
+→ Utilisez le serveur Python IA SC (port 5000) avec une clé API
+→ Voir IA SC/GUIDE_DEMARRAGE_IA.md

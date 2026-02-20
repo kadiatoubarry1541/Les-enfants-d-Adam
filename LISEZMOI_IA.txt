@@ -1,0 +1,28 @@
+═══════════════════════════════════════════════════════════════
+  COMMENT FAIRE FONCTIONNER LE PROFESSEUR IA
+═══════════════════════════════════════════════════════════════
+
+PROBLÈME : "Problème de connexion avec le serveur IA"
+CAUSE : Le serveur IA (port 5000) n'est pas démarré
+
+SOLUTION SIMPLE - DOUBLE-CLIQUEZ SUR :
+
+   📄 DEMARRER_TOUT_AVEC_IA.bat
+
+Ce fichier va :
+1. Installer tout automatiquement (si besoin)
+2. Ouvrir 3 fenêtres (Backend, Frontend, IA)
+3. Ouvrir votre navigateur
+
+IMPORTANT : Ne fermez PAS les 3 fenêtres noires !
+
+Ensuite :
+- Allez sur "Éducation" dans le menu
+- Cliquez sur "Professeur IA" ou "Commencer avec le Professeur IA"
+- Posez vos questions (ex: "Bonjour", "C'est quoi un verbe ?")
+
+═══════════════════════════════════════════════════════════════
+
+Si Python n'est pas installé :
+- Téléchargez : https://www.python.org/downloads/
+- Cochez "Add Python to PATH" pendant l'installation

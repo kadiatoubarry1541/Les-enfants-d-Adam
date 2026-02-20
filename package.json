@@ -1,5 +1,14 @@
 {
+  "name": "les-enfants-d-adam-main",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "cd backend && npm run start",
+    "dev": "cd frontend && npm run dev",
+    "start:both": "concurrently \"npm:dev\" \"npm:start\""
+  },
   "dependencies": {
-    "pptxgenjs": "^4.0.1"
+    "pptxgenjs": "^4.0.1",
+    "concurrently": "^8.2.0"
   }
 }

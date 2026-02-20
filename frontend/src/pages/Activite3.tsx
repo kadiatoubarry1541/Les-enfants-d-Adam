@@ -79,20 +79,11 @@ export default function Activite3() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [groups, setGroups] = useState<Activity3Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Activity3Group | null>(null);
   const [showExhibitionForm, setShowExhibitionForm] = useState(false);
   const [showPerformanceForm, setShowPerformanceForm] = useState(false);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const navigate = useNavigate();
-
-  const [newGroup, setNewGroup] = useState({
-    name: '',
-    description: '',
-    location: '',
-    meetingTime: '',
-    artStyle: 'mixte' as 'traditionnel' | 'moderne' | 'contemporain' | 'mixte'
-  });
 
   const [newPost, setNewPost] = useState({
     content: '',
@@ -205,36 +196,6 @@ export default function Activite3() {
       artStyle: 'traditionnel'
     }
   ];
-
-  const createGroup = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch('/api/activities/activity3/groups', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...newGroup,
-          activity: 'Activité3',
-          createdBy: userData?.numeroH
-        })
-      });
-      
-      if (response.ok) {
-        alert('Organisation créé avec succès !');
-        setShowCreateGroup(false);
-        setNewGroup({ name: '', description: '', location: '', meetingTime: '', artStyle: 'mixte' });
-        loadGroups();
-      } else {
-        alert('Erreur lors de la création du Organisation');
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur lors de la création du Organisation');
-    }
-  };
 
   const joinGroup = async (groupId: string) => {
     try {
@@ -449,12 +410,6 @@ export default function Activite3() {
         
         <div className="flex gap-4 mb-6">
           <button
-            onClick={() => setShowCreateGroup(true)}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2"
-          >
-            ➕ Créer un Organisation
-          </button>
-          <button
             onClick={() => setShowExhibitionForm(true)}
             className="px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors duration-200 flex items-center gap-2"
           >
@@ -473,82 +428,6 @@ export default function Activite3() {
             🎨 Créer un Projet
           </button>
         </div>
-
-        {/* Formulaire de création de Organisation */}
-        {showCreateGroup && (
-          <div className="bg-gray-50 rounded-lg p-6 mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Créer un nouveau Organisation</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nom du Organisation</label>
-                <input
-                  type="text"
-                  value={newGroup.name}
-                  onChange={(e) => setNewGroup({...newGroup, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Ex: Artistes Peintres"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Style artistique</label>
-                <select
-                  value={newGroup.artStyle}
-                  onChange={(e) => setNewGroup({...newGroup, artStyle: e.target.value as any})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="traditionnel">Traditionnel</option>
-                  <option value="moderne">Moderne</option>
-                  <option value="contemporain">Contemporain</option>
-                  <option value="mixte">Mixte</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Lieu de rencontre</label>
-                <input
-                  type="text"
-                  value={newGroup.location}
-                  onChange={(e) => setNewGroup({...newGroup, location: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Ex: Conakry, Guinée"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Horaire de rencontre</label>
-                <input
-                  type="text"
-                  value={newGroup.meetingTime}
-                  onChange={(e) => setNewGroup({...newGroup, meetingTime: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Ex: Dimanche 14h00"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  value={newGroup.description}
-                  onChange={(e) => setNewGroup({...newGroup, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Description du Organisation..."
-                />
-              </div>
-            </div>
-            <div className="flex gap-4 mt-4">
-              <button
-                onClick={createGroup}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200"
-              >
-                ✅ Créer le Organisation
-              </button>
-              <button
-                onClick={() => setShowCreateGroup(false)}
-                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200"
-              >
-                ❌ Annuler
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Formulaire d'exposition */}
         {showExhibitionForm && (

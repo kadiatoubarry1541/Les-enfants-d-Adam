@@ -110,3 +110,27 @@ export function isAdminAuthenticated(): boolean {
   return user !== null && isAdmin(user);
 }
 
+/**
+ * Construit l'URL complète de la photo de profil utilisateur.
+ * Gère les cas : data URI, URL absolue HTTP, chemin relatif serveur, et absence de photo.
+ * @param photo - Le champ photo de l'utilisateur (peut être undefined/null)
+ * @returns L'URL complète ou null si pas de photo
+ */
+export function getPhotoUrl(photo?: string | null): string | null {
+  if (!photo) return null;
+  // Data URI (photo capturée localement)
+  if (photo.startsWith("data:")) return photo;
+  // Blob URL (preview locale)
+  if (photo.startsWith("blob:")) return photo;
+  // URL absolue (déjà complète)
+  if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
+  // Chemin relatif du serveur (ex: /uploads/photo-123.jpg)
+  // En dev, le proxy Vite redirige /uploads vers le backend
+  // En prod, le chemin relatif fonctionne directement
+  if (photo.startsWith("/uploads/")) return photo;
+  if (photo.startsWith("uploads/")) return "/" + photo;
+  // Autre chemin relatif - construire l'URL complète
+  const baseUrl = (import.meta.env.VITE_API_URL || "http://localhost:5002/api").replace("/api", "");
+  return `${baseUrl}${photo.startsWith("/") ? photo : "/" + photo}`;
+}
+

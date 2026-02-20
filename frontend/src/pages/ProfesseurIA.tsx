@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { config } from '../config/api';
 
 interface Message {
   text: string;
@@ -10,7 +11,7 @@ interface Message {
 export default function ProfesseurIA() {
   const [messages, setMessages] = useState<Message[]>([
     {
-      text: "Bonjour cher(e) élève ! ✨\n\nJe suis votre Professeur IA de Français, spécialisé à 100% dans l'enseignement de la langue française.\n\n🔴 Je réponds 100% en français : toutes mes explications, exemples et exercices sont uniquement en français.\n\nJe peux vous enseigner :\n✅ La grammaire française (verbes, conjugaison, genres, pluriels, accords)\n✅ L'orthographe (accents, règles, exceptions)\n✅ Le vocabulaire (synonymes, antonymes, expressions)\n✅ La syntaxe (structure des phrases)\n✅ La prononciation (sons, phonétique)\n✅ Tous les temps verbaux (présent, passé composé, imparfait, futur, conditionnel, subjonctif)\n\nJe donne toujours des réponses complètes avec 5-7 exemples concrets et 3-5 exercices avec corrigés.\n\nPosez-moi n'importe quelle question sur le français (en français ou dans une autre langue), je vous répondrai toujours en français, de manière simple, précise et exhaustive ! 📚💪",
+      text: "Bonjour ! Je peux vous assister en Français et en Mathématiques. Posez-moi une question.",
       isUser: false,
       timestamp: new Date()
     }
@@ -42,17 +43,27 @@ export default function ProfesseurIA() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/chat', {
+      // Construire l'historique : paires (question utilisateur, réponse bot) pour le contexte
+      const historyPairs: { question: string; reponse: string }[] = [];
+      for (let i = 1; i < messages.length - 1; i += 2) {
+        if (messages[i]?.isUser && !messages[i + 1]?.isUser) {
+          historyPairs.push({
+            question: messages[i].text,
+            reponse: messages[i + 1].text
+          });
+        }
+      }
+
+      // Backend gère l'IA - URL directe pour éviter les erreurs de proxy
+      const iaApiBase = import.meta.env.VITE_IA_API_URL || `${config.API_BASE_URL}/ia`;
+      const response = await fetch(`${iaApiBase}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           message: inputValue.trim(),
-          history: messages.filter(m => !m.isUser).map((m, i) => ({
-            question: messages[i * 2]?.text || '',
-            reponse: m.text
-          }))
+          history: historyPairs
         })
       });
 
@@ -66,16 +77,19 @@ export default function ProfesseurIA() {
           };
           setMessages(prev => [...prev, botMessage]);
         } else {
+          console.error('[ProfesseurIA] Réponse success=false:', data);
           const errorMessage: Message = {
-            text: "Cher(e) élève, il y a eu une erreur. Peux-tu réessayer ?",
+            text: "Cher(e) élève, il y a eu une erreur. Vérifiez que le backend est démarré (port 5002).",
             isUser: false,
             timestamp: new Date()
           };
           setMessages(prev => [...prev, errorMessage]);
         }
       } else {
+        const errText = await response.text();
+        console.error('[ProfesseurIA] Erreur HTTP', response.status, errText);
         const errorMessage: Message = {
-          text: "Cher(e) élève, il y a eu une erreur. Peux-tu réessayer ?",
+          text: "Cher(e) élève, le serveur ne répond pas. Vérifiez que le backend (port 5002) est démarré.",
           isUser: false,
           timestamp: new Date()
         };
@@ -84,7 +98,7 @@ export default function ProfesseurIA() {
     } catch (error) {
       console.error('Erreur lors de l\'envoi du message:', error);
       const errorMessage: Message = {
-        text: "Cher(e) élève, il y a un problème de connexion avec le serveur IA. Assurez-vous que le serveur IA SC est démarré. En attendant, je peux toujours vous aider avec des réponses basiques !",
+        text: "Cher(e) élève, impossible de joindre le serveur. Démarrez le backend (npm start dans le dossier backend) puis rafraîchissez la page.",
         isUser: false,
         timestamp: new Date()
       };
@@ -112,8 +126,8 @@ export default function ProfesseurIA() {
                 🤖
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Professeur IA de Français</h1>
-                <p className="text-gray-600">Votre professeur expert en langue française — Réponses 100% en français</p>
+                <h1 className="text-3xl font-bold text-gray-900">Assistant IA</h1>
+                <p className="text-gray-600">Assistance en Français et en Mathématiques</p>
               </div>
             </div>
             <div className="flex space-x-4">
@@ -149,7 +163,7 @@ export default function ProfesseurIA() {
                     {!message.isUser && (
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-2xl">🎓</span>
-                        <span className="font-semibold">Professeur IA</span>
+                        <span className="font-semibold">Assistant IA</span>
                       </div>
                     )}
                     <div className="whitespace-pre-wrap">{message.text}</div>
@@ -164,7 +178,7 @@ export default function ProfesseurIA() {
                   <div className="bg-white border-2 border-cyan-200 rounded-lg p-4 max-w-[80%]">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">🎓</span>
-                      <span className="font-semibold">Professeur IA</span>
+                      <span className="font-semibold">Assistant IA</span>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <div className="flex gap-1">
@@ -188,7 +202,7 @@ export default function ProfesseurIA() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Posez votre question sur le français (grammaire, conjugaison, orthographe…)"
+                  placeholder="Posez votre question (français ou mathématiques)"
                   className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   disabled={isLoading}
                 />
@@ -201,7 +215,7 @@ export default function ProfesseurIA() {
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-2 text-center">
-                💡 Toutes les réponses sont 100% en français. Posez vos questions : Grammaire, Conjugaison, Orthographe, Vocabulaire, Syntaxe, Prononciation.
+                Français et Mathématiques.
               </p>
             </div>
           </div>
@@ -210,8 +224,7 @@ export default function ProfesseurIA() {
         {/* Info Card */}
         <div className="mt-6 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg p-4 border-l-4 border-yellow-500">
           <p className="text-gray-800 font-medium">
-            <strong>ℹ️ Note :</strong> Le Professeur IA enseigne le français à 100% et répond uniquement en français. 
-            Assurez-vous que le serveur IA (port 5000) est démarré pour les réponses détaillées.
+            <strong>ℹ️</strong> Assistance en Français et en Mathématiques.
           </p>
         </div>
       </div>

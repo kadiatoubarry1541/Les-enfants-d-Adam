@@ -59,15 +59,13 @@ export { default as Logo } from './Logo.js';
 export { default as UserLogo } from './UserLogo.js';
 export { default as PublishedStory } from './PublishedStory.js';
 export { default as School } from './School.js';
+export { default as ProfessionalAccount } from './ProfessionalAccount.js';
+export { default as Appointment } from './Appointment.js';
+export { default as Notification } from './Notification.js';
+export { default as IaKnowledge } from './IaKnowledge.js';
+export { default as IaConversation } from './IaConversation.js';
 
 // Export des modèles supplémentaires
 export * from './additional.js';
-
-
-
-
-
-
-
 
 

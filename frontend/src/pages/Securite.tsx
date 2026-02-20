@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
+import ProSection from '../components/ProSection';
 import './Securite.css';
 
 interface UserData {
@@ -498,6 +499,14 @@ export default function Securite() {
         </div>
           </>
         )}
+
+        {/* Section Agences de Sécurité Professionnelles (approuvées par l'admin) */}
+        <ProSection
+          type="security_agency"
+          title="Agences de Sécurité"
+          icon="🛡️"
+          description="Les agences de sécurité peuvent s'inscrire ici. Après validation par l'administrateur, elles apparaîtront dans la liste et disposeront de leur propre espace de travail."
+        />
       </div>
     </div>
   );

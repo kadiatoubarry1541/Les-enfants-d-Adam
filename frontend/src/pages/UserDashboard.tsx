@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { isMasterAdmin } from "../utils/auth";
+import { isMasterAdmin, getPhotoUrl } from "../utils/auth";
 import Activite from "./Activite";
 import Education from "./Education";
 import TerreAdam from "./TerreAdam";
@@ -8,6 +8,8 @@ import Histoire from "./Histoire";
 import Science from "./Science";
 import { EchangesProfessionnel } from "../components/EchangesProfessionnel";
 import { ActivityIcon } from "../components/icons/ActivityIcon";
+import NotificationBell from "../components/NotificationBell";
+import DefaultAvatar from "../assets/default-avatar.svg";
 
 interface UserData {
   numeroH: string;
@@ -17,6 +19,8 @@ interface UserData {
   ethnie: string;
   region: string;
   photo?: string;
+  manPhoto?: string;
+  familyPhoto?: string;
   photoPreview?: string;
   logo?: string;
   role?: string;
@@ -72,7 +76,8 @@ export function UserDashboard() {
   const [userLogos, setUserLogos] = useState<UserLogo[]>([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  // Fonction pour charger les données utilisateur depuis localStorage
+  const loadUserData = () => {
     const sessionData = JSON.parse(
       localStorage.getItem("session_user") || "{}",
     );
@@ -82,7 +87,16 @@ export function UserDashboard() {
       return;
     }
     setUserData(user as UserData);
+  };
+
+  useEffect(() => {
+    loadUserData();
     loadUserLogos();
+
+    // Écouter les mises à jour de session (ex: après modification de profil/photo)
+    const handleSessionUpdate = () => loadUserData();
+    window.addEventListener("session-updated", handleSessionUpdate);
+    return () => window.removeEventListener("session-updated", handleSessionUpdate);
   }, [navigate]);
 
   const loadUserLogos = async () => {
@@ -149,8 +163,9 @@ export function UserDashboard() {
 
   return (
     <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen overflow-x-hidden">
-      {/* Barre supérieure: Déconnexion */}
-      <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 mb-3 sm:mb-4">
+      {/* Barre supérieure: Notifications + Déconnexion */}
+      <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 mb-3 sm:mb-4 gap-2">
+        <NotificationBell />
         <button className="btn secondary min-h-[44px] w-full xs:w-auto max-w-[200px] xs:max-w-none" onClick={() => navigate("/")}>
           Déconnexion
         </button>
@@ -162,29 +177,37 @@ export function UserDashboard() {
           <div className="w-full max-w-[420px]">
             <div className="profile-card bg-white/80 dark:bg-gray-800/80 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-800/60 backdrop-blur rounded-2xl sm:rounded-3xl shadow-md ring-1 ring-gray-200 dark:ring-gray-700 px-4 sm:px-5 py-4">
               <div className="user-info flex flex-col xs:flex-row items-start xs:items-center gap-3 sm:gap-4">
-                <div className="user-avatar relative" style={{ marginTop: "-6px" }}>
-                  {userData.photo ? (
-                    <img
-                      src={userData.photo.startsWith('data:') ? userData.photo : (userData.photo.startsWith('http') ? userData.photo : `http://localhost:5002${userData.photo.startsWith('/') ? userData.photo : '/' + userData.photo}`)}
-                      alt="Photo de profil"
-                      className="profile-photo"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent && !parent.querySelector('.avatar-placeholder')) {
-                          const placeholder = document.createElement('div');
-                          placeholder.className = 'avatar-placeholder';
-                          placeholder.textContent = userData.prenom?.charAt(0) || "👤";
-                          parent.appendChild(placeholder);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="avatar-placeholder">
-                      {userData.prenom?.charAt(0) || "👤"}
-                    </div>
-                  )}
+              <div className="user-avatar relative" style={{ marginTop: "-6px" }}>
+                  {(() => {
+                    const rawPhoto =
+                      userData.photo ||
+                      (userData as any).manPhoto ||
+                      (userData as any).familyPhoto;
+                    const photoUrl = getPhotoUrl(rawPhoto);
+                    return (
+                      <img
+                        src={photoUrl || DefaultAvatar}
+                        alt="Photo de profil"
+                        className="profile-photo"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (!target.src.includes("default-avatar")) {
+                            target.src = DefaultAvatar;
+                            return;
+                          }
+                          target.style.display = "none";
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector(".avatar-placeholder")) {
+                            const placeholder = document.createElement("div");
+                            placeholder.className = "avatar-placeholder";
+                            placeholder.textContent =
+                              userData.prenom?.charAt(0) || "👤";
+                            parent.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                    );
+                  })()}
                   {userData.logo && (
                     <div className={`status-logo ${userData.logo}`}>
                       {getLogoIcon(userData.logo)}

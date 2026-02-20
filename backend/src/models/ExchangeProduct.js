@@ -53,7 +53,7 @@ ExchangeProduct.init({
     allowNull: false
   },
   category: {
-    type: DataTypes.STRING // ENUM converti en STRING ('primaire', 'secondaire', 'tertiaire'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('primaire', 'secondaire', 'tertiaire'),
     allowNull: false
   },
   subcategory: {
@@ -109,7 +109,7 @@ ExchangeProduct.init({
     defaultValue: 1
   },
   condition: {
-    type: DataTypes.STRING // ENUM converti en STRING ('neuf', 'occasion', 'reconditionné'),
+    type: DataTypes.STRING, // ENUM converti en STRING ('neuf', 'occasion', 'reconditionné'),
     defaultValue: 'neuf'
   },
   location: {

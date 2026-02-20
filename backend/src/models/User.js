@@ -275,16 +275,16 @@ User.init({
   
   // Médias
   photo: {
-    type: DataTypes.STRING // URL ou chemin du fichier
+    type: DataTypes.STRING, // URL ou chemin du fichier
   },
   video: {
-    type: DataTypes.STRING // URL ou chemin du fichier
+    type: DataTypes.STRING, // URL ou chemin du fichier
   },
   fingerprint: {
-    type: DataTypes.TEXT // Données biométriques
+    type: DataTypes.TEXT, // Données biométriques
   },
   preuve: {
-    type: DataTypes.STRING // Document de preuve (acte de décès, etc.)
+    type: DataTypes.STRING, // Document de preuve (acte de décès, etc.)
   },
   // Photos de famille
   familyPhoto: {
