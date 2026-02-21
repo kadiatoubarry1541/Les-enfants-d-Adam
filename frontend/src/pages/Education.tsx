@@ -195,7 +195,6 @@ export default function Education() {
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', contact: '', description: '' });
   const [schoolLoading, setSchoolLoading] = useState(false);
   const [schoolMessage, setSchoolMessage] = useState<string | null>(null);
-  const [showSchoolForm, setShowSchoolForm] = useState(false);
   const [publishForm, setPublishForm] = useState({
     type: 'written' as 'written' | 'video' | 'audio' | 'test' | 'library',
     title: '',
@@ -965,12 +964,6 @@ export default function Education() {
               <p className="mt-2 text-gray-600">Formations, professeurs et cours</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => { setShowSchoolForm(true); setTimeout(() => document.getElementById('section-school')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
-                className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                + S&apos;inscrire (Écoles)
-              </button>
               <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
@@ -1925,8 +1918,6 @@ export default function Education() {
           title="Écoles & Professeurs"
           icon="🎓"
           description=""
-          showForm={showSchoolForm}
-          onShowFormChange={setShowSchoolForm}
         />
       </div>
     </div>

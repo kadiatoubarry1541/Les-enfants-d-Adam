@@ -8,7 +8,8 @@
     "start:both": "concurrently \"npm:dev\" \"npm:start\""
   },
   "dependencies": {
+    "concurrently": "^8.2.0",
     "pptxgenjs": "^4.0.1",
-    "concurrently": "^8.2.0"
+    "xlsx": "^0.18.5"
   }
 }

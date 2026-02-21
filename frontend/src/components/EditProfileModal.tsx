@@ -45,6 +45,7 @@ export default function EditProfileModal({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function EditProfileModal({
       setPhotoPreview(getPhotoUrl(userData.photo));
       setPhotoFile(null);
       setError(null);
+      setSuccess(false);
     }
   }, [open, userData]);
 
@@ -200,7 +202,8 @@ export default function EditProfileModal({
       // 6. Notifier les autres composants
       window.dispatchEvent(new Event("session-updated"));
 
-      onClose();
+      setSuccess(true);
+      setTimeout(() => onClose(), 1500);
     } catch (err: any) {
       const msg = err.message || "";
       if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
@@ -240,6 +243,12 @@ export default function EditProfileModal({
           </div>
         )}
 
+        {success && (
+          <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg font-medium text-center">
+            ✅ Profil mis à jour avec succès !
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Photo de profil */}
           <div className="flex flex-col items-center gap-4">
@@ -261,7 +270,6 @@ export default function EditProfileModal({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={handlePhotoChange}
                 style={{ display: "none" }}
               />

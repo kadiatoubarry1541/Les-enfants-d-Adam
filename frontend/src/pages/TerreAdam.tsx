@@ -75,7 +75,6 @@ export default function TerreAdam() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   // Filtre du fil quartier : tout ou par besoin (décès, mariage, baptême, etc.)
   const [feedFilter, setFeedFilter] = useState<string>('all');
-  const [showJournalistForm, setShowJournalistForm] = useState(false);
 
   // Récupérer les informations géographiques de l'utilisateur depuis la session
   const userContinent = userData?.continentCode ? findLocationByCode(userData.continentCode) : null;
@@ -375,15 +374,6 @@ export default function TerreAdam() {
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <button
-                onClick={() => {
-                  setShowJournalistForm(true);
-                  setTimeout(() => document.getElementById('section-journalist')?.scrollIntoView({ behavior: 'smooth' }), 50);
-                }}
-                className="min-h-[40px] px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
-              >
-                + S&apos;inscrire (Journalistes)
-              </button>
-              <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-1.5 sm:px-2 md:px-3 lg:px-4 py-1 sm:py-1.5 md:py-2 text-[10px] sm:text-xs md:text-sm rounded-lg transition-colors whitespace-nowrap"
               >
@@ -476,74 +466,77 @@ export default function TerreAdam() {
                 </nav>
               </div>
 
-              {(userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode && (userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1)) || isAdmin ? (
+              {((userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode) || isAdmin) ? (
                 <div className="space-y-4">
                   {/* Page Quartier */}
                   {activeLieuTab === 'quartier' && (
                     <div className="space-y-3 sm:space-y-4">
-                      {/* Affichage des 1 à 3 quartiers (formulaire d'inscription : lieu1, lieu2, lieu3) */}
+                      {/* Affichage des 3 emplacements quartiers : 1 à 3 remplis, le reste = bouton Ajouter */}
                       {(() => {
-                        const quartiers: { code: string; name: string; num: number }[] = [];
                         const codes = [
                           userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1,
                           userData?.quartierCode2 || userData?.lieu2 || userData?.lieuResidence2,
                           userData?.quartierCode3 || userData?.lieu3 || userData?.lieuResidence3
-                        ].filter(Boolean) as string[];
-                        codes.forEach((code, i) => {
-                          const loc = findLocationByCode(code);
-                          if (loc) quartiers.push({ code, name: loc.name, num: i + 1 });
+                        ];
+                        const slots: { num: number; code: string | null; name: string | null }[] = [1, 2, 3].map((num, i) => {
+                          const code = codes[i] || null;
+                          const loc = code ? findLocationByCode(code) : null;
+                          return { num, code: code || null, name: loc?.name || null };
                         });
 
-                        return quartiers.length > 0 ? (
-                          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-5 sm:p-6 md:p-8 lg:p-10 overflow-hidden">
-                            <div className="text-center overflow-hidden mb-6 sm:mb-8">
-                              <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 sm:mb-4">🏘️</div>
-                              <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900">
-                                {quartiers.length > 1 ? 'Mes Quartiers (résidence 1, 2, 3)' : 'Mon Quartier'}
+                        return (
+                          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4 sm:p-5 overflow-hidden">
+                            <div className="text-center mb-4">
+                              <div className="text-2xl sm:text-3xl mb-1">🏘️</div>
+                              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
+                                Mes quartiers (résidence 1, 2, 3)
                               </h3>
                             </div>
-                            {/* Grille : 1, 2 ou 3 quartiers – beaucoup d'espace pour tout voir */}
-                            <div className={`grid gap-6 sm:gap-8 md:gap-10 mb-6 sm:mb-8 ${
-                              quartiers.length === 1 ? 'grid-cols-1 max-w-md mx-auto' :
-                              quartiers.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
-                              'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                            }`}>
-                              {quartiers.map((q) => (
-                                <div
-                                  key={q.code}
-                                  className="bg-white rounded-xl p-5 sm:p-6 md:p-7 shadow-lg border-2 border-blue-300 flex flex-col justify-center min-h-[120px]"
-                                >
-                                  <p className="text-sm sm:text-base text-gray-500 font-medium mb-2">
-                                    Lieu de résidence {q.num}
-                                  </p>
-                                  <p className="text-base sm:text-lg md:text-xl font-semibold text-blue-700 break-words">
-                                    {q.name}
-                                  </p>
-                                  <p className="text-xs sm:text-sm text-gray-600 mt-3 font-mono">
-                                    Code : {q.code}
-                                  </p>
-                                </div>
+                            {/* Toujours 3 emplacements : quartier rempli ou bouton pour ajouter */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                              {slots.map((slot) => (
+                                slot.name ? (
+                                  <div
+                                    key={slot.num}
+                                    className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow border-2 border-blue-300 dark:border-blue-700"
+                                  >
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                                      Résidence {slot.num}
+                                    </p>
+                                    <p className="text-sm sm:text-base font-semibold text-blue-700 dark:text-blue-300 break-words">
+                                      {slot.name}
+                                    </p>
+                                    <p className="text-xs text-gray-600 dark:text-gray-500 font-mono mt-2">
+                                      {slot.code}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <button
+                                    key={slot.num}
+                                    type="button"
+                                    onClick={() => navigate('/moi/profil')}
+                                    className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors flex flex-col items-center justify-center min-h-[100px] text-center"
+                                  >
+                                    <span className="text-2xl mb-1">➕</span>
+                                    <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
+                                      Résidence {slot.num}
+                                    </span>
+                                    <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                                      Ajouter un quartier
+                                    </span>
+                                  </button>
+                                )
                               ))}
                             </div>
-                            <div className="mt-6 pt-6 border-t border-blue-300 space-y-2 sm:space-y-2.5">
-                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                                <strong>Sous-préfecture :</strong> {userSousPrefecture?.name || userData.sousPrefecture || 'Non défini'}
-                              </p>
-                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                                <strong>Préfecture :</strong> {userPrefecture?.name || userData.prefecture || 'Non défini'}
-                              </p>
-                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                                <strong>Région :</strong> {userRegion?.name || userData.region || userData.regionOrigine || 'Non défini'}
-                              </p>
-                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                                <strong>Pays :</strong> {userCountry?.name || userData.pays || 'Non défini'} {getCountryFlag(userData.paysCode, userCountry?.name)}
-                              </p>
-                              <p className="text-[10px] sm:text-xs md:text-sm text-gray-700 font-medium break-words">
-                                <strong>Continent :</strong> {userContinent?.name || userData.continent || 'Non défini'} {getContinentIcon(userData.continentCode, userContinent?.name)}
-                              </p>
+                            <div className="mt-4 pt-4 border-t border-blue-300 dark:border-blue-700 space-y-1.5 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                              <p><strong>Sous-préfecture :</strong> {userSousPrefecture?.name || userData.sousPrefecture || 'Non défini'}</p>
+                              <p><strong>Préfecture :</strong> {userPrefecture?.name || userData.prefecture || 'Non défini'}</p>
+                              <p><strong>Région :</strong> {userRegion?.name || userData.region || userData.regionOrigine || 'Non défini'}</p>
+                              <p><strong>Pays :</strong> {userCountry?.name || userData.pays || 'Non défini'} {getCountryFlag(userData.paysCode, userCountry?.name)}</p>
+                              <p><strong>Continent :</strong> {userContinent?.name || userData.continent || 'Non défini'} {getContinentIcon(userData.continentCode, userContinent?.name)}</p>
                             </div>
                           </div>
-                        ) : null;
+                        );
                       })()}
 
                       {/* Système de messagerie – après les 3 quartiers */}
@@ -1191,8 +1184,6 @@ export default function TerreAdam() {
           title="Journalistes"
           icon="📰"
           description=""
-          showForm={showJournalistForm}
-          onShowFormChange={setShowJournalistForm}
           hideEmptyMessage
         />
       </div>

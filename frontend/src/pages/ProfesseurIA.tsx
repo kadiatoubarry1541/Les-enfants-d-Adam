@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { config } from '../config/api';
 
 interface Message {
@@ -108,7 +110,7 @@ export default function ProfesseurIA() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -166,7 +168,48 @@ export default function ProfesseurIA() {
                         <span className="font-semibold">Assistant IA</span>
                       </div>
                     )}
-                    <div className="whitespace-pre-wrap">{message.text}</div>
+                    {message.isUser ? (
+                      <div className="whitespace-pre-wrap">{message.text}</div>
+                    ) : (
+                      <div className="markdown-body prose prose-sm max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            h1: ({ children }) => <h1 className="text-xl font-bold mt-3 mb-1 text-gray-900">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-lg font-bold mt-3 mb-1 text-gray-900">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-base font-bold mt-2 mb-1 text-gray-800">{children}</h3>,
+                            strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
+                            em: ({ children }) => <em className="italic text-gray-700">{children}</em>,
+                            p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                            li: ({ children }) => <li className="text-gray-800">{children}</li>,
+                            code: ({ children, className }) => {
+                              const isBlock = className?.includes('language-');
+                              return isBlock
+                                ? <code className="block bg-gray-100 rounded p-2 text-sm font-mono my-2 overflow-x-auto">{children}</code>
+                                : <code className="bg-gray-100 rounded px-1 text-sm font-mono text-cyan-700">{children}</code>;
+                            },
+                            pre: ({ children }) => <pre className="bg-gray-100 rounded p-3 my-2 overflow-x-auto text-sm">{children}</pre>,
+                            table: ({ children }) => (
+                              <div className="overflow-x-auto my-3">
+                                <table className="min-w-full border-collapse border border-gray-300 text-sm">{children}</table>
+                              </div>
+                            ),
+                            thead: ({ children }) => <thead className="bg-cyan-50">{children}</thead>,
+                            th: ({ children }) => <th className="border border-gray-300 px-3 py-1 font-semibold text-left text-cyan-800">{children}</th>,
+                            td: ({ children }) => <td className="border border-gray-300 px-3 py-1">{children}</td>,
+                            tr: ({ children }) => <tr className="even:bg-gray-50">{children}</tr>,
+                            blockquote: ({ children }) => (
+                              <blockquote className="border-l-4 border-cyan-400 pl-3 my-2 italic text-gray-700 bg-cyan-50 py-1">{children}</blockquote>
+                            ),
+                            hr: () => <hr className="my-3 border-gray-300" />,
+                          }}
+                        >
+                          {message.text}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                     <div className={`text-xs mt-2 ${message.isUser ? 'text-cyan-100' : 'text-gray-500'}`}>
                       {message.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -201,7 +244,7 @@ export default function ProfesseurIA() {
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   placeholder="Posez votre question (français ou mathématiques)"
                   className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   disabled={isLoading}

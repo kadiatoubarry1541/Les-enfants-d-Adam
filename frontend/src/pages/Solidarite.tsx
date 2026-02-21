@@ -79,7 +79,6 @@ export default function Solidarite() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUrgency, setSelectedUrgency] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
-  const [showNgoForm, setShowNgoForm] = useState(false);
   const navigate = useNavigate();
 
   // Etats pour la section Réalité
@@ -506,12 +505,6 @@ export default function Solidarite() {
               <p className="mt-2 text-gray-600">Aide aux pauvres - Solidarité pour tous, toutes religions confondues</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => { setActiveTab('ong'); setShowNgoForm(true); setTimeout(() => document.getElementById('section-ngo')?.scrollIntoView({ behavior: 'smooth' }), 100); }}
-                className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                + S&apos;inscrire (ONG)
-              </button>
               <button
                 onClick={() => navigate('/moi')}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
@@ -945,8 +938,6 @@ export default function Solidarite() {
                 title="Organisations inscrites"
                 icon="🌍"
                 description=""
-                showForm={showNgoForm}
-                onShowFormChange={setShowNgoForm}
                 hideEmptyMessage={false}
               />
             </div>

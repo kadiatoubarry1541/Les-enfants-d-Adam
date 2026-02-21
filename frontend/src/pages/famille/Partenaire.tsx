@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -8,6 +8,20 @@ interface UserData {
   prenom: string
   nomFamille: string
   genre: 'HOMME' | 'FEMME' | 'AUTRE'
+  dateNaissance?: string
+  date_naissance?: string
+}
+
+/** Calcule l'âge exact en années */
+function calcAge(dateStr?: string): number {
+  if (!dateStr) return 99
+  const birth = new Date(dateStr)
+  if (isNaN(birth.getTime())) return 99
+  const now = new Date()
+  let age = now.getFullYear() - birth.getFullYear()
+  const m = now.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
+  return age
 }
 
 interface PartnerInfo {
@@ -47,6 +61,8 @@ function getToken() {
 }
 
 export default function Partenaire() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState<UserData | null>(null)
   const [partner, setPartner] = useState<PartnerInfo | null>(null)
   const [linkInfo, setLinkInfo] = useState<LinkInfo | null>(null)
@@ -168,7 +184,29 @@ export default function Partenaire() {
 
   useEffect(() => {
     const u = loadUser()
+
     if (u?.numeroH) {
+      // ── Garde âge : moins de 18 ans → retour à Famille ──
+      const dn = u.dateNaissance || u.date_naissance
+      const age = calcAge(dn)
+      if (age < 18) {
+        navigate('/famille', { replace: true })
+        return
+      }
+
+      // ── Garde genre / route ──────────────────────────────
+      // Un HOMME ne doit pas accéder à /famille/mari (Mon Homme)
+      // Une FEMME ne doit pas accéder à /famille/femmes (Ma Femme)
+      const path = location.pathname
+      if (u.genre === 'HOMME' && path.includes('/mari')) {
+        navigate('/famille', { replace: true })
+        return
+      }
+      if (u.genre === 'FEMME' && path.includes('/femmes')) {
+        navigate('/famille', { replace: true })
+        return
+      }
+
       setLoading(false)
       loadMyPartner()
       loadActivities()
@@ -176,7 +214,7 @@ export default function Partenaire() {
     } else {
       setLoading(false)
     }
-  }, [])
+  }, [navigate, location.pathname])
 
   const handleCreateLink = async () => {
     if (!linkForm.partnerNumeroH.trim()) {

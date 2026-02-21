@@ -101,12 +101,6 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex items-center gap-2 mb-4">
         <button
-          onClick={() => { setShowSupplierForm(true); setTimeout(() => document.getElementById('section-supplier')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
-          className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-        >
-          + S&apos;inscrire (Fournisseurs)
-        </button>
-        <button
           onClick={() => navigate('/activite')}
           className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2 text-sm"
         >

@@ -62,18 +62,6 @@ export default function Sante() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
-  const [hospitalForm, setHospitalForm] = useState({
-    name: '',
-    type: 'centre de santé',
-    region: '',
-    city: '',
-    address: '',
-    phone: '',
-    emergencyPhone: ''
-  });
-  const [hospitalLoading, setHospitalLoading] = useState(false);
-  const [hospitalMessage, setHospitalMessage] = useState<string | null>(null);
-  const [showClinicForm, setShowClinicForm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -156,32 +144,6 @@ export default function Sante() {
     }
   };
 
-  const handleRegisterHospital = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!hospitalForm.name.trim()) return;
-    setHospitalLoading(true);
-    setHospitalMessage(null);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/health/register-hospital`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(hospitalForm)
-      });
-      const data = await response.json();
-      if (data.success) {
-        setHospitalMessage(data.message || 'Établissement enregistré. Il sera visible après validation.');
-        setHospitalForm({ name: '', type: 'centre de santé', region: '', city: '', address: '', phone: '', emergencyPhone: '' });
-        loadHospitals();
-      } else {
-        setHospitalMessage(data.message || 'Erreur');
-      }
-    } catch {
-      setHospitalMessage('Erreur de connexion');
-    } finally {
-      setHospitalLoading(false);
-    }
-  };
 
 
   const getDefaultHospitals = (): Hospital[] => [
@@ -348,12 +310,6 @@ export default function Sante() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={() => { setShowClinicForm(true); setTimeout(() => document.getElementById('section-clinic')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
-                className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                + S&apos;inscrire (Cliniques)
-              </button>
-              <button
                 onClick={callEmergency}
                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
               >
@@ -458,54 +414,6 @@ export default function Sante() {
 
         {activeTab === 'hopitaux' && (
           <div className="space-y-6">
-            {/* Inscription hôpital pour plus de visibilité */}
-            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl border border-teal-200 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">🏥 Hôpitaux : s&apos;inscrire pour plus de visibilité</h3>
-              <p className="text-gray-700 mb-4">Les établissements de santé peuvent s&apos;enregistrer ici pour apparaître dans la liste. Votre compte sera associé comme contact. L&apos;établissement sera visible après validation par l&apos;administrateur.</p>
-              <form onSubmit={handleRegisterHospital} className="space-y-3 max-w-2xl mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l&apos;établissement <span className="text-red-500">*</span></label>
-                    <input type="text" value={hospitalForm.name} onChange={(e) => setHospitalForm({ ...hospitalForm, name: e.target.value })} placeholder="Ex : Centre de santé de..." className="w-full px-3 py-2 border border-gray-300 rounded-lg" required />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                    <select value={hospitalForm.type} onChange={(e) => setHospitalForm({ ...hospitalForm, type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                      <option value="hôpital">Hôpital</option>
-                      <option value="clinique">Clinique</option>
-                      <option value="centre de santé">Centre de santé</option>
-                      <option value="dispensaire">Dispensaire</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Région</label>
-                    <input type="text" value={hospitalForm.region} onChange={(e) => setHospitalForm({ ...hospitalForm, region: e.target.value })} placeholder="Ex : Conakry, Kindia" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-                    <input type="text" value={hospitalForm.city} onChange={(e) => setHospitalForm({ ...hospitalForm, city: e.target.value })} placeholder="Ville" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-                  <input type="text" value={hospitalForm.address} onChange={(e) => setHospitalForm({ ...hospitalForm, address: e.target.value })} placeholder="Adresse complète" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                    <input type="text" value={hospitalForm.phone} onChange={(e) => setHospitalForm({ ...hospitalForm, phone: e.target.value })} placeholder="+224 ..." className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Urgences</label>
-                    <input type="text" value={hospitalForm.emergencyPhone} onChange={(e) => setHospitalForm({ ...hospitalForm, emergencyPhone: e.target.value })} placeholder="Numéro urgences" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                  </div>
-                </div>
-                {hospitalMessage && <p className={`text-sm ${hospitalMessage.includes('visible') ? 'text-green-600' : 'text-red-600'}`}>{hospitalMessage}</p>}
-                <button type="submit" disabled={hospitalLoading} className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium disabled:opacity-50">{hospitalLoading ? 'Enregistrement...' : 'Enregistrer mon établissement'}</button>
-              </form>
-            </div>
 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">🏥 Hôpitaux Guinéens</h2>
@@ -639,8 +547,6 @@ export default function Sante() {
           title="Cliniques & Hôpitaux"
           icon="🏥"
           description=""
-          showForm={showClinicForm}
-          onShowFormChange={setShowClinicForm}
         />
 
       </div>

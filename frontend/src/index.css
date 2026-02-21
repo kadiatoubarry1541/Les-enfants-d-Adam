@@ -184,6 +184,21 @@ header {
   .user-avatar .profile-photo {
     display: block;
   }
+
+  .profile-photo--compact {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .profile-card .user-avatar .avatar-placeholder {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
 }
 
 /* ===== Styles du CommunicationHub (Messagerie) ===== */

@@ -171,116 +171,104 @@ export function UserDashboard() {
         </button>
       </div>
 
-      {/* En-tête profil */}
+      {/* En-tête profil – compact, largeur adaptée au contenu */}
       <div className="dashboard-header px-3 xs:px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-start max-w-7xl mx-auto">
-          <div className="w-full max-w-[420px]">
-            <div className="profile-card bg-white/80 dark:bg-gray-800/80 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-800/60 backdrop-blur rounded-2xl sm:rounded-3xl shadow-md ring-1 ring-gray-200 dark:ring-gray-700 px-4 sm:px-5 py-4">
-              <div className="user-info flex flex-col xs:flex-row items-start xs:items-center gap-3 sm:gap-4">
-              <div className="user-avatar relative" style={{ marginTop: "-6px" }}>
-                  {(() => {
-                    const rawPhoto =
-                      userData.photo ||
-                      (userData as any).manPhoto ||
-                      (userData as any).familyPhoto;
-                    const photoUrl = getPhotoUrl(rawPhoto);
-                    return (
-                      <img
-                        src={photoUrl || DefaultAvatar}
-                        alt="Photo de profil"
-                        className="profile-photo"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (!target.src.includes("default-avatar")) {
-                            target.src = DefaultAvatar;
-                            return;
-                          }
-                          target.style.display = "none";
-                          const parent = target.parentElement;
-                          if (parent && !parent.querySelector(".avatar-placeholder")) {
-                            const placeholder = document.createElement("div");
-                            placeholder.className = "avatar-placeholder";
-                            placeholder.textContent =
-                              userData.prenom?.charAt(0) || "👤";
-                            parent.appendChild(placeholder);
-                          }
-                        }}
-                      />
-                    );
-                  })()}
-                  {userData.logo && (
-                    <div className={`status-logo ${userData.logo}`}>
-                      {getLogoIcon(userData.logo)}
-                    </div>
-                  )}
-                  {/* Logos professionnels */}
-                  {userLogos.slice(0, 3).map((userLogo, index) => {
-                    if (!userLogo?.logo) return null;
-                    const angle = (index * 120) - 60;
-                    const radius = 38;
-                    const x = Math.cos((angle * Math.PI) / 180) * radius;
-                    const y = Math.sin((angle * Math.PI) / 180) * radius;
-                    const size = index === 0 ? 'w-8 h-8 text-lg' : index === 1 ? 'w-7 h-7 text-base' : 'w-6 h-6 text-sm';
-                    return (
-                      <div
-                        key={userLogo.id}
-                        className={`absolute ${size} rounded-full bg-white border-2 border-white shadow-lg flex items-center justify-center`}
-                        title={userLogo.logo.name}
-                        style={{
-                          borderColor: userLogo.logo.color || '#10B981',
-                          bottom: `${20 + y}px`,
-                          right: `${20 - x}px`,
-                          zIndex: 10 + index
-                        }}
-                      >
-                        <span style={{ color: userLogo.logo.color || '#10B981' }}>
-                          {userLogo.logo.icon}
-                        </span>
-                      </div>
-                    );
-                  })}
+        <div className="max-w-7xl mx-auto flex justify-start">
+          <div className="profile-card w-fit max-w-full bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 px-4 py-3 flex flex-row items-center gap-4 flex-wrap">
+            <div className="user-avatar relative flex-shrink-0">
+              {(() => {
+                const rawPhoto =
+                  userData.photo ||
+                  (userData as any).manPhoto ||
+                  (userData as any).familyPhoto;
+                const photoUrl = getPhotoUrl(rawPhoto);
+                return (
+                  <img
+                    src={photoUrl || DefaultAvatar}
+                    alt="Photo de profil"
+                    className="profile-photo profile-photo--compact"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (!target.src.includes("default-avatar")) {
+                        target.src = DefaultAvatar;
+                        return;
+                      }
+                      target.style.display = "none";
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector(".avatar-placeholder")) {
+                        const placeholder = document.createElement("div");
+                        placeholder.className = "avatar-placeholder";
+                        placeholder.textContent =
+                          userData.prenom?.charAt(0) || "👤";
+                        parent.appendChild(placeholder);
+                      }
+                    }}
+                  />
+                );
+              })()}
+              {userData.logo && (
+                <div className={`status-logo ${userData.logo}`}>
+                  {getLogoIcon(userData.logo)}
                 </div>
-                <div className="user-details">
-                  <h2 className="text-gray-900 dark:text-gray-100">
-                    {userData.prenom} {userData.nomFamille}
-                  </h2>
-                  <div className="mt-1">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        userData.role === "admin" || userData.isAdmin
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {userData.role === "admin" || userData.isAdmin
-                        ? "Administrateur"
-                        : "Utilisateur"}
-                    </span>
+              )}
+              {userLogos.slice(0, 2).map((userLogo, index) => {
+                if (!userLogo?.logo) return null;
+                const angle = (index * 90) - 45;
+                const radius = 22;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                return (
+                  <div
+                    key={userLogo.id}
+                    className="absolute w-5 h-5 rounded-full bg-white border border-white shadow flex items-center justify-center text-xs"
+                    title={userLogo.logo.name}
+                    style={{
+                      borderColor: userLogo.logo.color || '#10B981',
+                      bottom: `${8 + y}px`,
+                      right: `${8 - x}px`,
+                      zIndex: 10,
+                      color: userLogo.logo.color || '#10B981'
+                    }}
+                  >
+                    {userLogo.logo.icon}
                   </div>
-                  <div className="numero-h-container">
-                    <span className="numero-h-label">NuméroH:</span>
-                    <span className="numero-h-clickable">
-                      {userData.numeroH}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => navigate("/moi/profil")}
-                      className="btn min-h-[44px] px-3 sm:px-4 py-2"
-                    >
-                      <span className="mr-1" aria-hidden>👤</span> Mon profil
-                    </button>
-                    {isMasterAdmin(userData) && (
-                      <button
-                        onClick={() => navigate("/admin")}
-                        className="min-h-[44px] px-3 sm:px-4 py-2 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg transition-colors shadow-sm"
-                        aria-label="Administration"
-                      >
-                        👑
-                      </button>
-                    )}
-                  </div>
-                </div>
+                );
+              })}
+            </div>
+            <div className="user-details flex flex-col gap-2">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                {userData.prenom} {userData.nomFamille}
+              </h2>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span
+                  className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
+                    userData.role === "admin" || userData.isAdmin
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
+                      : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {userData.role === "admin" || userData.isAdmin ? "Administrateur" : "Utilisateur"}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                  NuméroH: {userData.numeroH}
+                </span>
+              </div>
+              <div className="flex gap-2 pt-0.5">
+                <button
+                  onClick={() => navigate("/moi/profil")}
+                  className="min-h-[36px] px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors"
+                >
+                  Mon profil
+                </button>
+                {isMasterAdmin(userData) && (
+                  <button
+                    onClick={() => navigate("/admin")}
+                    className="min-h-[36px] w-10 flex items-center justify-center rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm transition-colors"
+                    aria-label="Administration"
+                  >
+                    👑
+                  </button>
+                )}
               </div>
             </div>
           </div>

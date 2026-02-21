@@ -419,13 +419,6 @@ export default function EchangePrimaire() {
           <span className="text-xl">➕</span>
           <span className="font-semibold">Publier un Produit</span>
         </button>
-        <button
-          onClick={() => setShowSupplierRegistration(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
-        >
-          <span className="text-xl">🏢</span>
-            <span className="font-semibold">Devenir fournisseur</span>
-        </button>
         {isAdmin && (
           <button
             onClick={() => setSelectedSupplier({} as Supplier)}
@@ -525,7 +518,6 @@ export default function EchangePrimaire() {
                 <input
                   type="file"
                   id="media-capture"
-                  capture="environment"
                   accept="image/*,video/*,audio/*"
                   capture="environment"
                   multiple

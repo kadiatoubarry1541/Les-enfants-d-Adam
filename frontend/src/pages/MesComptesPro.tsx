@@ -18,6 +18,7 @@ const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
   enterprise: { label: "Entreprise", icon: "🏢" },
   school: { label: "École / Professeur", icon: "🎓" },
   supplier: { label: "Fournisseur", icon: "📦" },
+  ngo: { label: "ONG / Association", icon: "🤝" },
 };
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
@@ -51,17 +52,11 @@ export default function MesComptesPro() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/compte")} className="min-h-[44px] px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-200 font-medium transition-colors">
-              ← Retour
-            </button>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Mes comptes professionnels</h1>
-          </div>
-          <button onClick={() => navigate("/inscription-pro")}
-            className="min-h-[44px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm">
-            + Nouveau
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => navigate("/compte")} className="min-h-[44px] px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-200 font-medium transition-colors">
+            ← Retour
           </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Mes comptes professionnels</h1>
         </div>
 
         {loading ? (
@@ -70,11 +65,17 @@ export default function MesComptesPro() {
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl shadow-sm">
             <div className="text-5xl mb-4">🏢</div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Aucun compte professionnel</h3>
-            <p className="text-gray-500 mb-6">Inscrivez votre clinique, agence, école ou entreprise</p>
-            <button onClick={() => navigate("/inscription-pro")}
-              className="min-h-[44px] px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">
-              Créer un compte professionnel
-            </button>
+            <p className="text-gray-500 mb-2">Vous n'avez pas encore de compte professionnel.</p>
+            <p className="text-sm text-gray-400">
+              Pour créer un compte, allez dans{' '}
+              <button
+                onClick={() => navigate('/mon-profil')}
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Mon Profil
+              </button>{' '}
+              puis cliquez sur le bouton <strong>🚀 Actions</strong>.
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
