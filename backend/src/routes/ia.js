@@ -19,6 +19,25 @@ function normalize(str) {
   return removeAccents(String(str || '').toLowerCase().trim()).replace(/\s+/g, ' ');
 }
 
+/** Détecte si le message est une salutation ou une formule de politesse courte */
+function isGreetingOrPoliteness(message) {
+  const text = normalize(message);
+  if (!text || text.length > 80) return false;
+  const greetings = [
+    'salut', 'salu', 'bonjour', 'bonsoir', 'hello', 'hi', 'coucou', 'hey',
+    'bonne journee', 'bonne soirée', 'bonne nuit', 'ca va', 'comment ca va',
+    'comment allez-vous', 'comment vas-tu', 'quoi de neuf', 'yo', 'wesh',
+    'salam', 'salam aleykoum', 'aleykoum salam'
+  ];
+  if (greetings.some(g => text === g || text.startsWith(g + ' ') || text.endsWith(' ' + g))) return true;
+  if (/^(salut|bonjour|hello|coucou|hey|yo)[\s!.,?]*$/i.test(text)) return true;
+  if (/^(ca va|comment (tu vas|allez-vous)|quoi de neuf)[\s!.,?]*$/i.test(removeAccents(text))) return true;
+  return false;
+}
+
+/** Réponse d’accueil quand l’utilisateur dit bonjour / salut */
+const GREETING_RESPONSE = 'Bonjour ! Je peux vous aider en Français et en Mathématiques. Posez-moi une question (orthographe, grammaire, calcul, équation, etc.) et j’y répondrai.';
+
 // =========================================================
 // MOTEUR DE CALCUL MATHÉMATIQUE AVANCÉ
 // =========================================================
@@ -295,14 +314,17 @@ router.post('/chat', async (req, res) => {
     const calc = tryMathCalculation(message);
     if (calc.isCalculation) {
       answer = formatMathAnswer(calc);
+    } else if (isGreetingOrPoliteness(message)) {
+      // 2. Salutation (bonjour, salut, etc.) → réponse d’accueil
+      answer = GREETING_RESPONSE;
     } else {
-      // 2. Recherche dans la base de connaissances
+      // 3. Recherche dans la base de connaissances
       const bestItem = await findBestKnowledgeMatch(message);
       if (bestItem) {
         answer = bestItem.answer;
       } else {
-        // 3. Message par défaut professionnel
-        answer = 'Désolé, je ne peux pas répondre à cette question en ce moment.';
+        // 4. Message par défaut : inviter à poser une question français/maths
+        answer = 'Je suis là pour vous aider en Français et en Mathématiques. Posez-moi une question précise (ex. : une règle de grammaire, un calcul, une équation) et j’essaierai de vous répondre.';
       }
     }
 

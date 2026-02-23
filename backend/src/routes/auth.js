@@ -14,26 +14,9 @@ import upload from '../middleware/upload.js';
 
 const router = Router();
 
-// Stockage en mémoire pour le fallback
-let usersInMemory = [];
+// Toutes les données utilisateur proviennent uniquement de la base de données PostgreSQL.
 
-// Fonction pour sauvegarder en fichier comme backup
-const saveToFile = (user) => {
-  try {
-    // Sauvegarder en mémoire comme fallback
-    const existingIndex = usersInMemory.findIndex(u => u.numeroH === user.numeroH);
-    if (existingIndex >= 0) {
-      usersInMemory[existingIndex] = user;
-    } else {
-      usersInMemory.push(user);
-    }
-    console.log(`💾 Utilisateur ${user.numeroH} sauvegardé en mémoire`);
-  } catch (error) {
-    console.error('Erreur sauvegarde:', error);
-  }
-};
-
-// Fonction pour charger les utilisateurs de test
+// Fonction pour créer un utilisateur de test en base (optionnel, au démarrage)
 const loadTestUsers = async () => {
   try {
     // Vérifier s'il y a déjà un utilisateur de test
@@ -64,33 +47,8 @@ const loadTestUsers = async () => {
   }
 };
 
-// Charger les utilisateurs de test au démarrage
+// Charger l'utilisateur de test en base au démarrage (si pas déjà présent)
 loadTestUsers();
-
-// Créer un utilisateur de test en mémoire pour le développement
-const createTestUserInMemory = () => {
-  const testUser = {
-    id: 'test_user_123',
-    numeroH: 'G96C1P2R3E2F1 4',
-    prenom: 'Test',
-    nomFamille: 'User',
-    email: 'test@example.com',
-    password: '$2a$12$LmABvyZWgvyU8dVt0.Lzueh6bNWJXW7J1oXM5qqYSrTNzJHbNj9jO', // bcrypt hash of 'test123'
-    genre: 'AUTRE',
-    dateNaissance: '1990-01-01',
-    generation: 'G96',
-    isActive: true,
-    isVerified: true,
-    role: 'user',
-    createdAt: new Date()
-  };
-  
-  usersInMemory.push(testUser);
-  console.log(`📦 Utilisateur de test créé en mémoire: ${testUser.numeroH} (mot de passe: test123)`);
-};
-
-// Créer l'utilisateur de test en mémoire
-createTestUserInMemory();
 
 // Fonction pour gérer les confirmations par les parents vivants
 async function handleParentConfirmations(user) {
@@ -444,9 +402,6 @@ router.post('/register', validateUser, async (req, res) => {
         console.log('✅ Nom de famille:', savedUser.nomFamille);
         console.log('✅ L\'utilisateur peut maintenant se connecter avec ce NumeroH et son mot de passe');
       }
-      
-      // Sauvegarder en mémoire comme backup
-      saveToFile(savedUser);
 
       // Gérer les confirmations par les parents vivants
       if (newUser.numeroHPere || newUser.numeroHMere) {
@@ -484,40 +439,10 @@ router.post('/register', validateUser, async (req, res) => {
       });
 
     } catch (dbError) {
-      console.warn('⚠️ Base de données indisponible, utilisation du mode mémoire:', dbError.message);
-      
-      // Fallback: utiliser le stockage en mémoire
-      const existingUser = usersInMemory.find(u => u.numeroH === numeroH || (email && u.email === email));
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'Un utilisateur avec ce NumeroH ou cet email existe déjà'
-        });
-      }
-
-      // Ajouter un ID temporaire
-      const tempId = Date.now().toString();
-      const userWithId = { ...userData, id: tempId };
-      
-      // Sauvegarder en mémoire
-      saveToFile(userWithId);
-
-      // Générer le token JWT
-      const token = jwt.sign(
-        { userId: tempId, numeroH: userData.numeroH },
-        config.JWT_SECRET,
-        { expiresIn: config.JWT_EXPIRE }
-      );
-
-      // Retourner la réponse (sans le mot de passe)
-      const userWithoutPassword = { ...userData };
-      delete userWithoutPassword.password;
-
-      res.status(201).json({
-        success: true,
-        message: 'Utilisateur créé avec succès (mode mémoire)',
-        user: userWithoutPassword,
-        token
+      console.error('❌ Erreur base de données lors de l\'inscription:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'La base de données est indisponible. Aucune inscription n\'a été enregistrée. Veuillez réessayer plus tard.'
       });
     }
 
@@ -639,62 +564,10 @@ router.post('/login', [
       });
 
     } catch (dbError) {
-      console.warn('⚠️ Base de données indisponible, recherche en mémoire:', dbError.message);
-      
-      // Fallback: chercher dans le stockage en mémoire
-      const user = usersInMemory.find(u => u.numeroH === numeroH);
-      if (!user) {
-        console.log('❌ NumeroH non trouvé en mémoire:', numeroH);
-        return res.status(401).json({
-          success: false,
-          message: 'NumeroH ou mot de passe incorrect',
-          numeroHExists: false
-        });
-      }
-      
-      console.log('✅ Utilisateur trouvé en mémoire:', user.numeroH);
-
-      // Vérifier le mot de passe
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        console.log('❌ Mot de passe incorrect pour:', numeroH);
-        return res.status(401).json({
-          success: false,
-          message: 'Mot de passe incorrect',
-          numeroHExists: true
-        });
-      }
-
-      // Vérifier si l'utilisateur est actif
-      if (!user.isActive) {
-        console.log('❌ Compte désactivé:', numeroH);
-        return res.status(401).json({
-          success: false,
-          message: 'Compte désactivé'
-        });
-      }
-
-      // Mettre à jour la dernière connexion
-      user.lastLogin = new Date();
-
-      // Générer le token JWT
-      const token = jwt.sign(
-        { userId: user.id, numeroH: user.numeroH },
-        config.JWT_SECRET,
-        { expiresIn: config.JWT_EXPIRE }
-      );
-
-      // Retourner la réponse (sans le mot de passe)
-      const userWithoutPassword = { ...user };
-      delete userWithoutPassword.password;
-      
-      console.log('✅ Connexion réussie en mémoire pour:', numeroH);
-
-      res.json({
-        success: true,
-        message: 'Connexion réussie (mode mémoire)',
-        user: userWithoutPassword,
-        token
+      console.error('❌ Erreur base de données lors de la connexion:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'La base de données est indisponible. Connexion impossible pour le moment. Veuillez réessayer plus tard.'
       });
     }
 
