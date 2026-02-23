@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+
 interface UserData {
   numeroH: string;
   prenom: string;
@@ -129,7 +131,7 @@ export default function MesAmours() {
   const loadFriends = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/friends/list', {
+      const response = await fetch(`${API_BASE}/api/friends/list`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -151,7 +153,7 @@ export default function MesAmours() {
   const loadFriendRequests = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/friends/requests', {
+      const response = await fetch(`${API_BASE}/api/friends/requests`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -173,7 +175,7 @@ export default function MesAmours() {
   const loadUserInfo = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/user/info', {
+      const response = await fetch(`${API_BASE}/api/user/info`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -289,7 +291,7 @@ export default function MesAmours() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/friends/send-request', {
+      const response = await fetch(`${API_BASE}/api/friends/send-request`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -317,7 +319,7 @@ export default function MesAmours() {
   const handleFriendRequest = async (requestId: string, action: 'accept' | 'reject') => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/friends/respond-request', {
+      const response = await fetch(`${API_BASE}/api/friends/respond-request`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -369,7 +371,7 @@ export default function MesAmours() {
   const submitEditInfo = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/user/update-info', {
+      const response = await fetch(`${API_BASE}/api/user/update-info`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

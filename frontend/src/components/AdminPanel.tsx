@@ -42,7 +42,6 @@ export function AdminPanel({ userData: _userData }: AdminPanelProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState<string>('all')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   
   // Vérifier si c'est l'administrateur principal
   const isMasterAdmin = _userData?.numeroH === 'G0C0P0R0E0F0 0'
@@ -56,14 +55,13 @@ export function AdminPanel({ userData: _userData }: AdminPanelProps) {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      setError(null)
       // L'administrateur principal peut voir TOUS les utilisateurs sans limite
       const limit = isMasterAdmin ? 10000 : 500
       const response = await getAllUsers({ limit })
       setUsers(response.users || [])
     } catch (err: any) {
       console.error('Erreur lors du chargement des utilisateurs:', err)
-      setError(err.message || 'Erreur lors du chargement des utilisateurs')
+      setUsers([])
     } finally {
       setLoading(false)
     }
@@ -150,10 +148,26 @@ export function AdminPanel({ userData: _userData }: AdminPanelProps) {
     if (!confirm(confirmMessage)) return
     
     try {
-      // TODO: Implémenter l'API pour retirer un lien familial
-      alert('✅ Fonctionnalité en cours de développement')
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API_URL}/api/parent-child/link-by-users`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ parentNumeroH, childNumeroH })
+      })
+      const data = await res.json()
+      if (data.success) {
+        await loadUsers()
+        alert(`Lien familial supprimé entre ${parent.prenom} et ${child.prenom}`)
+      } else {
+        alert(`Erreur: ${data.message || 'Impossible de supprimer le lien'}`)
+      }
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error)
+      console.error('Erreur lors de la suppression du lien:', error)
+      alert('Erreur réseau lors de la suppression du lien')
     }
   }
 
@@ -194,37 +208,6 @@ export function AdminPanel({ userData: _userData }: AdminPanelProps) {
     )
   }
 
-  if (error) {
-    const isNetworkError = error.includes('serveur') || error.includes('backend') || error.includes('Failed to fetch');
-    return (
-      <div className={`rounded-xl border p-6 ${isNetworkError ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'}`}>
-        <div className="flex items-start gap-3">
-          <div className={`text-xl ${isNetworkError ? 'text-amber-600' : 'text-rose-600'}`}>
-            {isNetworkError ? '🔌' : '⚠️'}
-          </div>
-          <div>
-            <h3 className={`font-semibold mb-1 ${isNetworkError ? 'text-amber-900' : 'text-rose-900'}`}>
-              {isNetworkError ? 'Serveur backend non disponible' : 'Erreur de chargement'}
-            </h3>
-            <p className={`text-sm ${isNetworkError ? 'text-amber-700' : 'text-rose-700'}`}>{error}</p>
-            {isNetworkError && (
-              <p className="text-xs text-amber-600 mt-2">
-                Assurez-vous que le serveur backend est démarré avec la commande : <code className="bg-amber-100 px-1.5 py-0.5 rounded">cd backend && npm start</code>
-              </p>
-            )}
-            <button
-              onClick={loadUsers}
-              className={`mt-3 inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-white ${
-                isNetworkError ? 'bg-amber-600 hover:bg-amber-700' : 'bg-rose-600 hover:bg-rose-700'
-              }`}
-            >
-              Réessayer
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100">

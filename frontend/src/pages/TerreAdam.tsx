@@ -48,7 +48,8 @@ interface ResidenceMessage {
 export default function TerreAdam() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [activeTab, setActiveTab] = useState<'lieux' | 'region' | 'pays' | 'continent' | 'mondial'>('lieux');
-  const [activeLieuTab, setActiveLieuTab] = useState<'quartier' | 'sous-prefecture' | 'prefecture'>('quartier');
+  type LieuTabId = 'quartier-1' | 'quartier-2' | 'quartier-3' | 'sous-prefecture' | 'prefecture';
+  const [activeLieuTab, setActiveLieuTab] = useState<LieuTabId>('quartier-1');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   
@@ -125,7 +126,7 @@ export default function TerreAdam() {
       const quartierName = user.quartierCode ? findLocationByCode(user.quartierCode)?.name : 'Quartier';
       setTabLabels(quartierName || 'Quartier');
       
-      if (activeTab === 'lieux' && activeLieuTab === 'quartier') {
+      if (activeTab === 'lieux' && (activeLieuTab === 'quartier-1' || activeLieuTab === 'quartier-2' || activeLieuTab === 'quartier-3')) {
         loadGroups();
       } else {
         setLoading(false);
@@ -136,7 +137,8 @@ export default function TerreAdam() {
   }, [navigate]);
 
   useEffect(() => {
-    if (activeTab === 'lieux' && activeLieuTab === 'quartier' && userData) {
+    if (activeTab === 'lieux' && (activeLieuTab === 'quartier-1' || activeLieuTab === 'quartier-2' || activeLieuTab === 'quartier-3') && userData) {
+      setSelectedGroup(null);
       loadGroups();
     }
   }, [activeTab, activeLieuTab, userData, filterScope]);
@@ -167,8 +169,10 @@ export default function TerreAdam() {
         return;
       }
 
-      // Utilisateur : groupes de ses 1 à 3 quartiers (lieu1, lieu2, lieu3)
-      const quartiersToLoad = userQuartierCodes.length > 0 ? userQuartierCodes : [userData.quartier || userData.lieu1 || userData.lieuResidence1].filter(Boolean);
+      // Utilisateur : groupes du quartier de l'onglet actif uniquement (Résidence 1, 2 ou 3)
+      const slotIndex = activeLieuTab === 'quartier-1' ? 0 : activeLieuTab === 'quartier-2' ? 1 : activeLieuTab === 'quartier-3' ? 2 : -1;
+      const currentSlotCode = slotIndex >= 0 ? userQuartierCodes[slotIndex] : null;
+      const quartiersToLoad = currentSlotCode ? [currentSlotCode] : [];
       if (quartiersToLoad.length === 0) {
         setGroups([]);
         setLoading(false);
@@ -283,15 +287,16 @@ export default function TerreAdam() {
     if (!selectedGroup) return;
     
     // ✅ PERMISSIONS JOURNALISTES - Vérifier les droits selon le niveau
-    // - Niveau "Quartier" : Tous les utilisateurs peuvent publier dans l'un de leurs 3 quartiers
+    // - Niveau "Quartier" (Résidence 1, 2 ou 3) : Tous les utilisateurs peuvent publier dans leur quartier
     // - Niveau "Sous-préfecture/Préfecture/..." : Seuls les journalistes et admins
-    if (activeLieuTab !== 'quartier' && !isJournalist) {
+    const isQuartierTab = activeLieuTab === 'quartier-1' || activeLieuTab === 'quartier-2' || activeLieuTab === 'quartier-3';
+    if (!isQuartierTab && !isJournalist) {
       alert('❌ Vous n\'avez pas les droits pour publier à ce niveau.\n\nSeuls les journalistes approuvés peuvent publier des informations au niveau Sous-préfecture, Préfecture, Région, Pays ou Continent.\n\nVous pouvez publier librement dans votre Quartier.');
       return;
     }
 
-    // Vérifier si l'utilisateur est admin ou si le groupe correspond à l'un de ses 1 à 3 quartiers
-    const canPublishInGroup = isAdmin || (activeLieuTab === 'quartier' && userQuartierCodes.length > 0 && userQuartierCodes.includes(selectedGroup.location));
+    // Vérifier si l'utilisateur est admin ou si le groupe correspond au quartier de l'onglet actif
+    const canPublishInGroup = isAdmin || (isQuartierTab && userQuartierCodes.length > 0 && userQuartierCodes.includes(selectedGroup.location));
     if (!canPublishInGroup) {
       alert('Vous ne pouvez publier que dans l\'un de vos quartiers (résidence 1, 2 ou 3). Contactez un administrateur pour obtenir des droits dans d\'autres quartiers.');
       return;
@@ -442,17 +447,19 @@ export default function TerreAdam() {
                 <span className="text-base sm:text-lg md:text-xl lg:text-2xl">🏠</span>
                 <span className="text-[11px] sm:text-xs md:text-sm lg:text-base">Résidence</span>
               </h2>
-              {/* Sous-onglets pour Résidence */}
+              {/* Sous-onglets : chaque quartier (Résidence 1, 2, 3) à part, puis Sous-préfecture et Préfecture */}
               <div className="border-b border-gray-200 mb-3 sm:mb-4 md:mb-6 overflow-hidden">
                 <nav className="flex space-x-1 sm:space-x-2 md:space-x-4 overflow-x-auto">
                   {[
-                    { id: 'quartier', label: 'Quartier', icon: '🏘️' },
-                    { id: 'sous-prefecture', label: 'Sous-préfecture', icon: '🏛️' },
-                    { id: 'prefecture', label: 'Préfecture', icon: '🏢' }
+                    { id: 'quartier-1' as LieuTabId, label: (() => { const c = userQuartierCodes[0]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 1'; })(), icon: '🏘️' },
+                    { id: 'quartier-2' as LieuTabId, label: (() => { const c = userQuartierCodes[1]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 2'; })(), icon: '🏘️' },
+                    { id: 'quartier-3' as LieuTabId, label: (() => { const c = userQuartierCodes[2]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 3'; })(), icon: '🏘️' },
+                    { id: 'sous-prefecture' as LieuTabId, label: 'Sous-préfecture', icon: '🏛️' },
+                    { id: 'prefecture' as LieuTabId, label: 'Préfecture', icon: '🏢' }
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveLieuTab(tab.id as any)}
+                      onClick={() => setActiveLieuTab(tab.id)}
                       className={`py-1.5 sm:py-2 px-0.5 sm:px-1 md:px-2 border-b-2 font-medium text-[10px] sm:text-xs flex items-center gap-0.5 sm:gap-1 ${
                         activeLieuTab === tab.id
                           ? 'border-blue-500 text-blue-600'
@@ -468,65 +475,57 @@ export default function TerreAdam() {
 
               {((userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode) || isAdmin) ? (
                 <div className="space-y-4">
-                  {/* Page Quartier */}
-                  {activeLieuTab === 'quartier' && (
+                  {/* Page Quartier : une page indépendante par résidence (1, 2 ou 3) */}
+                  {(activeLieuTab === 'quartier-1' || activeLieuTab === 'quartier-2' || activeLieuTab === 'quartier-3') && (
                     <div className="space-y-3 sm:space-y-4">
-                      {/* Affichage des 3 emplacements quartiers : 1 à 3 remplis, le reste = bouton Ajouter */}
                       {(() => {
+                        const slotNum = activeLieuTab === 'quartier-1' ? 1 : activeLieuTab === 'quartier-2' ? 2 : 3;
                         const codes = [
                           userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1,
                           userData?.quartierCode2 || userData?.lieu2 || userData?.lieuResidence2,
                           userData?.quartierCode3 || userData?.lieu3 || userData?.lieuResidence3
                         ];
-                        const slots: { num: number; code: string | null; name: string | null }[] = [1, 2, 3].map((num, i) => {
-                          const code = codes[i] || null;
-                          const loc = code ? findLocationByCode(code) : null;
-                          return { num, code: code || null, name: loc?.name || null };
-                        });
+                        const code = codes[slotNum - 1] || null;
+                        const loc = code ? findLocationByCode(code) : null;
+                        const name = loc?.name || null;
 
                         return (
                           <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4 sm:p-5 overflow-hidden">
                             <div className="text-center mb-4">
                               <div className="text-2xl sm:text-3xl mb-1">🏘️</div>
                               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
-                                Mes quartiers (résidence 1, 2, 3)
+                                Résidence {slotNum}
                               </h3>
                             </div>
-                            {/* Toujours 3 emplacements : quartier rempli ou bouton pour ajouter */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
-                              {slots.map((slot) => (
-                                slot.name ? (
-                                  <div
-                                    key={slot.num}
-                                    className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow border-2 border-blue-300 dark:border-blue-700"
-                                  >
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
-                                      Résidence {slot.num}
-                                    </p>
-                                    <p className="text-sm sm:text-base font-semibold text-blue-700 dark:text-blue-300 break-words">
-                                      {slot.name}
-                                    </p>
-                                    <p className="text-xs text-gray-600 dark:text-gray-500 font-mono mt-2">
-                                      {slot.code}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <button
-                                    key={slot.num}
-                                    type="button"
-                                    onClick={() => navigate('/moi/profil')}
-                                    className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors flex flex-col items-center justify-center min-h-[100px] text-center"
-                                  >
-                                    <span className="text-2xl mb-1">➕</span>
-                                    <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
-                                      Résidence {slot.num}
-                                    </span>
-                                    <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                                      Ajouter un quartier
-                                    </span>
-                                  </button>
-                                )
-                              ))}
+                            {/* Un seul emplacement : ce quartier (rempli ou bouton Ajouter) */}
+                            <div className="mb-4">
+                              {name ? (
+                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow border-2 border-blue-300 dark:border-blue-700 max-w-md mx-auto">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                                    Résidence {slotNum}
+                                  </p>
+                                  <p className="text-sm sm:text-base font-semibold text-blue-700 dark:text-blue-300 break-words">
+                                    {name}
+                                  </p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-500 font-mono mt-2">
+                                    {code}
+                                  </p>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/moi/profil')}
+                                  className="w-full max-w-md mx-auto block bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors flex flex-col items-center justify-center min-h-[100px] text-center"
+                                >
+                                  <span className="text-2xl mb-1">➕</span>
+                                  <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
+                                    Résidence {slotNum}
+                                  </span>
+                                  <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                                    Ajouter un quartier
+                                  </span>
+                                </button>
+                              )}
                             </div>
                             <div className="mt-4 pt-4 border-t border-blue-300 dark:border-blue-700 space-y-1.5 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                               <p><strong>Sous-préfecture :</strong> {userSousPrefecture?.name || userData.sousPrefecture || 'Non défini'}</p>
@@ -547,12 +546,12 @@ export default function TerreAdam() {
                             💬 Système de Messagerie – Groupes disponibles
                             {!isAdmin && (
                               <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-amber-700">
-                                {userQuartierCodes.length > 1 ? '(Vos quartiers : résidence 1, 2 et 3)' : '(Votre quartier uniquement)'}
+                                (Résidence {activeLieuTab === 'quartier-1' ? 1 : activeLieuTab === 'quartier-2' ? 2 : 3})
                               </span>
                             )}
                             {isAdmin && (
                               <span className="block sm:inline mt-1 sm:mt-0 sm:ml-2 text-sm font-normal text-emerald-700">
-                                ({filterScope === 'all' ? 'Tous les quartiers' : 'Mon quartier'})
+                                ({filterScope === 'all' ? 'Tous les quartiers' : `Résidence ${activeLieuTab === 'quartier-1' ? 1 : activeLieuTab === 'quartier-2' ? 2 : 3}`})
                               </span>
                             )}
                           </h3>
@@ -582,7 +581,7 @@ export default function TerreAdam() {
                                         onClick={() => { setFilterScope('quartier'); setShowFilterDropdown(false); loadGroups(); }}
                                         className={`w-full text-left px-4 py-2 text-sm ${filterScope === 'quartier' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
                                       >
-                                        🏘️ {userQuartierCodes.length > 1 ? 'Mes quartiers' : 'Mon quartier'}
+                                        🏘️ Résidence {activeLieuTab === 'quartier-1' ? 1 : activeLieuTab === 'quartier-2' ? 2 : 3}
                                       </button>
                                     </>
                                   ) : (
@@ -591,7 +590,7 @@ export default function TerreAdam() {
                                       onClick={() => setShowFilterDropdown(false)}
                                       className="w-full text-left px-4 py-2 text-sm text-gray-600"
                                     >
-                                      🏘️ {userQuartierCodes.length > 1 ? 'Mes quartiers' : 'Mon quartier'} (seul filtre disponible)
+                                      🏘️ Résidence {activeLieuTab === 'quartier-1' ? 1 : activeLieuTab === 'quartier-2' ? 2 : 3} (ce quartier)
                                     </button>
                                   )}
                                 </div>

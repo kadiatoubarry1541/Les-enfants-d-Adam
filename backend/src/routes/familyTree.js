@@ -486,8 +486,8 @@ router.get('/messages', async (req, res) => {
 
     const messages = await FamilyTreeMessage.getFamilyMessages(
       familyName,
-      parseInt(limit as string, 10),
-      parseInt(offset as string, 10)
+      parseInt(limit, 10),
+      parseInt(offset, 10)
     );
 
     const messagesWithAuthors = await Promise.all(

@@ -80,8 +80,9 @@ const connectDB = async () => {
     return sequelize;
   } catch (error) {
     console.error('❌ Erreur de connexion PostgreSQL:', error.message);
-    console.log('🔄 Mode développement: Utilisation de la mémoire locale');
-    return null;
+    console.error('💡 Vérifiez que PostgreSQL tourne et que config.env (DB_*) est correct.');
+    console.error('💡 Pour corriger la table page_admins : npm run fix-page-admins');
+    throw error;
   }
 };
 

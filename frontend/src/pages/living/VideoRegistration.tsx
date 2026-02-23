@@ -1041,7 +1041,6 @@ export function VideoRegistration() {
                   placeholder={videoData.quartier || "Votre quartier"}
                   required
                   className={getFieldClassName('lieu1', !!videoData.lieu1)}
-                  required
                 />
                 <small className="text-muted">
                   Quartier sélectionné : {videoData.quartier || 'Aucun'} (sera utilisé par défaut)

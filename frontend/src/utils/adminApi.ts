@@ -81,9 +81,15 @@ const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
   } catch (error: any) {
     // Erreur réseau : le backend n'est pas joignable
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      let port = '5002';
+      try {
+        port = new URL(API_URL.startsWith('http') ? API_URL : `http://${API_URL}`).port || port;
+      } catch {
+        // garder 5002 par défaut
+      }
       throw new Error(
-        'Impossible de contacter le serveur backend. Vérifiez que le serveur est démarré (port ' +
-        API_URL.split(':').pop() + ').'
+        `Impossible de contacter le serveur backend. Vérifiez que le serveur est démarré (port ${port}). ` +
+        `Depuis la racine du projet : double-cliquez sur LANCER_BACKEND.bat ou exécutez "cd backend && npm start".`
       );
     }
     throw error;

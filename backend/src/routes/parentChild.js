@@ -493,6 +493,35 @@ router.post('/activity', async (req, res) => {
 });
 
 /**
+ * DELETE /api/parent-child/link-by-users
+ * Admin : supprimer un lien parent-enfant par parentNumeroH et childNumeroH (body).
+ */
+router.delete('/link-by-users', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!isAdmin(user)) {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux administrateurs' });
+    }
+    const { parentNumeroH, childNumeroH } = req.body;
+    if (!parentNumeroH || !childNumeroH) {
+      return res.status(400).json({ success: false, message: 'parentNumeroH et childNumeroH sont requis' });
+    }
+    const link = await ParentChildLink.findOne({
+      where: { parentNumeroH, childNumeroH, isActive: true }
+    });
+    if (!link) {
+      return res.status(404).json({ success: false, message: 'Lien familial non trouvé' });
+    }
+    link.isActive = false;
+    await link.save();
+    res.json({ success: true, message: 'Lien familial supprimé avec succès' });
+  } catch (error) {
+    console.error('Erreur suppression lien-by-users:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
  * GET /api/parent-child/admin/all-links
  * Admin uniquement : toutes les liaisons parent-enfant (actives + en attente).
  */

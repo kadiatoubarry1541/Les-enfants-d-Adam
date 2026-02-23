@@ -28,14 +28,16 @@ const storage = multer.diskStorage({
 
 // Filtre des types de fichiers autorisés
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|mp4|avi|mov|wav|mp3|pdf|doc|docx/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const allowedExtensions = /jpeg|jpg|png|gif|webp|mp4|avi|mov|wav|mp3|pdf|doc|docx/;
+  const allowedMimes = /image\/(jpeg|jpg|png|gif|webp)|video\/(mp4|avi|quicktime|x-msvideo)|audio\/(wav|mpeg|mp3)|application\/(pdf|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/;
 
-  if (mimetype && extname) {
+  const extname = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedMimes.test(file.mimetype);
+
+  if (extname || mimetype) {
     return cb(null, true);
   } else {
-    cb(new Error('Type de fichier non autorisé. Types acceptés: images, vidéos, audio, documents PDF/Word'));
+    cb(new Error('Type de fichier non autorisé. Types acceptés: images (jpg, png, gif, webp), vidéos, audio, documents PDF/Word'));
   }
 };
 

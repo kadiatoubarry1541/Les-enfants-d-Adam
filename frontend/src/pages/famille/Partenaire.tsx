@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { isAdmin } from '../../utils/auth'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002'
 
 interface UserData {
   numeroH: string
@@ -10,6 +11,8 @@ interface UserData {
   genre: 'HOMME' | 'FEMME' | 'AUTRE'
   dateNaissance?: string
   date_naissance?: string
+  role?: string
+  isAdmin?: boolean
 }
 
 /** Calcule l'âge exact en années */
@@ -186,23 +189,25 @@ export default function Partenaire() {
     const u = loadUser()
 
     if (u?.numeroH) {
-      // ── Garde âge : moins de 18 ans → retour à Famille ──
+      const isUserAdmin = isAdmin(u)
+
+      // ── Garde âge : moins de 18 ans → retour à Famille (sauf admin général) ──
       const dn = u.dateNaissance || u.date_naissance
       const age = calcAge(dn)
-      if (age < 18) {
+      if (age < 18 && !isUserAdmin) {
         navigate('/famille', { replace: true })
         return
       }
 
-      // ── Garde genre / route ──────────────────────────────
+      // ── Garde genre / route (sauf admin général qui peut tout voir) ──────────
       // Un HOMME ne doit pas accéder à /famille/mari (Mon Homme)
       // Une FEMME ne doit pas accéder à /famille/femmes (Ma Femme)
       const path = location.pathname
-      if (u.genre === 'HOMME' && path.includes('/mari')) {
+      if (!isUserAdmin && u.genre === 'HOMME' && path.includes('/mari')) {
         navigate('/famille', { replace: true })
         return
       }
-      if (u.genre === 'FEMME' && path.includes('/femmes')) {
+      if (!isUserAdmin && u.genre === 'FEMME' && path.includes('/femmes')) {
         navigate('/famille', { replace: true })
         return
       }

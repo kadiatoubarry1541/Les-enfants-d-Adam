@@ -425,6 +425,61 @@ router.post('/zakat/calculations', authenticateToken, async (req, res) => {
   }
 });
 
+// ─── Routes /api/user/info et /api/user/update-info ─────────────────────────
+
+// GET /api/user/info → retourne le profil de l'utilisateur connecté
+router.get('/user/info', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    res.json({
+      success: true,
+      info: {
+        numeroH: user.numeroH,
+        prenom: user.prenom,
+        nomFamille: user.nomFamille,
+        email: user.email || '',
+        phone: user.tel1 || '',
+        bio: '',
+        location: user.lieu1 || user.lieuResidence1 || '',
+        occupation: user.activite1 || '',
+        education: '',
+        birthDate: user.dateNaissance || '',
+        maritalStatus: user.statutSocial || '',
+        children: (user.nbFilles || 0) + (user.nbGarcons || 0),
+        languages: user.langues || [],
+        hobbies: [],
+        interests: [],
+        isPublic: true
+      }
+    });
+  } catch (error) {
+    console.error('Erreur /api/user/info:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/user/update-info → met à jour le profil de l'utilisateur connecté
+router.post('/user/update-info', authenticateToken, async (req, res) => {
+  try {
+    const { default: User } = await import('../models/User.js');
+    const user = await User.findByPk(req.user.numeroH);
+    if (!user) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+
+    const { location, occupation, birthDate, maritalStatus, languages } = req.body;
+    if (location !== undefined) user.lieu1 = location;
+    if (occupation !== undefined) user.activite1 = occupation;
+    if (birthDate !== undefined) user.dateNaissance = birthDate;
+    if (maritalStatus !== undefined) user.statutSocial = maritalStatus;
+    if (languages !== undefined) user.langues = Array.isArray(languages) ? languages : [];
+
+    await user.save();
+    res.json({ success: true, message: 'Informations mises à jour avec succès' });
+  } catch (error) {
+    console.error('Erreur /api/user/update-info:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 export default router;
 
 

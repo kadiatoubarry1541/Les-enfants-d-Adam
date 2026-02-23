@@ -9,6 +9,99 @@ const router = express.Router();
 // Toutes les routes nécessitent l'authentification
 router.use(authenticate);
 
+// ─── Aliases pour MesAmours.tsx ───────────────────────────────────────────────
+
+// GET /api/friends/list → amis de l'utilisateur connecté
+router.get('/list', async (req, res) => {
+  try {
+    const numeroH = req.user.numeroH;
+    const friends = await Friend.findAll({
+      where: {
+        [Op.or]: [
+          { userNumeroH: numeroH },
+          { friendNumeroH: numeroH }
+        ],
+        status: 'accepted'
+      },
+      order: [['acceptedAt', 'DESC']]
+    });
+    res.json({ success: true, friends });
+  } catch (error) {
+    console.error('Erreur /friends/list:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/friends/requests → demandes en attente pour l'utilisateur connecté
+router.get('/requests', async (req, res) => {
+  try {
+    const requests = await FriendRequest.findAll({
+      where: { toUser: req.user.numeroH, status: 'pending' },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json({ success: true, requests });
+  } catch (error) {
+    console.error('Erreur /friends/requests:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/friends/send-request → envoyer une demande (fromUser = utilisateur connecté)
+router.post('/send-request', async (req, res) => {
+  try {
+    const fromUser = req.user.numeroH;
+    const { toUser, message } = req.body;
+    if (!toUser) {
+      return res.status(400).json({ success: false, message: 'NumeroH du destinataire requis' });
+    }
+    if (fromUser === toUser) {
+      return res.status(400).json({ success: false, message: 'Vous ne pouvez pas vous ajouter vous-même' });
+    }
+    const existingRequest = await FriendRequest.findOne({
+      where: { fromUser, toUser, status: 'pending' }
+    });
+    if (existingRequest) {
+      return res.status(400).json({ success: false, message: 'Une demande d\'amitié est déjà en cours' });
+    }
+    const request = await FriendRequest.create({ fromUser, toUser, message: message || null, status: 'pending' });
+    res.status(201).json({ success: true, request, message: 'Demande d\'amitié envoyée' });
+  } catch (error) {
+    console.error('Erreur /friends/send-request:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/friends/respond-request → répondre à une demande { requestId, action: 'accept'|'reject' }
+router.post('/respond-request', async (req, res) => {
+  try {
+    const { requestId, action } = req.body;
+    if (!requestId || !action) {
+      return res.status(400).json({ success: false, message: 'requestId et action requis' });
+    }
+    const request = await FriendRequest.findByPk(requestId);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Demande non trouvée' });
+    }
+    const status = action === 'accept' ? 'accepted' : 'rejected';
+    await request.update({ status });
+    if (status === 'accepted') {
+      await Friend.create({
+        userNumeroH: request.fromUser,
+        friendNumeroH: request.toUser,
+        status: 'accepted',
+        requestedAt: request.createdAt,
+        acceptedAt: new Date()
+      });
+    }
+    res.json({ success: true, message: action === 'accept' ? 'Demande acceptée' : 'Demande rejetée' });
+  } catch (error) {
+    console.error('Erreur /friends/respond-request:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // @route   GET /api/friends/:numeroH
 // @desc    Récupérer les amis d'un utilisateur
 // @access  Authentifié

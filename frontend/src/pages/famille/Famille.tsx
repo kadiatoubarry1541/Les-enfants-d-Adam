@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { isAdmin } from '../../utils/auth'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002'
 
 interface UserData {
   numeroH: string
@@ -94,6 +94,7 @@ export default function Famille() {
   const birthday18 = get18thBirthday(dateNaissance)
   const isUnder18 = age < 18
   const genre = effectiveUser.genre
+  const canSeePartnerSections = !isUnder18 || userIsAdmin
 
   // Ouverture automatique de la bonne page partenaire quand l'utilisateur atteint 18 ans
   // (vérifie toutes les minutes si la session est ouverte)
@@ -178,8 +179,8 @@ export default function Famille() {
           </div>
         </Link>
 
-        {/* Mon Homme — visible uniquement si genre = FEMME (ou AUTRE) ET âge >= 18 */}
-        {!isUnder18 && genre !== 'HOMME' && (
+        {/* Mon Homme — visible pour les femmes / autres majeurs, ou toujours pour les admins */}
+        {canSeePartnerSections && (userIsAdmin || genre !== 'HOMME') && (
           <Link to="mari" className="group bg-white rounded-md shadow-sm hover:shadow border border-gray-200 hover:border-blue-500 py-2 px-2 transition-all duration-200 hover:-translate-y-0.5">
             <div className="text-center">
               <div className="text-2xl sm:text-3xl mb-0.5">🤵</div>
@@ -188,8 +189,8 @@ export default function Famille() {
           </Link>
         )}
 
-        {/* Ma Femme — visible uniquement si genre = HOMME (ou AUTRE) ET âge >= 18 */}
-        {!isUnder18 && genre !== 'FEMME' && (
+        {/* Ma Femme — visible pour les hommes / autres majeurs, ou toujours pour les admins */}
+        {canSeePartnerSections && (userIsAdmin || genre !== 'FEMME') && (
           <Link to="femmes" className="group bg-white rounded-md shadow-sm hover:shadow border border-gray-200 hover:border-pink-500 py-2 px-2 transition-all duration-200 hover:-translate-y-0.5">
             <div className="text-center">
               <div className="text-2xl sm:text-3xl mb-0.5">👰</div>
@@ -198,8 +199,8 @@ export default function Famille() {
           </Link>
         )}
 
-        {/* Message pour les moins de 18 ans */}
-        {isUnder18 && (
+        {/* Message pour les moins de 18 ans (sauf admin général qui voit tout) */}
+        {isUnder18 && !userIsAdmin && (
           <div className="col-span-2 sm:col-span-3 lg:col-span-6 mt-1">
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
               <span className="text-xl flex-shrink-0">🔒</span>

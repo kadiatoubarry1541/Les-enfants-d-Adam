@@ -20,6 +20,7 @@
     "create-tables": "node create-all-tables.js",
     "start-complete": "node start-complete-system.js",
     "check-db": "node scripts/check-db.js",
+    "fix-page-admins": "node scripts/fix-page-admins-table.js",
     "init-admin": "node scripts/initAdmin.js",
     "verify-admin": "node scripts/verifyAdmin.js",
     "seed-ia": "node scripts/seedIaKnowledge.js",
