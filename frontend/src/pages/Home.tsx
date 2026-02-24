@@ -29,7 +29,7 @@ export function Home() {
       {/* Boutons tactiles, pleine largeur sur très petit écran */}
       <div className="flex flex-col gap-3 sm:gap-4 max-w-xs xs:max-w-sm mx-auto">
         <Link 
-          to="/inscription"
+          to="/vivant"
           className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 xs:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-600 to-sky-500 text-white text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all w-full sm:w-auto"
         >
           ✨ {t('home.register')}

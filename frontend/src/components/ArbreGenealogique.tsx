@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './ArbreGenealogique.css'
-import { buildFamilyTree, getTreeCompletionRecommendations, FamilyMember as FamilyMemberType } from '../services/FamilyTreeBuilder'
+import { buildFamilyTree, getTreeCompletionRecommendations, FamilyMember as FamilyMemberType, CercleDesRacinesCounts } from '../services/FamilyTreeBuilder'
+import { InvitationManager } from '../utils/invitationManager'
+import { useI18n } from '../i18n/useI18n'
 
 interface FamilyMember {
   id: string
@@ -20,14 +23,18 @@ interface FamilyMember {
 
 interface ArbreGenealogiqueProps {
   userData: any
+  cercleCounts?: CercleDesRacinesCounts
 }
 
-export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
+export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueProps) {
+  const { t } = useI18n()
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null)
-  const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
   const [generationFilter, setGenerationFilter] = useState<string>('all')
+  const [showStats, setShowStats] = useState(true)
+  const [showLegend, setShowLegend] = useState(false)
   const [showAddMemberForm, setShowAddMemberForm] = useState(false)
+  const [addMemberType, setAddMemberType] = useState<'vivant' | 'defunt' | null>(null)
   const [newMember, setNewMember] = useState({
     prenom: '',
     nomFamille: userData.nomFamille,
@@ -40,6 +47,7 @@ export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
   })
 
   const [recommendations, setRecommendations] = useState<string[]>([])
+  const navigate = useNavigate()
 
   useEffect(() => {
     // Construire automatiquement l'arbre généalogique selon les conditions remplies
@@ -75,15 +83,31 @@ export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
   }
 
   const handleAddMember = () => {
-    const member: FamilyMember = {
-      id: `new-${Date.now()}`,
-      ...newMember,
-      generation: calculateGeneration(newMember.relation),
-      children: []
+    if (!newMember.numeroH || !newMember.relation) {
+      alert('Merci de renseigner le NuméroH et la relation.')
+      return
     }
-    
-    setFamilyMembers([...familyMembers, member])
+
+    // Si on ajoute un vivant, on envoie une invitation pour qu'il puisse accepter ou refuser
+    if (addMemberType === 'vivant') {
+      const fromName = `${userData.prenom ?? ''} ${userData.nomFamille ?? ''}`.trim() || userData.numeroH
+      const toName = newMember.prenom || newMember.nomFamille || newMember.numeroH
+
+      InvitationManager.sendInvitation({
+        fromNumeroH: userData.numeroH,
+        fromName,
+        toNumeroH: newMember.numeroH.trim(),
+        toName,
+        relation: newMember.relation,
+        message: undefined
+      })
+
+      alert(`Invitation envoyée au membre ${toName} (${newMember.numeroH}).\nIl pourra accepter ou refuser depuis sa page "Mes invitations".`)
+    }
+
+    // Réinitialiser le formulaire (on ne modifie pas directement l'arbre ici)
     setShowAddMemberForm(false)
+    setAddMemberType(null)
     setNewMember({
       prenom: '',
       nomFamille: userData.nomFamille,
@@ -179,24 +203,6 @@ export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
     <div className="arbre-genealogique">
       <div className="arbre-header">
         <h3>🌳 Arbre Généalogique de {userData.prenom} {userData.nomFamille}</h3>
-        
-        {/* Afficher les recommandations pour compléter l'arbre */}
-        {recommendations.length > 0 && (
-          <div className="tree-recommendations" style={{
-            marginBottom: '20px',
-            padding: '15px',
-            backgroundColor: '#FEF3C7',
-            border: '2px solid #F59E0B',
-            borderRadius: '8px'
-          }}>
-            <h4 style={{ marginTop: 0, color: '#92400E' }}>💡 Recommandations pour compléter votre arbre généalogique :</h4>
-            <ul style={{ marginBottom: 0, paddingLeft: '20px' }}>
-              {recommendations.map((rec, index) => (
-                <li key={index} style={{ color: '#78350F', marginBottom: '8px' }}>{rec}</li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         {/* Indicateur de progression */}
         <div className="tree-progress" style={{
@@ -215,22 +221,25 @@ export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
         <div className="arbre-controls">
           <div className="view-controls">
             <button 
-              className={`view-btn ${viewMode === 'tree' ? 'active' : ''}`}
-              onClick={() => setViewMode('tree')}
-            >
-              🌳 Vue Arbre
-            </button>
-            <button 
-              className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              📋 Vue Liste
-            </button>
-            <button 
               className="view-btn add-member-btn"
-              onClick={() => setShowAddMemberForm(!showAddMemberForm)}
+              onClick={() => {
+                setShowAddMemberForm(!showAddMemberForm)
+                setAddMemberType(null)
+              }}
             >
               ➕ Ajouter un membre
+            </button>
+            <button
+              className={`view-btn ${showStats ? 'active' : ''}`}
+              onClick={() => setShowStats(!showStats)}
+            >
+              📊 Statistiques
+            </button>
+            <button
+              className={`view-btn ${showLegend ? 'active' : ''}`}
+              onClick={() => setShowLegend(!showLegend)}
+            >
+              📘 Légende
             </button>
           </div>
 
@@ -253,126 +262,98 @@ export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
       {showAddMemberForm && (
         <div className="add-member-form">
           <h4>Ajouter un nouveau membre de la famille</h4>
+
+          {/* Choix du type de membre à ajouter */}
           <div className="form-grid">
             <div className="form-group">
-              <label>Prénom *</label>
-              <input
-                type="text"
-                value={newMember.prenom}
-                onChange={(e) => setNewMember({...newMember, prenom: e.target.value})}
-                placeholder="Prénom"
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Nom de famille *</label>
-              <input
-                type="text"
-                value={newMember.nomFamille}
-                onChange={(e) => setNewMember({...newMember, nomFamille: e.target.value})}
-                placeholder="Nom de famille"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>NuméroH *</label>
-              <input
-                type="text"
-                value={newMember.numeroH}
-                onChange={(e) => setNewMember({...newMember, numeroH: e.target.value})}
-                placeholder="NuméroH"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Genre *</label>
-              <select
-                value={newMember.genre}
-                onChange={(e) => setNewMember({...newMember, genre: e.target.value as 'HOMME' | 'FEMME' | 'AUTRE'})}
-              >
-                <option value="HOMME">Homme</option>
-                <option value="FEMME">Femme</option>
-                <option value="AUTRE">Autre</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Relation *</label>
-              <select
-                value={newMember.relation}
-                onChange={(e) => setNewMember({...newMember, relation: e.target.value as any})}
-              >
-                <option value="pere">Père</option>
-                <option value="mere">Mère</option>
-                <option value="grand-pere">Grand-père</option>
-                <option value="grand-mere">Grand-mère</option>
-                <option value="frere">Frère</option>
-                <option value="soeur">Sœur</option>
-                <option value="enfant">Enfant</option>
-                <option value="conjoint">Conjoint(e)</option>
-                <option value="oncle">Oncle</option>
-                <option value="tante">Tante</option>
-                <option value="cousin">Cousin</option>
-                <option value="cousine">Cousine</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Date de naissance</label>
-              <input
-                type="date"
-                value={newMember.dateNaissance}
-                onChange={(e) => setNewMember({...newMember, dateNaissance: e.target.value})}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={newMember.isDeceased}
-                  onChange={(e) => setNewMember({...newMember, isDeceased: e.target.checked})}
-                />
-                {' '}Décédé(e)
-              </label>
-            </div>
-
-            {newMember.isDeceased && (
-              <div className="form-group">
-                <label>Date de décès</label>
-                <input
-                  type="date"
-                  value={newMember.dateDeces}
-                  onChange={(e) => setNewMember({...newMember, dateDeces: e.target.value})}
-                />
+              <label>Que souhaitez-vous ajouter ?</label>
+              <div className="add-member-type-buttons">
+                <button
+                  type="button"
+                  className={`view-btn ${addMemberType === 'vivant' ? 'active' : ''}`}
+                  onClick={() => setAddMemberType('vivant')}
+                >
+                  👤 Ajouter un vivant
+                </button>
+                <button
+                  type="button"
+                  className={`view-btn ${addMemberType === 'defunt' ? 'active' : ''}`}
+                  onClick={() => {
+                    setShowAddMemberForm(false)
+                    setAddMemberType(null)
+                    navigate('/defunt')
+                  }}
+                >
+                  🕊️ Ajouter un défunt
+                </button>
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="form-actions">
-            <button 
-              className="btn-submit"
-              onClick={handleAddMember}
-              disabled={!newMember.prenom || !newMember.numeroH}
-            >
-              Ajouter
-            </button>
-            <button 
-              className="btn-cancel"
-              onClick={() => setShowAddMemberForm(false)}
-            >
-              Annuler
-            </button>
-          </div>
+          {/* Formulaire pour inviter un vivant */}
+          {addMemberType === 'vivant' && (
+            <>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>NuméroH du vivant à inviter *</label>
+                  <input
+                    type="text"
+                    value={newMember.numeroH}
+                    onChange={(e) => setNewMember({...newMember, numeroH: e.target.value})}
+                    placeholder="NuméroH"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Relation souhaitée *</label>
+                  <select
+                    value={newMember.relation}
+                    onChange={(e) => setNewMember({...newMember, relation: e.target.value as any})}
+                  >
+                    <option value="">Sélectionner une relation</option>
+                    <option value="pere">Père</option>
+                    <option value="mere">Mère</option>
+                    <option value="grand-pere">Grand-père</option>
+                    <option value="grand-mere">Grand-mère</option>
+                    <option value="frere">Frère</option>
+                    <option value="soeur">Sœur</option>
+                    <option value="enfant">Enfant</option>
+                    <option value="conjoint">Conjoint(e)</option>
+                    <option value="oncle">Oncle</option>
+                    <option value="tante">Tante</option>
+                    <option value="cousin">Cousin</option>
+                    <option value="cousine">Cousine</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button 
+                  className="btn-submit"
+                  onClick={handleAddMember}
+                  disabled={!newMember.numeroH || !newMember.relation}
+                >
+                  Envoyer l'invitation
+                </button>
+                <button 
+                  className="btn-cancel"
+                  onClick={() => {
+                    setShowAddMemberForm(false)
+                    setAddMemberType(null)
+                  }}
+                >
+                  Annuler
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {viewMode === 'tree' ? (
-        <div className="tree-view-horizontal">
-          <svg className="tree-svg" width="100%" height="700" viewBox="0 0 1200 700">
+      {/* Vue arbre généalogique (seule vue, plus de vue liste) */}
+      <div className="tree-view-horizontal">
+        <svg className="tree-svg" width="100%" height="700" viewBox="0 0 1200 700">
             <defs>
               <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
                 <polygon points="0 0, 10 5, 0 10" fill="#4CAF50" />
@@ -737,85 +718,8 @@ export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
               {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 630, 610, 180, 80, { label: 'Garçon' })}
             </g>
 
-            {/* Légende des générations */}
-            <g className="legend">
-              <rect x="920" y="300" width="250" height="250" rx="10" fill="#f8f9fa" stroke="#ddd" strokeWidth="2" />
-              <text x="1045" y="325" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#333">Légende</text>
-              
-              <text x="1045" y="350" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#555">Générations:</text>
-              
-              <rect x="935" y="360" width="20" height="15" fill="#A0522D" />
-              <text x="965" y="372" fontSize="11" fill="#666">G-1: Grands-parents</text>
-              
-              <rect x="935" y="383" width="20" height="15" fill="#CD853F" />
-              <text x="965" y="395" fontSize="11" fill="#666">G0: Parents</text>
-              
-              <rect x="935" y="406" width="20" height="15" fill="#667eea" />
-              <text x="965" y="418" fontSize="11" fill="#666">G1: Vous/Fratrie</text>
-              
-              <rect x="935" y="429" width="20" height="15" fill="#4CAF50" />
-              <text x="965" y="441" fontSize="11" fill="#666">G2: Enfants</text>
-              
-              <line x1="930" y1="458" x2="1160" y2="458" stroke="#ccc" strokeWidth="1" />
-              
-              <text x="1045" y="475" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#555">Genres:</text>
-              
-              <rect x="935" y="483" width="25" height="20" fill="white" stroke="#333" strokeWidth="2" />
-              <text x="970" y="497" fontSize="11" fill="#666">= Homme</text>
-              
-              <polygon points="940,520 985,520 995,527 985,534 940,534 930,527" fill="white" stroke="#333" strokeWidth="2" />
-              <text x="1005" y="530" fontSize="11" fill="#666">= Femme</text>
-              
-              <circle cx="945" cy="545" r="5" fill="#FF9800" />
-              <text x="960" y="549" fontSize="11" fill="#666">= Vous</text>
-            </g>
           </svg>
         </div>
-      ) : (
-        <div className="list-view">
-          <div className="members-list">
-            {filteredMembers.map(member => (
-              <div 
-                key={member.id}
-                className={`list-member ${member.isDeceased ? 'deceased' : ''}`}
-                onClick={() => setSelectedMember(member)}
-              >
-                <div className="member-avatar">
-                  {member.photo ? (
-                    <img src={member.photo} alt={member.prenom} />
-                  ) : (
-                    <div className="avatar-placeholder">
-                      {member.prenom.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="member-details">
-                  <h4>{member.prenom} {member.nomFamille}</h4>
-                  <p><strong>NumeroH:</strong> {member.numeroH}</p>
-                  <p><strong>Relation:</strong> {getRelationIcon(member.relation)} {member.relation}</p>
-                  <p><strong>Génération:</strong> {member.generation}</p>
-                  <p><strong>Genre:</strong> {member.genre}</p>
-                  {member.dateNaissance && (
-                    <p><strong>Né:</strong> {new Date(member.dateNaissance).toLocaleDateString()}</p>
-                  )}
-                  {member.dateDeces && (
-                    <p><strong>Décédé:</strong> {new Date(member.dateDeces).toLocaleDateString()}</p>
-                  )}
-                </div>
-                
-                <div className="member-status">
-                  {member.isDeceased ? (
-                    <span className="status deceased">🕊️ Décédé</span>
-                  ) : (
-                    <span className="status alive">❤️ Vivant</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Détails du membre sélectionné */}
       {selectedMember && (
@@ -880,15 +784,258 @@ export function ArbreGenealogique({ userData }: ArbreGenealogiqueProps) {
         </div>
       )}
 
-      <div className="arbre-stats">
-        <div className="stat-card">
-          <h4>📊 Statistiques</h4>
-          <p><strong>Total membres:</strong> {familyMembers.length}</p>
-          <p><strong>Vivants:</strong> {familyMembers.filter(m => !m.isDeceased).length}</p>
-          <p><strong>Décédés:</strong> {familyMembers.filter(m => m.isDeceased).length}</p>
-          <p><strong>Générations:</strong> {generations.length}</p>
+      {/* Statistiques dans une fenêtre modale indépendante */}
+      {showStats && (
+        <div className="member-details-modal">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>📊 Statistiques de l'arbre</h3>
+              <button onClick={() => setShowStats(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="arbre-stats">
+                <div className="stat-card">
+                  <p><strong>Total membres:</strong> {familyMembers.length}</p>
+                  <p><strong>Vivants:</strong> {familyMembers.filter(m => !m.isDeceased).length}</p>
+                  <p><strong>Décédés:</strong> {familyMembers.filter(m => m.isDeceased).length}</p>
+                  <p><strong>Générations:</strong> {generations.length}</p>
+
+                  {cercleCounts && (
+                    <div className="mt-4 text-left">
+                      <h5 className="text-sm sm:text-base font-semibold mb-2">
+                        {t('wiz.live.title4')}
+                      </h5>
+                      <p className="text-xs sm:text-sm text-white/80 mb-3">
+                        Effectifs calculés automatiquement à partir de votre arbre familial.
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.brothers_mother')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbFreresMere}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.sisters_mother')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbSoeursMere}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.brothers_father')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbFreresPere}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.sisters_father')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbSoeursPere}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.aunts_maternal')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbTantesMaternelles}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.aunts_paternal')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbTantesPaternelles}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.uncles_maternal')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbOnclesMaternels}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.uncles_paternal')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbOnclesPaternels}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.cousins_male')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbCousins}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.cousins_female')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbCousines}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.daughters')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbFilles}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] sm:text-xs font-medium text-white mb-1">
+                            {t('label.sons')}
+                          </div>
+                          <div className="px-3 py-1.5 bg-white/10 rounded-lg text-center font-semibold">
+                            {cercleCounts.nbGarcons}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Ancienne vue liste intégrée dans la modale Statistiques */}
+                <div className="list-view">
+                  <h4 className="mt-4 mb-2">📋 Détails des membres</h4>
+                  <div className="members-list">
+                    {filteredMembers.map(member => (
+                      <div 
+                        key={member.id}
+                        className={`list-member ${member.isDeceased ? 'deceased' : ''}`}
+                        onClick={() => setSelectedMember(member)}
+                      >
+                        <div className="member-avatar">
+                          {member.photo ? (
+                            <img src={member.photo} alt={member.prenom} />
+                          ) : (
+                            <div className="avatar-placeholder">
+                              {member.prenom.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="member-details">
+                          <h4>{member.prenom} {member.nomFamille}</h4>
+                          <p><strong>NumeroH:</strong> {member.numeroH}</p>
+                          <p><strong>Relation:</strong> {getRelationIcon(member.relation)} {member.relation}</p>
+                          <p><strong>Génération:</strong> {member.generation}</p>
+                          <p><strong>Genre:</strong> {member.genre}</p>
+                          {member.dateNaissance && (
+                            <p><strong>Né:</strong> {new Date(member.dateNaissance).toLocaleDateString()}</p>
+                          )}
+                          {member.dateDeces && (
+                            <p><strong>Décédé:</strong> {new Date(member.dateDeces).toLocaleDateString()}</p>
+                          )}
+                        </div>
+                        
+                        <div className="member-status">
+                          {member.isDeceased ? (
+                            <span className="status deceased">🕊️ Décédé</span>
+                          ) : (
+                            <span className="status alive">❤️ Vivant</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Légende dans une fenêtre modale indépendante */}
+      {showLegend && (
+        <div className="member-details-modal">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>📘 Légende de l'arbre</h3>
+              <button onClick={() => setShowLegend(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {/* Recommandations pour compléter l'arbre (déplacées ici) */}
+              {recommendations.length > 0 && (
+                <div
+                  className="tree-recommendations"
+                  style={{
+                    marginBottom: '16px',
+                    padding: '15px',
+                    backgroundColor: '#FEF3C7',
+                    border: '2px solid #F59E0B',
+                    borderRadius: '8px',
+                    textAlign: 'left',
+                  }}
+                >
+                  <h4 style={{ marginTop: 0, color: '#92400E', fontSize: '14px' }}>
+                    💡 Recommandations pour compléter votre arbre généalogique :
+                  </h4>
+                  <ul style={{ marginBottom: 0, paddingLeft: '20px' }}>
+                    {recommendations.map((rec, index) => (
+                      <li
+                        key={index}
+                        style={{ color: '#78350F', marginBottom: '6px', fontSize: '13px' }}
+                      >
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="tree-legend-card">
+                <div className="legend-section">
+                  <div className="legend-section-title">Générations :</div>
+                  <div className="legend-row">
+                    <span className="legend-color" style={{ backgroundColor: '#A0522D' }} />
+                    <span>G-1 : Grands-parents</span>
+                  </div>
+                  <div className="legend-row">
+                    <span className="legend-color" style={{ backgroundColor: '#CD853F' }} />
+                    <span>G0 : Parents</span>
+                  </div>
+                  <div className="legend-row">
+                    <span className="legend-color" style={{ backgroundColor: '#667eea' }} />
+                    <span>G1 : Vous / Fratrie</span>
+                  </div>
+                  <div className="legend-row">
+                    <span className="legend-color" style={{ backgroundColor: '#4CAF50' }} />
+                    <span>G2 : Enfants</span>
+                  </div>
+                </div>
+                <div className="legend-section">
+                  <div className="legend-section-title">Genres :</div>
+                  <div className="legend-row">
+                    <span className="legend-shape legend-male" /> <span>= Homme</span>
+                  </div>
+                  <div className="legend-row">
+                    <span className="legend-shape legend-female" /> <span>= Femme</span>
+                  </div>
+                  <div className="legend-row">
+                    <span className="legend-dot" /> <span>= Vous</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

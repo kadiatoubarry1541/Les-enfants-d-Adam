@@ -13,10 +13,13 @@ interface DeceasedVideoData {
   ethnie: string
   famille: string
   dateDeces: string
+  religion: string
+  lieuDeces: string
   video: Blob | null
   photo: File | null
   decet: string
   generation: string
+  relationDeclarant: string
 }
 
 export function DeceasedVideoRegistration() {
@@ -30,10 +33,13 @@ export function DeceasedVideoRegistration() {
     ethnie: '',
     famille: '',
     dateDeces: '',
+    religion: '',
+    lieuDeces: '',
     video: null,
     photo: null,
     decet: '',
-    generation: ''
+    generation: '',
+    relationDeclarant: ''
   })
   const [currentStep, setCurrentStep] = useState<'form' | 'video' | 'complete'>('form')
   
@@ -155,6 +161,10 @@ export function DeceasedVideoRegistration() {
   }
 
   const handleSubmit = () => {
+    if (!deceasedData.relationDeclarant) {
+      alert('Merci de choisir votre lien de parenté avec ce défunt (mère, père, fils, fille, etc.).')
+      return
+    }
     if (!deceasedData.video) {
       alert('Veuillez enregistrer votre vidéo.')
       return
@@ -167,11 +177,14 @@ export function DeceasedVideoRegistration() {
       decet: calculateDecet(deceasedData.dateDeces),
       generation: calculateGeneration(deceasedData.dateNaissance),
       age: calculateAge(deceasedData.dateNaissance, deceasedData.dateDeces),
-      yearsSinceDeath: calculateYearsSinceDeath(deceasedData.dateDeces)
+      yearsSinceDeath: calculateYearsSinceDeath(deceasedData.dateDeces),
+      relationDeclarant: deceasedData.relationDeclarant
     }
     
     // Sauvegarder les données
     localStorage.setItem('defunt_video', JSON.stringify(completeData))
+    // Garder aussi la relation séparément pour compatibilité avec l'ancien flux
+    localStorage.setItem('defunt_relation', deceasedData.relationDeclarant)
     
     setCurrentStep('complete')
   }
@@ -224,6 +237,31 @@ export function DeceasedVideoRegistration() {
                     setDeceasedData(prev => ({ ...prev, dateNaissance: e.target.value, generation }))
                   }}
                 />
+              </div>
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Votre lien avec ce défunt</label>
+                <select
+                  value={deceasedData.relationDeclarant}
+                  onChange={(e) => setDeceasedData(prev => ({ ...prev, relationDeclarant: e.target.value }))}
+                >
+                  <option value="">Choisir un lien de parenté</option>
+                  <option value="pere">Père</option>
+                  <option value="mere">Mère</option>
+                  <option value="fils">Fils</option>
+                  <option value="fille">Fille</option>
+                  <option value="grand-pere">Grand-père</option>
+                  <option value="grand-mere">Grand-mère</option>
+                  <option value="arriere-grand-pere">Arrière grand-père</option>
+                  <option value="arriere-grand-mere">Arrière grand-mère</option>
+                  <option value="autre">Autre membre de la famille</option>
+                </select>
+                <small className="text-sm text-gray-600">
+                  Ce lien permet de placer correctement ce défunt dans l'arbre.
+                </small>
               </div>
             </div>
           </div>
@@ -304,6 +342,29 @@ export function DeceasedVideoRegistration() {
             </div>
             <div className="col-6">
               <div className="field">
+                <label>Lieu de décès</label>
+                <input 
+                  value={deceasedData.lieuDeces}
+                  onChange={(e) => setDeceasedData(prev => ({ ...prev, lieuDeces: e.target.value }))}
+                  placeholder="Ville / village / hôpital..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Religion</label>
+                <input 
+                  value={deceasedData.religion}
+                  onChange={(e) => setDeceasedData(prev => ({ ...prev, religion: e.target.value }))}
+                  placeholder="Ex: Islam, Christianisme..."
+                />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
                 <label>Photo de preuve</label>
                 <input 
                   type="file" 
@@ -313,29 +374,6 @@ export function DeceasedVideoRegistration() {
                     const file = e.target.files?.[0]
                     if (file) setDeceasedData(prev => ({ ...prev, photo: file }))
                   }}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>Décet (auto)</label>
-                <input 
-                  value={deceasedData.decet}
-                  readOnly
-                  className="readonly"
-                />
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>Génération (auto)</label>
-                <input 
-                  value={deceasedData.generation}
-                  readOnly
-                  className="readonly"
                 />
               </div>
             </div>

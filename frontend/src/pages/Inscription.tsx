@@ -84,25 +84,6 @@ export function Inscription() {
             </div>
           </Link>
 
-          {/* Défunt */}
-          <Link 
-            to="/defunt" 
-            onMouseEnter={() => setHoveredOption('defunt')}
-            onMouseLeave={() => setHoveredOption(null)}
-          >
-            <div className={`
-              bg-amber-50 px-6 py-3 rounded-lg shadow-md border-2 transition-all duration-300 inline-flex items-center gap-3
-              ${hoveredOption === 'defunt' 
-                ? 'border-sky-400 shadow-lg scale-105' 
-                : 'border-gray-200 hover:border-sky-300'
-              }
-            `}>
-              <span className="text-2xl">🕊️</span>
-              <span className="font-semibold text-gray-800">
-                {t('home.register.defunt')}
-              </span>
-            </div>
-          </Link>
         </div>
       </div>
     </div>

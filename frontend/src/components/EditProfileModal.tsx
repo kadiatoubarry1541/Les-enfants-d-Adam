@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { config } from "../config/api";
 import { getPhotoUrl } from "../utils/auth";
+import { getAllLocationsForGroups } from "../utils/worldGeography";
 
 interface UserData {
   numeroH: string;
@@ -18,12 +19,20 @@ interface UserData {
   region?: string;
   pays?: string;
   nationalite?: string;
+  religion?: string;
+   handicap?: string;
   prenomPere?: string;
   nomFamillePere?: string;
   numeroHPere?: string;
   prenomMere?: string;
   nomFamilleMere?: string;
   numeroHMere?: string;
+  activite1?: string;
+  activite2?: string;
+  activite3?: string;
+  lieu1?: string;
+  lieu2?: string;
+  lieu3?: string;
   [key: string]: any;
 }
 
@@ -47,6 +56,36 @@ export default function EditProfileModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const allLocations = useMemo(() => getAllLocationsForGroups(), []);
+
+  const ACTIVITY_OPTIONS = [
+    "Agriculture",
+    "Élevage",
+    "Pêche",
+    "Commerce",
+    "Artisanat",
+    "Transport",
+    "Enseignement",
+    "Santé",
+    "Administration",
+    "Informatique",
+    "Construction",
+    "Mécanique",
+    "Restauration",
+    "Coiffure",
+    "Couture",
+    "Menuiserie",
+    "Électricité",
+    "Plomberie",
+    "Sécurité",
+    "Banque/Finance",
+    "Télécommunications",
+    "Journalisme",
+    "Étudiant",
+    "Sans emploi",
+    "Retraité",
+    "Autre",
+  ];
 
   useEffect(() => {
     if (open && userData) {
@@ -151,11 +190,14 @@ export default function EditProfileModal({
             region: formData.region,
             pays: formData.pays,
             nationalite: formData.nationalite,
-            prenomPere: formData.prenomPere,
-            nomFamillePere: formData.nomFamillePere,
+            religion: formData.religion,
+            activite1: formData.activite1,
+            activite2: formData.activite2,
+            activite3: formData.activite3,
+            lieu1: formData.lieu1,
+            lieu2: formData.lieu2,
+            lieu3: formData.lieu3,
             numeroHPere: formData.numeroHPere,
-            prenomMere: formData.prenomMere,
-            nomFamilleMere: formData.nomFamilleMere,
             numeroHMere: formData.numeroHMere,
           }),
         });
@@ -336,6 +378,23 @@ export default function EditProfileModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Situation de handicap (non modifiable)
+              </label>
+              <input
+                type="text"
+                value={
+                  formData.handicap === "OUI"
+                    ? "Oui"
+                    : formData.handicap === "NON"
+                    ? "Non"
+                    : "Non renseigné"
+                }
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-700 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Genre
               </label>
               <select
@@ -351,13 +410,13 @@ export default function EditProfileModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date de naissance
+                Date de naissance (non modifiable)
               </label>
               <input
                 type="date"
                 value={formData.dateNaissance || ""}
-                onChange={(e) => handleInputChange("dateNaissance", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg text-gray-500 cursor-not-allowed"
               />
             </div>
             <div>
@@ -373,46 +432,46 @@ export default function EditProfileModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Génération
+                Génération (non modifiable)
               </label>
               <input
                 type="text"
                 value={formData.generation || ""}
-                onChange={(e) => handleInputChange("generation", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg text-gray-500 cursor-not-allowed"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ethnie
+                Ethnie (non modifiable)
               </label>
               <input
                 type="text"
                 value={formData.ethnie || ""}
-                onChange={(e) => handleInputChange("ethnie", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg text-gray-500 cursor-not-allowed"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Région
+                Région (non modifiable)
               </label>
               <input
                 type="text"
                 value={formData.region || ""}
-                onChange={(e) => handleInputChange("region", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg text-gray-500 cursor-not-allowed"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Pays
+                Pays (non modifiable)
               </label>
               <input
                 type="text"
                 value={formData.pays || ""}
-                onChange={(e) => handleInputChange("pays", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg text-gray-500 cursor-not-allowed"
               />
             </div>
             <div>
@@ -426,6 +485,118 @@ export default function EditProfileModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Religion
+              </label>
+              <input
+                type="text"
+                value={formData.religion || ""}
+                onChange={(e) => handleInputChange("religion", e.target.value)}
+                placeholder="Ex: Islam, Christianisme..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Compléter votre profil : jusqu'à 3 activités et 3 quartiers */}
+          <div className="border-t pt-4">
+            <h4 className="text-lg font-semibold mb-2">Compléter votre profil à 100%</h4>
+            <p className="text-sm text-gray-500 mb-4">
+              Ajoutez jusqu'à 3 activités professionnelles et jusqu'à 3 quartiers ou lieux de résidence.
+            </p>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Activité 1</label>
+                <select
+                  value={formData.activite1 || ""}
+                  onChange={(e) => handleInputChange("activite1", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Sélectionner une activité</option>
+                  {ACTIVITY_OPTIONS.map((act) => (
+                    <option key={act} value={act}>
+                      {act}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Activité 2 (optionnel)</label>
+                <select
+                  value={formData.activite2 || ""}
+                  onChange={(e) => handleInputChange("activite2", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Ajouter une 2e activité...</option>
+                  {ACTIVITY_OPTIONS.map((act) => (
+                    <option key={act} value={act}>
+                      {act}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Activité 3 (optionnel)</label>
+                <select
+                  value={formData.activite3 || ""}
+                  onChange={(e) => handleInputChange("activite3", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Ajouter une 3e activité...</option>
+                  {ACTIVITY_OPTIONS.map((act) => (
+                    <option key={act} value={act}>
+                      {act}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quartier / lieu de résidence 1</label>
+                <select
+                  value={formData.lieu1 || ""}
+                  onChange={(e) => handleInputChange("lieu1", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Sélectionner un quartier ou lieu principal</option>
+                  {allLocations.map((loc) => (
+                    <option key={loc.code} value={loc.name}>
+                      {loc.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quartier / lieu 2 (optionnel)</label>
+                <select
+                  value={formData.lieu2 || ""}
+                  onChange={(e) => handleInputChange("lieu2", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Autre quartier ou lieu</option>
+                  {allLocations.map((loc) => (
+                    <option key={loc.code} value={loc.name}>
+                      {loc.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quartier / lieu 3 (optionnel)</label>
+                <select
+                  value={formData.lieu3 || ""}
+                  onChange={(e) => handleInputChange("lieu3", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Autre quartier ou lieu</option>
+                  {allLocations.map((loc) => (
+                    <option key={loc.code} value={loc.name}>
+                      {loc.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Informations familiales */}
@@ -434,29 +605,7 @@ export default function EditProfileModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prénom du père
-                </label>
-                <input
-                  type="text"
-                  value={formData.prenomPere || ""}
-                  onChange={(e) => handleInputChange("prenomPere", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom de famille du père
-                </label>
-                <input
-                  type="text"
-                  value={formData.nomFamillePere || ""}
-                  onChange={(e) => handleInputChange("nomFamillePere", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  NuméroH du père
+                  NuméroH / NumeroHD du père
                 </label>
                 <input
                   type="text"
@@ -467,29 +616,7 @@ export default function EditProfileModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prénom de la mère
-                </label>
-                <input
-                  type="text"
-                  value={formData.prenomMere || ""}
-                  onChange={(e) => handleInputChange("prenomMere", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom de famille de la mère
-                </label>
-                <input
-                  type="text"
-                  value={formData.nomFamilleMere || ""}
-                  onChange={(e) => handleInputChange("nomFamilleMere", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  NuméroH de la mère
+                  NuméroH / NumeroHD de la mère
                 </label>
                 <input
                   type="text"

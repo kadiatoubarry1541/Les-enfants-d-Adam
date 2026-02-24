@@ -1,0 +1,892 @@
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api } from '../../utils/api'
+import { 
+  getAllCountries,
+  getSousPrefecturesByCountry,
+  getQuartiersBySousPrefecture,
+  getLocationPath
+} from '../../utils/worldGeography'
+import { ETHNIE_CODES, FAMILLE_CODES, ETHNIES, FAMILLES } from '../../utils/constants'
+
+interface WrittenData {
+  numeroHPere: string
+  numeroHMere: string
+  continent: string
+  continentCode: string
+  dateNaissance: string
+  pays: string
+  paysCode: string
+  region: string
+  regionCode: string
+  prefecture: string
+  prefectureCode: string
+  sousPrefecture: string
+  sousPrefectureCode: string
+  quartier: string
+  quartierCode: string
+  ethnie: string
+  famille: string
+  prenom: string
+  telephone: string
+  email: string
+  religion: string
+  generation: string
+  password: string
+  confirmPassword: string
+  photo: File | null
+  photoPreview: string | null
+  genre: string
+  handicap: string
+  activite1: string
+  activite2: string
+  activite3: string
+  lieu1: string
+  lieu2: string
+  lieu3: string
+  numeroH?: string
+}
+
+export function WrittenRegistration() {
+  const [data, setData] = useState<WrittenData>({
+    numeroHPere: '',
+    numeroHMere: '',
+    continent: '',
+    continentCode: '',
+    dateNaissance: '',
+    pays: '',
+    paysCode: '',
+    region: '',
+    regionCode: '',
+    prefecture: '',
+    prefectureCode: '',
+    sousPrefecture: '',
+    sousPrefectureCode: '',
+    quartier: '',
+    quartierCode: '',
+    ethnie: '',
+    famille: '',
+    prenom: '',
+    telephone: '',
+    email: '',
+    religion: '',
+    generation: '',
+    password: '',
+    confirmPassword: '',
+    photo: null,
+    photoPreview: null,
+    genre: 'HOMME',
+    handicap: '',
+    activite1: '',
+    activite2: '',
+    activite3: '',
+    lieu1: '',
+    lieu2: '',
+    lieu3: ''
+  })
+
+  const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set())
+  const navigate = useNavigate()
+
+  const countries = useMemo(() => getAllCountries(), [])
+  const sousPrefectures = useMemo(
+    () => (data.paysCode ? getSousPrefecturesByCountry(data.paysCode) : []),
+    [data.paysCode]
+  )
+  const quartiers = useMemo(
+    () => (data.sousPrefectureCode ? getQuartiersBySousPrefecture(data.sousPrefectureCode) : []),
+    [data.sousPrefectureCode]
+  )
+
+  const calculateGeneration = (dateNaissance: string): string => {
+    if (!dateNaissance) return ''
+    const birthDate = new Date(dateNaissance)
+    const birthYear = birthDate.getFullYear()
+    const anneeDepart = -4003
+    const ecart = birthYear - anneeDepart
+    const generationIndex = Math.floor(ecart / 63) + 1
+    const generationNumber = Math.max(1, Math.min(200, generationIndex))
+    return `G${generationNumber}`
+  }
+
+  const validateRequiredFields = (): boolean => {
+    const errors = new Set<string>()
+
+    if (!data.paysCode) errors.add('paysCode')
+    if (!data.sousPrefectureCode) errors.add('sousPrefectureCode')
+    if (!data.quartierCode) errors.add('quartierCode')
+    if (!data.ethnie) errors.add('ethnie')
+    if (!data.famille) errors.add('famille')
+    if (!data.prenom) errors.add('prenom')
+    if (!data.dateNaissance) errors.add('dateNaissance')
+    if (!data.activite1) errors.add('activite1')
+    if (!data.email) errors.add('email')
+    if (!data.telephone) errors.add('telephone')
+    if (!data.password) errors.add('password')
+    if (!data.confirmPassword) errors.add('confirmPassword')
+    if (data.password && data.confirmPassword && data.password !== data.confirmPassword) {
+      errors.add('confirmPassword')
+    }
+
+    setValidationErrors(errors)
+    return errors.size === 0
+  }
+
+  const getFieldClassName = (fieldName: string, hasValue: boolean): string => {
+    const baseClass =
+      'w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+    if (validationErrors.has(fieldName)) {
+      return `${baseClass} border-red-500 border-2`
+    }
+    if (hasValue) {
+      return `${baseClass} border-green-500`
+    }
+    return `${baseClass} border-gray-300`
+  }
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Veuillez sélectionner un fichier image valide.')
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('La photo doit faire moins de 5MB.')
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setData((prev) => ({
+          ...prev,
+          photo: file,
+          photoPreview: e.target?.result as string
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removePhoto = () => {
+    setData((prev) => ({
+      ...prev,
+      photo: null,
+      photoPreview: null
+    }))
+  }
+
+  const generateNumeroH = async (form: WrittenData): Promise<string> => {
+    const generation = calculateGeneration(form.dateNaissance)
+    const path = form.quartierCode ? getLocationPath(form.quartierCode) : null
+    const continentCode = path && path.length >= 1 ? path[0].code : form.continentCode || 'C1'
+    const paysCode = path && path.length >= 2 ? path[1].code : form.paysCode || 'P1'
+    const regionCode = path && path.length >= 3 ? path[2].code : form.regionCode || 'R1'
+
+    const ethnieEntry = ETHNIE_CODES.find((e) => e.label === form.ethnie)
+    const familleEntry = FAMILLE_CODES.find((f) => f.label === form.famille)
+
+    const generateAutoCode = (name: string, prefix: string, existingCodes: string[]): string => {
+      if (!name) return prefix + '999'
+      const existingNums = existingCodes
+        .filter((c) => c.startsWith(prefix))
+        .map((c) => {
+          const numStr = c.substring(prefix.length)
+          const num = parseInt(numStr, 10)
+          return isNaN(num) ? 0 : num
+        })
+        .filter((n) => n > 0)
+      const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1
+      return prefix + nextNum.toString()
+    }
+
+    const ethnieCode =
+      ethnieEntry?.code || generateAutoCode(form.ethnie, 'E', ETHNIE_CODES.map((e) => e.code))
+    const familleCode =
+      familleEntry?.code ||
+      generateAutoCode(form.famille, 'F', FAMILLE_CODES.map((f) => f.code))
+
+    const prefix = `${generation}${continentCode}${paysCode}${regionCode}${ethnieCode}${familleCode}`
+    const { generateUniqueNumeroH } = await import('../../utils/numeroHGenerator')
+    return await generateUniqueNumeroH(prefix)
+  }
+
+  const handleSubmit = async () => {
+    if (!validateRequiredFields()) {
+      alert('Veuillez remplir tous les champs obligatoires (marqués en rouge).')
+      const firstErrorField = document.querySelector('.border-red-500')
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      return
+    }
+
+    const numeroH = await generateNumeroH(data)
+
+    const path = data.quartierCode ? getLocationPath(data.quartierCode) : null
+    const inferred =
+      path && path.length >= 6
+        ? {
+            continentCode: path[0].code,
+            continent: path[0].name,
+            paysCode: path[1].code,
+            pays: path[1].name,
+            regionCode: path[2].code,
+            region: path[2].name,
+            prefectureCode: path[3].code,
+            prefecture: path[3].name,
+            sousPrefecture: path[4].name,
+            quartier: path[5].name
+          }
+        : {}
+
+    setData((prev) => ({ ...prev, numeroH }))
+
+    const completeData = {
+      ...data,
+      ...inferred,
+      numeroH,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      prenom: data.prenom,
+      nomFamille: data.famille,
+      email: data.email.trim(),
+      religion: data.religion?.trim() || '',
+    handicap: data.handicap || '',
+      genre: data.genre,
+      photo: data.photoPreview,
+      photoPreview: data.photoPreview,
+      lieu1: data.lieu1 || data.quartier || ''
+    }
+
+    try {
+      const result = await api.registerLiving(completeData as any)
+
+      if (result.success) {
+        const userDataWithPassword = {
+          ...result.user,
+          password: data.password,
+          confirmPassword: data.confirmPassword
+        }
+
+        localStorage.setItem('vivant_written', JSON.stringify(userDataWithPassword))
+        localStorage.setItem('dernier_vivant', JSON.stringify(userDataWithPassword))
+
+        localStorage.setItem(
+          'session_user',
+          JSON.stringify({
+            numeroH: numeroH,
+            userData: userDataWithPassword,
+            token: result.token || null,
+            type: 'vivant',
+            source: 'registration_written'
+          })
+        )
+
+        if (result.token) {
+          localStorage.setItem('token', result.token)
+        }
+
+        navigate('/compte')
+      } else {
+        alert(`❌ Erreur: ${result.message}`)
+      }
+    } catch (error) {
+      console.error('Erreur enregistrement (écrit):', error)
+      const dataWithClearPassword = {
+        ...completeData,
+        password: data.password,
+        confirmPassword: data.confirmPassword
+      }
+
+      localStorage.setItem('vivant_written', JSON.stringify(dataWithClearPassword))
+      localStorage.setItem('dernier_vivant', JSON.stringify(dataWithClearPassword))
+
+      localStorage.setItem(
+        'session_user',
+        JSON.stringify({
+          numeroH: numeroH,
+          userData: dataWithClearPassword,
+          type: 'vivant',
+          source: 'registration_written_fallback'
+        })
+      )
+
+      navigate('/compte')
+    }
+  }
+
+  const missingFields: string[] = []
+  if (!data.dateNaissance) missingFields.push('Date de naissance')
+  if (!data.paysCode) missingFields.push('Pays')
+  if (!data.sousPrefectureCode) missingFields.push('Sous-préfecture')
+  if (!data.quartierCode) missingFields.push('Quartier')
+  if (!data.ethnie) missingFields.push('Ethnie')
+  if (!data.famille) missingFields.push('Nom de famille')
+  if (!data.prenom) missingFields.push('Prénom')
+  if (!data.activite1) missingFields.push('Activité principale')
+  if (!data.email) missingFields.push('E-mail')
+  if (!data.telephone) missingFields.push('Téléphone')
+  if (!data.password) missingFields.push('Mot de passe')
+  if (!data.confirmPassword) missingFields.push('Confirmation du mot de passe')
+  if (data.password && data.confirmPassword && data.password !== data.confirmPassword) {
+    missingFields.push('Les mots de passe ne correspondent pas')
+  }
+  if (data.password && data.password.length < 6) {
+    missingFields.push('Le mot de passe doit contenir au moins 6 caractères')
+  }
+  const isDisabled = missingFields.length > 0
+
+  return (
+    <div className="stack">
+      <h2>Inscription par écrit</h2>
+      <div className="card" style={{ maxWidth: '32rem', width: '100%' }}>
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>Date de naissance</label>
+              <input
+                type="date"
+                value={data.dateNaissance}
+                onChange={(e) => {
+                  const generation = calculateGeneration(e.target.value)
+                  setData((prev) => ({ ...prev, dateNaissance: e.target.value, generation }))
+                  if (e.target.value) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('dateNaissance')
+                      return next
+                    })
+                  }
+                }}
+                required
+                className={getFieldClassName('dateNaissance', !!data.dateNaissance)}
+              />
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Genre</label>
+              <select
+                value={data.genre}
+                onChange={(e) => setData((prev) => ({ ...prev, genre: e.target.value }))}
+              >
+                <option value="HOMME">HOMME</option>
+                <option value="FEMME">FEMME</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>Pays *</label>
+              <select
+                value={data.paysCode}
+                onChange={(e) => {
+                  const selectedCountry = countries.find((c) => c.code === e.target.value)
+                  setData((prev) => ({
+                    ...prev,
+                    pays: selectedCountry?.name || '',
+                    paysCode: e.target.value,
+                    sousPrefecture: '',
+                    sousPrefectureCode: '',
+                    quartier: '',
+                    quartierCode: ''
+                  }))
+                  if (e.target.value) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('paysCode')
+                      return next
+                    })
+                  }
+                }}
+                required
+                className={getFieldClassName('paysCode', !!data.paysCode)}
+              >
+                <option value="">Pays</option>
+                {countries.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
+              {data.paysCode && (
+                <small className="text-green-600">
+                  ✓ Pays : {countries.find((c) => c.code === data.paysCode)?.name}
+                </small>
+              )}
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Sous-préfecture *</label>
+              <select
+                value={data.sousPrefectureCode}
+                onChange={(e) => {
+                  const selected = sousPrefectures.find((sp) => sp.code === e.target.value)
+                  setData((prev) => ({
+                    ...prev,
+                    sousPrefecture: selected?.name || '',
+                    sousPrefectureCode: e.target.value,
+                    quartier: '',
+                    quartierCode: ''
+                  }))
+                  if (e.target.value) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('sousPrefectureCode')
+                      return next
+                    })
+                  }
+                }}
+                disabled={!data.paysCode}
+                required
+                className={getFieldClassName('sousPrefectureCode', !!data.sousPrefectureCode)}
+              >
+                <option value="">
+                  {data.paysCode
+                    ? `Sous-préfecture (${sousPrefectures.length})`
+                    : "Choisir un pays d'abord"}
+                </option>
+                {sousPrefectures.map((sp) => (
+                  <option key={sp.code} value={sp.code}>
+                    {sp.name}
+                  </option>
+                ))}
+              </select>
+              {!data.paysCode && (
+                <small className="text-orange-600">
+                  Veuillez d&apos;abord sélectionner un pays
+                </small>
+              )}
+              {data.sousPrefectureCode && (
+                <small className="text-green-600">
+                  ✓ Sous-préfecture :{' '}
+                  {sousPrefectures.find((sp) => sp.code === data.sousPrefectureCode)?.name}
+                </small>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>Quartier *</label>
+              <select
+                value={data.quartierCode}
+                onChange={(e) => {
+                  const selected = quartiers.find((q) => q.code === e.target.value)
+                  setData((prev) => ({
+                    ...prev,
+                    quartier: selected?.name || '',
+                    quartierCode: e.target.value
+                  }))
+                  if (e.target.value) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('quartierCode')
+                      return next
+                    })
+                  }
+                }}
+                disabled={!data.sousPrefectureCode}
+                required
+                className={getFieldClassName('quartierCode', !!data.quartierCode)}
+              >
+                <option value="">
+                  {data.sousPrefectureCode
+                    ? `Quartier (${quartiers.length})`
+                    : "Choisir une sous-préf. d'abord"}
+                </option>
+                {quartiers.map((q) => (
+                  <option key={q.code} value={q.code}>
+                    {q.name}
+                  </option>
+                ))}
+              </select>
+              {!data.sousPrefectureCode && (
+                <small className="text-orange-600">
+                  Veuillez d&apos;abord sélectionner une sous-préfecture
+                </small>
+              )}
+              {data.quartierCode && (
+                <small className="text-green-600">
+                  ✓ Quartier : {quartiers.find((q) => q.code === data.quartierCode)?.name}
+                </small>
+              )}
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Activité principale *</label>
+              <select
+                value={data.activite1}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, activite1: e.target.value }))
+                  if (e.target.value) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('activite1')
+                      return next
+                    })
+                  }
+                }}
+                required
+                className={getFieldClassName('activite1', !!data.activite1)}
+              >
+                <option value="">Activité</option>
+                <option value="Agriculture">Agriculture</option>
+                <option value="Élevage">Élevage</option>
+                <option value="Pêche">Pêche</option>
+                <option value="Commerce">Commerce</option>
+                <option value="Artisanat">Artisanat</option>
+                <option value="Transport">Transport</option>
+                <option value="Enseignement">Enseignement</option>
+                <option value="Santé">Santé</option>
+                <option value="Administration">Administration</option>
+                <option value="Informatique">Informatique</option>
+                <option value="Construction">Construction</option>
+                <option value="Mécanique">Mécanique</option>
+                <option value="Restauration">Restauration</option>
+                <option value="Coiffure">Coiffure</option>
+                <option value="Couture">Couture</option>
+                <option value="Menuiserie">Menuiserie</option>
+                <option value="Électricité">Électricité</option>
+                <option value="Plomberie">Plomberie</option>
+                <option value="Sécurité">Sécurité</option>
+                <option value="Banque/Finance">Banque/Finance</option>
+                <option value="Télécommunications">Télécommunications</option>
+                <option value="Journalisme">Journalisme</option>
+                <option value="Étudiant">Étudiant</option>
+                <option value="Sans emploi">Sans emploi</option>
+                <option value="Retraité">Retraité</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>Ethnie *</label>
+              <select
+                value={data.ethnie}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, ethnie: e.target.value }))
+                  if (e.target.value) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('ethnie')
+                      return next
+                    })
+                  }
+                }}
+                required
+                className={getFieldClassName('ethnie', !!data.ethnie)}
+              >
+                <option value="">Ethnie</option>
+                {ETHNIES.map((ethnie) => (
+                  <option key={ethnie} value={ethnie}>
+                    {ethnie}
+                  </option>
+                ))}
+              </select>
+              {data.ethnie && (
+                <small className="text-green-600">
+                  ✓ Ethnie sélectionnée : {data.ethnie}
+                </small>
+              )}
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Famille (Nom) *</label>
+              <select
+                value={data.famille}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, famille: e.target.value }))
+                  if (e.target.value) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('famille')
+                      return next
+                    })
+                  }
+                }}
+                required
+                className={getFieldClassName('famille', !!data.famille)}
+              >
+                <option value="">Nom de famille</option>
+                {FAMILLES.map((famille) => (
+                  <option key={famille} value={famille}>
+                    {famille}
+                  </option>
+                ))}
+              </select>
+              {data.famille && (
+                <small className="text-green-600">
+                  ✓ Nom de famille sélectionné : {data.famille}
+                </small>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>Prénom *</label>
+              <input
+                value={data.prenom}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, prenom: e.target.value }))
+                  if (e.target.value.trim()) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('prenom')
+                      return next
+                    })
+                  }
+                }}
+                placeholder="Prénom"
+                required
+                className={getFieldClassName('prenom', !!data.prenom)}
+              />
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Téléphone *</label>
+              <input
+                value={data.telephone}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, telephone: e.target.value }))
+                  if (e.target.value.trim()) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('telephone')
+                      return next
+                    })
+                  }
+                }}
+                placeholder="Téléphone"
+                required
+                className={getFieldClassName('telephone', !!data.telephone)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>NuméroH (Père)</label>
+              <input
+                value={data.numeroHPere}
+                onChange={(e) => setData((prev) => ({ ...prev, numeroHPere: e.target.value }))}
+                placeholder="Ex: G1C1P1R1E1F1 1"
+              />
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>NuméroH (Mère)</label>
+              <input
+                value={data.numeroHMere}
+                onChange={(e) => setData((prev) => ({ ...prev, numeroHMere: e.target.value }))}
+                placeholder="Ex: G1C1P1R1E1F1 2"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>E-mail *</label>
+              <input
+                type="email"
+                value={data.email}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, email: e.target.value }))
+                  if (e.target.value.trim()) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('email')
+                      return next
+                    })
+                  }
+                }}
+                placeholder="Email"
+                required
+                className={getFieldClassName('email', !!data.email)}
+              />
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Religion</label>
+              <input
+                value={data.religion}
+                onChange={(e) => setData((prev) => ({ ...prev, religion: e.target.value }))}
+                placeholder="Religion"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>Personne en situation de handicap ?</label>
+              <select
+                value={data.handicap}
+                onChange={(e) => setData((prev) => ({ ...prev, handicap: e.target.value }))}
+              >
+                <option value="">Sélectionner</option>
+                <option value="NON">Non</option>
+                <option value="OUI">Oui</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <div className="field">
+              <label>Mot de passe *</label>
+              <input
+                type="password"
+                value={data.password}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, password: e.target.value }))
+                  if (e.target.value && e.target.value.length >= 6) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('password')
+                      return next
+                    })
+                  }
+                }}
+                placeholder="Mot de passe"
+                minLength={6}
+                required
+                className={getFieldClassName(
+                  'password',
+                  !!data.password && data.password.length >= 6
+                )}
+              />
+              {data.password && data.password.length < 6 && (
+                <small className="error">
+                  Le mot de passe doit contenir au moins 6 caractères
+                </small>
+              )}
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Confirmer le mot de passe *</label>
+              <input
+                type="password"
+                value={data.confirmPassword}
+                onChange={(e) => {
+                  setData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  if (
+                    e.target.value &&
+                    data.password === e.target.value &&
+                    e.target.value.length >= 6
+                  ) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('confirmPassword')
+                      return next
+                    })
+                  }
+                }}
+                placeholder="Confirmer"
+                minLength={6}
+                required
+                className={getFieldClassName(
+                  'confirmPassword',
+                  !!data.confirmPassword &&
+                    data.password === data.confirmPassword &&
+                    data.password.length >= 6
+                )}
+              />
+              {data.confirmPassword && data.password !== data.confirmPassword && (
+                <small className="error">Les mots de passe ne correspondent pas</small>
+              )}
+              {data.confirmPassword &&
+                data.password === data.confirmPassword &&
+                data.password.length >= 6 && (
+                  <small className="success">✓ Les mots de passe correspondent</small>
+                )}
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-12">
+            <div className="field">
+              <label>Photo de profil (optionnel)</label>
+              <div className="photo-upload-section">
+                {data.photoPreview ? (
+                  <div className="photo-preview">
+                    <img
+                      src={data.photoPreview}
+                      alt="Aperçu de la photo"
+                      className="preview-image"
+                    />
+                    <div className="photo-actions">
+                      <button
+                        type="button"
+                        className="btn-small secondary"
+                        onClick={removePhoto}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="photo-upload-area">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      id="photo-upload-written"
+                      style={{ display: 'none' }}
+                    />
+                    <label htmlFor="photo-upload-written" className="upload-button">
+                      <span className="upload-icon">📷</span>
+                      <span>Cliquer pour ajouter une photo</span>
+                      <small>Formats acceptés: JPG, PNG, GIF (max 5MB)</small>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="actions">
+          <button
+            className={`btn ${isDisabled ? 'disabled' : ''}`}
+            onClick={handleSubmit}
+            disabled={isDisabled}
+            style={{
+              opacity: isDisabled ? 0.6 : 1,
+              cursor: isDisabled ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {isDisabled ? 'Remplir les champs obligatoires' : "✅ Finaliser l'inscription"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+

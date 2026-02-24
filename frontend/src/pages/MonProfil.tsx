@@ -178,6 +178,14 @@ export default function MonProfil() {
                   {userData.numeroH}
                 </span>
               </div>
+              {userData.handicap && (
+                <div className="text-slate-600">
+                  <span className="font-medium">Situation de handicap:</span>{" "}
+                  <span className="text-emerald-700 font-semibold">
+                    {userData.handicap === "OUI" ? "Oui" : "Non"}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

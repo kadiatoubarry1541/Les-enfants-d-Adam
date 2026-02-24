@@ -1411,6 +1411,32 @@ export function getCountriesByContinent(continentCode: string): GeographicLocati
   return continent?.children || [];
 }
 
+/** Liste de tous les pays (tous continents). Pour formulaire simplifié Pays → Sous-préfecture → Quartier. */
+export function getAllCountries(): GeographicLocation[] {
+  const list: GeographicLocation[] = [];
+  for (const continent of WORLD_GEOGRAPHY) {
+    for (const country of continent.children || []) {
+      list.push(country);
+    }
+  }
+  return list;
+}
+
+/** Toutes les sous-préfectures d’un pays. Pour formulaire simplifié après choix du pays. */
+export function getSousPrefecturesByCountry(countryCode: string): GeographicLocation[] {
+  const country = WORLD_GEOGRAPHY.flatMap(c => c.children || []).find(p => p.code === countryCode);
+  if (!country) return [];
+  const list: GeographicLocation[] = [];
+  for (const region of country.children || []) {
+    for (const prefecture of region.children || []) {
+      for (const sp of prefecture.children || []) {
+        list.push(sp);
+      }
+    }
+  }
+  return list;
+}
+
 export function getRegionsByCountry(countryCode: string, continentCode?: string): GeographicLocation[] {
   // Si continentCode est fourni, chercher uniquement dans ce continent
   if (continentCode) {

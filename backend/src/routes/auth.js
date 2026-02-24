@@ -348,6 +348,7 @@ router.post('/register', validateUser, async (req, res) => {
           photo: userData.photo,
           video: userData.video,
           preuve: userData.preuve,
+          additionalInfo: userData.additionalInfo || null,
           createdBy: userData.createdBy || null
         };
 

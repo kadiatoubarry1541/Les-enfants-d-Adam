@@ -127,7 +127,7 @@ function App() {
         <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/inscription" element={<Inscription />} />
+          <Route path="/inscription" element={<Navigate to="/vivant" replace />} />
           <Route path="/choix" element={<RegistrationChoice />} />
           <Route path="/vivant/*" element={<LivingWizard />} />
           <Route path="/defunt/*" element={<DeceasedWizard />} />

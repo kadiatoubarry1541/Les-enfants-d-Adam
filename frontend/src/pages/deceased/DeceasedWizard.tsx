@@ -5,7 +5,6 @@ import { Field, FilePicker, Select, SelectCode } from '../../components/inputs'
 import { useI18n } from '../../i18n/useI18n'
 import { anneesEcoulees } from '../../utils/calculs'
 import { computeDecetCode, computeGenerationCode } from '../../utils/codes'
-import { DeceasedFamilyCheck } from './DeceasedFamilyCheck'
 import { DeceasedChoice } from './DeceasedChoice'
 import { DeceasedVideoRegistration } from './DeceasedVideoRegistration'
 import { DeceasedWrittenForm } from './DeceasedWrittenForm'
@@ -94,6 +93,27 @@ export function DeceasedWizard() {
   const set = (patch: Partial<EtatDefunt>) => setState(s => ({ ...s, ...patch }))
 
   const submitFinal = async () => {
+    // Vérifier les contraintes d'âge selon le lien de parenté indiqué
+    const relationAvecDeclarant = localStorage.getItem('defunt_relation') || null
+    try {
+      if ((relationAvecDeclarant === 'fils' || relationAvecDeclarant === 'fille') && state.dateNaissance) {
+        const rawSession = localStorage.getItem('session_user')
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession)
+          const u = parsed.userData || parsed
+          if (u.dateNaissance) {
+            const parentYear = new Date(u.dateNaissance).getFullYear()
+            const childYear = new Date(state.dateNaissance).getFullYear()
+            if (!isNaN(parentYear) && !isNaN(childYear) && childYear <= parentYear) {
+              alert('Un fils ou une fille ne peut pas être plus âgé(e) que son père ou sa mère. Vérifiez les dates de naissance.')
+              return
+            }
+          }
+        }
+      }
+    } catch {
+      // En cas de problème de lecture de la session, on ne bloque pas l\'inscription
+    }
     // Utiliser les codes géographiques sélectionnés ou valeurs par défaut
     const continentCode = state.continentCode || 'C1'
     const paysCode = state.paysCode || 'P1'
@@ -149,7 +169,10 @@ export function DeceasedWizard() {
       isDeceased: true,
       prenom: state.prenom || 'Défunt',
       nomFamille: state.nom || 'Inconnu',
-      email: `${numero}@defunt.genealogie`
+      email: `${numero}@defunt.genealogie`,
+      additionalInfo: {
+        relationAvecDeclarant: relationAvecDeclarant || 'inconnu'
+      }
     }
     
     try {
@@ -188,7 +211,7 @@ Les membres de la famille peuvent maintenant voir ce défunt dans leur arbre gé
 
   return (
     <Routes>
-      <Route path="/" element={<DeceasedFamilyCheck />} />
+      <Route path="/" element={<DeceasedChoice />} />
       <Route path="/choix" element={<DeceasedChoice />} />
       <Route path="/video" element={<DeceasedVideoRegistration />} />
       <Route path="/formulaire" element={<DeceasedWrittenForm />} />

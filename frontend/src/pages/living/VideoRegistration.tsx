@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { VideoRecorder } from '../../components/VideoRecorder'
 import { api } from '../../utils/api'
 import { 
-  getContinents,
-  getCountriesByContinent,
-  getRegionsByCountry,
-  getPrefecturesByRegion, 
-  getSousPrefecturesByPrefecture, 
+  getAllCountries,
+  getSousPrefecturesByCountry,
   getQuartiersBySousPrefecture,
+  getLocationPath,
   type GeographicLocation
 } from '../../utils/worldGeography'
 import { ETHNIE_CODES, FAMILLE_CODES, ETHNIES, FAMILLES } from '../../utils/constants'
@@ -33,6 +31,8 @@ interface VideoData {
   famille: string
   prenom: string
   telephone: string
+  email: string
+  religion: string
   generation: string
   password: string
   confirmPassword: string
@@ -40,16 +40,15 @@ interface VideoData {
   photo: File | null
   photoPreview: string | null
   genre: string
-  
-  // Activités professionnelles
+  handicap: string
+  // Inscription simplifiée : 1 seule activité et 1 seul lieu (les autres se complètent en profil)
   activite1: string
   activite2: string
   activite3: string
-  
-  // Champs de lieu de résidence
   lieu1: string
   lieu2: string
   lieu3: string
+  numeroH?: string
 }
 
 export function VideoRegistration() {
@@ -73,6 +72,8 @@ export function VideoRegistration() {
     famille: '',
     prenom: '',
     telephone: '',
+    email: '',
+    religion: '',
     generation: '',
     password: '',
     confirmPassword: '',
@@ -80,6 +81,7 @@ export function VideoRegistration() {
     photo: null,
     photoPreview: null,
     genre: 'HOMME',
+    handicap: '',
     
     // Activités professionnelles
     activite1: '',
@@ -100,18 +102,13 @@ export function VideoRegistration() {
   const validateRequiredFields = (): boolean => {
     const errors = new Set<string>()
     
-    if (!videoData.continentCode) errors.add('continentCode')
     if (!videoData.paysCode) errors.add('paysCode')
-    if (!videoData.regionCode) errors.add('regionCode')
-    if (!videoData.prefectureCode) errors.add('prefectureCode')
     if (!videoData.sousPrefectureCode) errors.add('sousPrefectureCode')
     if (!videoData.quartierCode) errors.add('quartierCode')
     if (!videoData.ethnie) errors.add('ethnie')
     if (!videoData.famille) errors.add('famille')
     if (!videoData.prenom) errors.add('prenom')
     if (!videoData.dateNaissance) errors.add('dateNaissance')
-    if (!videoData.activite1) errors.add('activite1')
-    if (!videoData.lieu1) errors.add('lieu1')
     if (!videoData.password) errors.add('password')
     if (!videoData.confirmPassword) errors.add('confirmPassword')
     if (videoData.password && videoData.confirmPassword && videoData.password !== videoData.confirmPassword) {
@@ -134,27 +131,15 @@ export function VideoRegistration() {
     return `${baseClass} border-gray-300`
   }
 
-  // Logique hiérarchique pour les données géographiques mondiales
-  const continents = useMemo(() => getContinents(), [])
-  const countries = useMemo(() => 
-    videoData.continentCode ? getCountriesByContinent(videoData.continentCode) : [], 
-    [videoData.continentCode]
-  )
-  const regions = useMemo(() => 
-    videoData.paysCode && videoData.continentCode ? getRegionsByCountry(videoData.paysCode, videoData.continentCode) : [], 
-    [videoData.paysCode, videoData.continentCode]
-  )
-  const prefectures = useMemo(() => 
-    videoData.regionCode && videoData.paysCode && videoData.continentCode ? getPrefecturesByRegion(videoData.regionCode, videoData.paysCode, videoData.continentCode) : [], 
-    [videoData.regionCode, videoData.paysCode, videoData.continentCode]
-  )
+  // Formulaire simplifié : Pays → Sous-préfecture → Quartier (continent, région, préfecture inférés du quartier)
+  const countries = useMemo(() => getAllCountries(), [])
   const sousPrefectures = useMemo(() => 
-    videoData.prefectureCode && videoData.regionCode && videoData.paysCode && videoData.continentCode ? getSousPrefecturesByPrefecture(videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode) : [], 
-    [videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode]
+    videoData.paysCode ? getSousPrefecturesByCountry(videoData.paysCode) : [], 
+    [videoData.paysCode]
   )
   const quartiers = useMemo(() => 
-    videoData.sousPrefectureCode && videoData.prefectureCode && videoData.regionCode && videoData.paysCode && videoData.continentCode ? getQuartiersBySousPrefecture(videoData.sousPrefectureCode, videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode) : [], 
-    [videoData.sousPrefectureCode, videoData.prefectureCode, videoData.regionCode, videoData.paysCode, videoData.continentCode]
+    videoData.sousPrefectureCode ? getQuartiersBySousPrefecture(videoData.sousPrefectureCode) : [], 
+    [videoData.sousPrefectureCode]
   )
 
   const handleVideoRecorded = (videoBlob: Blob) => {
@@ -162,6 +147,21 @@ export function VideoRegistration() {
     setVideoData(prev => ({ ...prev, video: videoBlob }))
     // Ne pas changer automatiquement l'étape, laisser l'utilisateur voir le bouton "Finaliser"
     // setCurrentStep('complete')
+  }
+
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result)
+        } else {
+          reject(new Error('Impossible de convertir la vidéo'))
+        }
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
   }
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,11 +217,11 @@ export function VideoRegistration() {
 
   const generateNumeroH = async (data: VideoData): Promise<string> => {
     const generation = calculateGeneration(data.dateNaissance)
-    
-    // Utiliser les codes géographiques sélectionnés
-    const continentCode = data.continentCode || 'C1'
-    const paysCode = data.paysCode || 'P1'
-    const regionCode = data.regionCode || 'R1'
+    // Inférer continent, région, préfecture à partir du quartier
+    const path = data.quartierCode ? getLocationPath(data.quartierCode) : null
+    const continentCode = path && path.length >= 1 ? path[0].code : (data.continentCode || 'C1')
+    const paysCode = path && path.length >= 2 ? path[1].code : (data.paysCode || 'P1')
+    const regionCode = path && path.length >= 3 ? path[2].code : (data.regionCode || 'R1')
     
     // Utiliser les codes depuis constants.ts avec fallback automatique
     const ethnieEntry = ETHNIE_CODES.find(e => e.label === data.ethnie)
@@ -275,24 +275,40 @@ export function VideoRegistration() {
 
     const numeroH = await generateNumeroH(videoData)
     
-    // Sauvegarder le NumeroH dans videoData pour référence future
+    // Inférer continent, région, préfecture pour l'API et Terre ADAM
+    const path = videoData.quartierCode ? getLocationPath(videoData.quartierCode) : null
+    const inferred = path && path.length >= 6 ? {
+      continentCode: path[0].code,
+      continent: path[0].name,
+      paysCode: path[1].code,
+      pays: path[1].name,
+      regionCode: path[2].code,
+      region: path[2].name,
+      prefectureCode: path[3].code,
+      prefecture: path[3].name,
+      sousPrefecture: path[4].name,
+      quartier: path[5].name
+    } : {}
+    
     setVideoData(prev => ({ ...prev, numeroH }))
     
+    const videoBase64 = videoData.video ? await blobToBase64(videoData.video) : null
+
     const completeData = { 
-      ...videoData, 
+      ...videoData,
+      ...inferred,
       numeroH,
-      // S'assurer que le mot de passe est inclus
       password: videoData.password,
       confirmPassword: videoData.confirmPassword,
       prenom: videoData.prenom,
       nomFamille: videoData.famille,
-      email: `${numeroH}@example.com`,
-      genre: videoData.genre, // Utilise la valeur sélectionnée
-      // Inclure la photo de profil (en base64 pour localStorage)
-      photo: videoData.photoPreview, // Sauvegarder la version base64, pas l'objet File
+      email: videoData.email?.trim() || `${numeroH}@example.com`,
+      religion: videoData.religion?.trim() || '',
+      genre: videoData.genre,
+      photo: videoData.photoPreview,
       photoPreview: videoData.photoPreview,
-      // Utiliser le quartier comme lieu1 par défaut si non renseigné
-      lieu1: videoData.lieu1 || videoData.quartier || ''
+      lieu1: videoData.lieu1 || videoData.quartier || '',
+      video: videoBase64
     }
     
     console.log('💾 Sauvegarde des données:', completeData)
@@ -378,30 +394,7 @@ export function VideoRegistration() {
     return (
       <div className="stack">
         <h2>Informations de base</h2>
-        <div className="card">
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>NuméroH/HD (Père)</label>
-                <input 
-                  value={videoData.numeroHPere}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, numeroHPere: e.target.value }))}
-                  placeholder="Ex: G1C1P1R1E1F1 1"
-                />
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>NuméroH/HD (Mère)</label>
-                <input 
-                  value={videoData.numeroHMere}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, numeroHMere: e.target.value }))}
-                  placeholder="Ex: G1C1P1R1E1F1 2"
-                />
-              </div>
-            </div>
-          </div>
-          
+        <div className="card" style={{ maxWidth: '32rem', width: '100%' }}>
           <div className="row">
             <div className="col-6">
               <div className="field">
@@ -427,52 +420,17 @@ export function VideoRegistration() {
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Continent *</label>
+                <label>Genre</label>
                 <select 
-                  value={videoData.continentCode} 
-                  onChange={(e) => {
-                    const selectedContinent = continents.find(c => c.code === e.target.value)
-                    setVideoData(prev => ({ 
-                      ...prev, 
-                      continent: selectedContinent?.name || '',
-                      continentCode: e.target.value,
-                      pays: '',
-                      paysCode: '',
-                      region: '',
-                      regionCode: '',
-                      prefecture: '',
-                      prefectureCode: '',
-                      sousPrefecture: '',
-                      sousPrefectureCode: '',
-                      quartier: '',
-                      quartierCode: ''
-                    }))
-                    // Retirer l'erreur de validation si le champ est rempli
-                    if (e.target.value) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('continentCode')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  required
-                  className={getFieldClassName('continentCode', !!videoData.continentCode)}
+                  value={videoData.genre}
+                  onChange={(e) => setVideoData(prev => ({ ...prev, genre: e.target.value }))}
                 >
-                  <option value="">Sélectionner un continent</option>
-                  {continents.map(continent => (
-                    <option key={continent.code} value={continent.code}>
-                      {continent.name}
-                    </option>
-                  ))}
+                  <option value="HOMME">HOMME</option>
+                  <option value="FEMME">FEMME</option>
                 </select>
-                {videoData.continentCode && (
-                  <small className="text-green-600">✓ Continent sélectionné : {videoData.continent}</small>
-                )}
               </div>
             </div>
           </div>
-          
           <div className="row">
             <div className="col-6">
               <div className="field">
@@ -485,10 +443,6 @@ export function VideoRegistration() {
                       ...prev, 
                       pays: selectedCountry?.name || '',
                       paysCode: e.target.value,
-                      region: '',
-                      regionCode: '',
-                      prefecture: '',
-                      prefectureCode: '',
                       sousPrefecture: '',
                       sousPrefectureCode: '',
                       quartier: '',
@@ -502,119 +456,18 @@ export function VideoRegistration() {
                       })
                     }
                   }}
-                  disabled={!videoData.continentCode}
                   required
                   className={getFieldClassName('paysCode', !!videoData.paysCode)}
                 >
-                  <option value="">{videoData.continentCode ? `Sélectionner un pays (${countries.length} disponible${countries.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un continent'}</option>
+                  <option value="">Pays</option>
                   {countries.map(country => (
                     <option key={country.code} value={country.code}>
                       {country.name}
                     </option>
                   ))}
                 </select>
-                {!videoData.continentCode && (
-                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner un continent</small>
-                )}
                 {videoData.paysCode && (
-                  <small className="text-green-600">✓ Pays sélectionné : {videoData.pays}</small>
-                )}
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>Région *</label>
-                <select 
-                  value={videoData.regionCode} 
-                  onChange={(e) => {
-                    const selectedRegion = regions.find(r => r.code === e.target.value)
-                    setVideoData(prev => ({ 
-                      ...prev, 
-                      region: selectedRegion?.name || '',
-                      regionCode: e.target.value,
-                      prefecture: '',
-                      prefectureCode: '',
-                      sousPrefecture: '',
-                      sousPrefectureCode: '',
-                      quartier: '',
-                      quartierCode: ''
-                    }))
-                    if (e.target.value) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('regionCode')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  disabled={!videoData.paysCode}
-                  required
-                  className={getFieldClassName('regionCode', !!videoData.regionCode)}
-                >
-                  <option value="">{videoData.paysCode ? `Sélectionner une région (${regions.length} disponible${regions.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord un pays'}</option>
-                  {regions.map(region => (
-                    <option key={region.code} value={region.code}>
-                      {region.name}
-                    </option>
-                  ))}
-                </select>
-                {!videoData.paysCode && (
-                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner un pays</small>
-                )}
-                {videoData.regionCode && (
-                  <small className="text-green-600">✓ Région sélectionnée : {videoData.region}</small>
-                )}
-                {videoData.paysCode && regions.length === 0 && (
-                  <small className="text-orange-600">⚠️ Aucune région disponible pour ce pays</small>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>Préfecture *</label>
-                <select 
-                  value={videoData.prefectureCode} 
-                  onChange={(e) => {
-                    const selectedPrefecture = prefectures.find(p => p.code === e.target.value)
-                    setVideoData(prev => ({ 
-                      ...prev, 
-                      prefecture: selectedPrefecture?.name || '',
-                      prefectureCode: e.target.value,
-                      sousPrefecture: '',
-                      sousPrefectureCode: '',
-                      quartier: '',
-                      quartierCode: ''
-                    }))
-                    if (e.target.value) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('prefectureCode')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  disabled={!videoData.regionCode}
-                  required
-                  className={getFieldClassName('prefectureCode', !!videoData.prefectureCode)}
-                >
-                  <option value="">{videoData.regionCode ? `Sélectionner une préfecture (${prefectures.length} disponible${prefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une région'}</option>
-                  {prefectures.map(prefecture => (
-                    <option key={prefecture.code} value={prefecture.code}>
-                      {prefecture.name}
-                    </option>
-                  ))}
-                </select>
-                {!videoData.regionCode && (
-                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une région</small>
-                )}
-                {videoData.prefectureCode && (
-                  <small className="text-green-600">✓ Préfecture sélectionnée : {videoData.prefecture}</small>
-                )}
-                {videoData.regionCode && prefectures.length === 0 && (
-                  <small className="text-orange-600">⚠️ Aucune préfecture disponible pour cette région</small>
+                  <small className="text-green-600">✓ Pays : {countries.find(c => c.code === videoData.paysCode)?.name}</small>
                 )}
               </div>
             </div>
@@ -624,10 +477,10 @@ export function VideoRegistration() {
                 <select 
                   value={videoData.sousPrefectureCode} 
                   onChange={(e) => {
-                    const selectedSousPrefecture = sousPrefectures.find(sp => sp.code === e.target.value)
+                    const selected = sousPrefectures.find(sp => sp.code === e.target.value)
                     setVideoData(prev => ({ 
                       ...prev, 
-                      sousPrefecture: selectedSousPrefecture?.name || '',
+                      sousPrefecture: selected?.name || '',
                       sousPrefectureCode: e.target.value,
                       quartier: '',
                       quartierCode: ''
@@ -640,30 +493,24 @@ export function VideoRegistration() {
                       })
                     }
                   }}
-                  disabled={!videoData.prefectureCode}
+                  disabled={!videoData.paysCode}
                   required
                   className={getFieldClassName('sousPrefectureCode', !!videoData.sousPrefectureCode)}
                 >
-                  <option value="">{videoData.prefectureCode ? `Sélectionner une sous-préfecture (${sousPrefectures.length} disponible${sousPrefectures.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une préfecture'}</option>
-                  {sousPrefectures.map(sousPrefecture => (
-                    <option key={sousPrefecture.code} value={sousPrefecture.code}>
-                      {sousPrefecture.name}
-                    </option>
+                  <option value="">{videoData.paysCode ? `Sous-préfecture (${sousPrefectures.length})` : 'Choisir un pays d\'abord'}</option>
+                  {sousPrefectures.map(sp => (
+                    <option key={sp.code} value={sp.code}>{sp.name}</option>
                   ))}
                 </select>
-                {!videoData.prefectureCode && (
-                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une préfecture</small>
+                {!videoData.paysCode && (
+                  <small className="text-orange-600">Veuillez d&apos;abord sélectionner un pays</small>
                 )}
                 {videoData.sousPrefectureCode && (
-                  <small className="text-green-600">✓ Sous-préfecture sélectionnée : {videoData.sousPrefecture}</small>
-                )}
-                {videoData.prefectureCode && sousPrefectures.length === 0 && (
-                  <small className="text-orange-600">⚠️ Aucune sous-préfecture disponible pour cette préfecture</small>
+                  <small className="text-green-600">✓ Sous-préfecture : {sousPrefectures.find(sp => sp.code === videoData.sousPrefectureCode)?.name}</small>
                 )}
               </div>
             </div>
           </div>
-          
           <div className="row">
             <div className="col-6">
               <div className="field">
@@ -671,10 +518,10 @@ export function VideoRegistration() {
                 <select 
                   value={videoData.quartierCode} 
                   onChange={(e) => {
-                    const selectedQuartier = quartiers.find(q => q.code === e.target.value)
+                    const selected = quartiers.find(q => q.code === e.target.value)
                     setVideoData(prev => ({ 
                       ...prev, 
-                      quartier: selectedQuartier?.name || '',
+                      quartier: selected?.name || '',
                       quartierCode: e.target.value
                     }))
                     if (e.target.value) {
@@ -689,213 +536,22 @@ export function VideoRegistration() {
                   required
                   className={getFieldClassName('quartierCode', !!videoData.quartierCode)}
                 >
-                  <option value="">{videoData.sousPrefectureCode ? `Sélectionner un quartier (${quartiers.length} disponible${quartiers.length > 1 ? 's' : ''})` : 'Sélectionnez d\'abord une sous-préfecture'}</option>
-                  {quartiers.map(quartier => (
-                    <option key={quartier.code} value={quartier.code}>
-                      {quartier.name}
-                    </option>
+                  <option value="">{videoData.sousPrefectureCode ? `Quartier (${quartiers.length})` : 'Choisir une sous-préf. d\'abord'}</option>
+                  {quartiers.map(q => (
+                    <option key={q.code} value={q.code}>{q.name}</option>
                   ))}
                 </select>
                 {!videoData.sousPrefectureCode && (
-                  <small className="text-orange-600">⚠️ Veuillez d'abord sélectionner une sous-préfecture</small>
+                  <small className="text-orange-600">Veuillez d&apos;abord sélectionner une sous-préfecture</small>
                 )}
                 {videoData.quartierCode && (
-                  <small className="text-green-600">✓ Quartier sélectionné : {videoData.quartier}</small>
-                )}
-                {videoData.sousPrefectureCode && quartiers.length === 0 && (
-                  <small className="text-orange-600">⚠️ Aucun quartier disponible pour cette sous-préfecture</small>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>Ethnie *</label>
-                <select 
-                  value={videoData.ethnie} 
-                  onChange={(e) => {
-                    setVideoData(prev => ({ ...prev, ethnie: e.target.value }))
-                    if (e.target.value) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('ethnie')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  required
-                  className={getFieldClassName('ethnie', !!videoData.ethnie)}
-                >
-                  <option value="">🌍 Sélectionner une ethnie</option>
-                  {ETHNIES.map(ethnie => (
-                    <option key={ethnie} value={ethnie}>{ethnie}</option>
-                  ))}
-                </select>
-                {videoData.ethnie && (
-                  <small className="text-green-600">✓ Ethnie sélectionnée : {videoData.ethnie}</small>
+                  <small className="text-green-600">✓ Quartier : {quartiers.find(q => q.code === videoData.quartierCode)?.name}</small>
                 )}
               </div>
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Famille (Nom) *</label>
-                <select 
-                  value={videoData.famille} 
-                  onChange={(e) => {
-                    setVideoData(prev => ({ ...prev, famille: e.target.value }))
-                    if (e.target.value) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('famille')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  required
-                  className={getFieldClassName('famille', !!videoData.famille)}
-                >
-                  <option value="">👨‍👩‍👧‍👦 Sélectionner un nom de famille</option>
-                  {FAMILLES.map(famille => (
-                    <option key={famille} value={famille}>{famille}</option>
-                  ))}
-                </select>
-                {videoData.famille && (
-                  <small className="text-green-600">✓ Nom de famille sélectionné : {videoData.famille}</small>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>Prénom</label>
-                <input 
-                  value={videoData.prenom}
-                  onChange={(e) => {
-                    setVideoData(prev => ({ ...prev, prenom: e.target.value }))
-                    if (e.target.value.trim()) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('prenom')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  placeholder="Votre prénom"
-                  required
-                  className={getFieldClassName('prenom', !!videoData.prenom)}
-                />
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>Téléphone</label>
-                <input 
-                  value={videoData.telephone}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, telephone: e.target.value }))}
-                  placeholder="Votre numéro de téléphone"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>Génération (auto)</label>
-                <input 
-                  value={videoData.generation}
-                  readOnly
-                  className="readonly"
-                />
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>Genre</label>
-                <select 
-                  value={videoData.genre}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, genre: e.target.value }))}
-                >
-                  <option value="HOMME">HOMME</option>
-                  <option value="FEMME">FEMME</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>Mot de passe</label>
-                <input 
-                  type="password"
-                  value={videoData.password}
-                  onChange={(e) => {
-                    setVideoData(prev => ({ ...prev, password: e.target.value }))
-                    if (e.target.value && e.target.value.length >= 6) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('password')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  placeholder="Choisissez un mot de passe"
-                  minLength={6}
-                  required
-                  className={getFieldClassName('password', !!videoData.password && videoData.password.length >= 6)}
-                />
-                {videoData.password && videoData.password.length < 6 && (
-                  <small className="error">Le mot de passe doit contenir au moins 6 caractères</small>
-                )}
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>Confirmer le mot de passe</label>
-                <input 
-                  type="password"
-                  value={videoData.confirmPassword}
-                  onChange={(e) => {
-                    setVideoData(prev => ({ ...prev, confirmPassword: e.target.value }))
-                    if (e.target.value && videoData.password === e.target.value && e.target.value.length >= 6) {
-                      setValidationErrors(prev => {
-                        const newErrors = new Set(prev)
-                        newErrors.delete('confirmPassword')
-                        return newErrors
-                      })
-                    }
-                  }}
-                  placeholder="Confirmez votre mot de passe"
-                  minLength={6}
-                  required
-                  className={getFieldClassName('confirmPassword', !!videoData.confirmPassword && videoData.password === videoData.confirmPassword && videoData.password.length >= 6)}
-                />
-                {videoData.confirmPassword && videoData.password !== videoData.confirmPassword && (
-                  <small className="error">Les mots de passe ne correspondent pas</small>
-                )}
-                {videoData.confirmPassword && videoData.password === videoData.confirmPassword && videoData.password.length >= 6 && (
-                  <small className="success">✓ Les mots de passe correspondent</small>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Activités professionnelles */}
-          <div className="row">
-            <div className="col-12">
-              <h3>Activités professionnelles</h3>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-12">
-              <div className="field">
-                <label>Activité principale *</label>
+                <label>Activité principale (optionnel)</label>
                 <select 
                   value={videoData.activite1}
                   onChange={(e) => {
@@ -908,10 +564,9 @@ export function VideoRegistration() {
                       })
                     }
                   }}
-                  required
                   className={getFieldClassName('activite1', !!videoData.activite1)}
                 >
-                  <option value="">Sélectionner une activité</option>
+                  <option value="">Activité</option>
                   <option value="Agriculture">Agriculture</option>
                   <option value="Élevage">Élevage</option>
                   <option value="Pêche">Pêche</option>
@@ -946,127 +601,213 @@ export function VideoRegistration() {
           <div className="row">
             <div className="col-6">
               <div className="field">
-                <label>Activité secondaire (optionnel)</label>
+                <label>Ethnie *</label>
                 <select 
-                  value={videoData.activite2}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, activite2: e.target.value }))}
-                >
-                  <option value="">Sélectionner une activité</option>
-                  <option value="Agriculture">Agriculture</option>
-                  <option value="Élevage">Élevage</option>
-                  <option value="Pêche">Pêche</option>
-                  <option value="Commerce">Commerce</option>
-                  <option value="Artisanat">Artisanat</option>
-                  <option value="Transport">Transport</option>
-                  <option value="Enseignement">Enseignement</option>
-                  <option value="Santé">Santé</option>
-                  <option value="Administration">Administration</option>
-                  <option value="Informatique">Informatique</option>
-                  <option value="Construction">Construction</option>
-                  <option value="Mécanique">Mécanique</option>
-                  <option value="Restauration">Restauration</option>
-                  <option value="Coiffure">Coiffure</option>
-                  <option value="Couture">Couture</option>
-                  <option value="Menuiserie">Menuiserie</option>
-                  <option value="Électricité">Électricité</option>
-                  <option value="Plomberie">Plomberie</option>
-                  <option value="Sécurité">Sécurité</option>
-                  <option value="Banque/Finance">Banque/Finance</option>
-                  <option value="Télécommunications">Télécommunications</option>
-                  <option value="Journalisme">Journalisme</option>
-                  <option value="Autre">Autre</option>
-                </select>
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>Activité tertiaire (optionnel)</label>
-                <select 
-                  value={videoData.activite3}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, activite3: e.target.value }))}
-                >
-                  <option value="">Sélectionner une activité</option>
-                  <option value="Agriculture">Agriculture</option>
-                  <option value="Élevage">Élevage</option>
-                  <option value="Pêche">Pêche</option>
-                  <option value="Commerce">Commerce</option>
-                  <option value="Artisanat">Artisanat</option>
-                  <option value="Transport">Transport</option>
-                  <option value="Enseignement">Enseignement</option>
-                  <option value="Santé">Santé</option>
-                  <option value="Administration">Administration</option>
-                  <option value="Informatique">Informatique</option>
-                  <option value="Construction">Construction</option>
-                  <option value="Mécanique">Mécanique</option>
-                  <option value="Restauration">Restauration</option>
-                  <option value="Coiffure">Coiffure</option>
-                  <option value="Couture">Couture</option>
-                  <option value="Menuiserie">Menuiserie</option>
-                  <option value="Électricité">Électricité</option>
-                  <option value="Plomberie">Plomberie</option>
-                  <option value="Sécurité">Sécurité</option>
-                  <option value="Banque/Finance">Banque/Finance</option>
-                  <option value="Télécommunications">Télécommunications</option>
-                  <option value="Journalisme">Journalisme</option>
-                  <option value="Autre">Autre</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          {/* Champs de lieu de résidence */}
-          <div className="row">
-            <div className="col-12">
-              <h3>Lieux de résidence</h3>
-            </div>
-          </div>
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="field">
-                <label>Lieu de résidence 1 (Quartier) *</label>
-                <input
-                  type="text"
-                  value={videoData.lieu1 || videoData.quartier}
+                  value={videoData.ethnie} 
                   onChange={(e) => {
-                    setVideoData(prev => ({ ...prev, lieu1: e.target.value }))
-                    if (e.target.value.trim()) {
+                    setVideoData(prev => ({ ...prev, ethnie: e.target.value }))
+                    if (e.target.value) {
                       setValidationErrors(prev => {
                         const newErrors = new Set(prev)
-                        newErrors.delete('lieu1')
+                        newErrors.delete('ethnie')
                         return newErrors
                       })
                     }
                   }}
-                  placeholder={videoData.quartier || "Votre quartier"}
                   required
-                  className={getFieldClassName('lieu1', !!videoData.lieu1)}
-                />
-                <small className="text-muted">
-                  Quartier sélectionné : {videoData.quartier || 'Aucun'} (sera utilisé par défaut)
-                </small>
+                  className={getFieldClassName('ethnie', !!videoData.ethnie)}
+                >
+                  <option value="">Ethnie</option>
+                  {ETHNIES.map(ethnie => (
+                    <option key={ethnie} value={ethnie}>{ethnie}</option>
+                  ))}
+                </select>
+                {videoData.ethnie && (
+                  <small className="text-green-600">✓ Ethnie sélectionnée : {videoData.ethnie}</small>
+                )}
               </div>
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Lieu de résidence 2 (Optionnel)</label>
-                <input
-                  type="text"
-                  value={videoData.lieu2}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, lieu2: e.target.value }))}
-                  placeholder="Autre lieu de résidence"
+                <label>Famille (Nom) *</label>
+                <select 
+                  value={videoData.famille} 
+                  onChange={(e) => {
+                    setVideoData(prev => ({ ...prev, famille: e.target.value }))
+                    if (e.target.value) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev)
+                        newErrors.delete('famille')
+                        return newErrors
+                      })
+                    }
+                  }}
+                  required
+                  className={getFieldClassName('famille', !!videoData.famille)}
+                >
+                  <option value="">Nom de famille</option>
+                  {FAMILLES.map(famille => (
+                    <option key={famille} value={famille}>{famille}</option>
+                  ))}
+                </select>
+                {videoData.famille && (
+                  <small className="text-green-600">✓ Nom de famille sélectionné : {videoData.famille}</small>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Prénom</label>
+                <input 
+                  value={videoData.prenom}
+                  onChange={(e) => {
+                    setVideoData(prev => ({ ...prev, prenom: e.target.value }))
+                    if (e.target.value.trim()) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev)
+                        newErrors.delete('prenom')
+                        return newErrors
+                      })
+                    }
+                  }}
+                  placeholder="Prénom"
+                  required
+                  className={getFieldClassName('prenom', !!videoData.prenom)}
                 />
               </div>
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Lieu de résidence 3 (Optionnel)</label>
-                <input
-                  type="text"
-                  value={videoData.lieu3}
-                  onChange={(e) => setVideoData(prev => ({ ...prev, lieu3: e.target.value }))}
-                  placeholder="Autre lieu de résidence"
+                <label>Téléphone</label>
+                <input 
+                  value={videoData.telephone}
+                  onChange={(e) => setVideoData(prev => ({ ...prev, telephone: e.target.value }))}
+                  placeholder="Téléphone"
                 />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>NuméroH (Père)</label>
+                <input 
+                  value={videoData.numeroHPere}
+                  onChange={(e) => setVideoData(prev => ({ ...prev, numeroHPere: e.target.value }))}
+                  placeholder="Ex: G1C1P1R1E1F1 1"
+                />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>NuméroH (Mère)</label>
+                <input 
+                  value={videoData.numeroHMere}
+                  onChange={(e) => setVideoData(prev => ({ ...prev, numeroHMere: e.target.value }))}
+                  placeholder="Ex: G1C1P1R1E1F1 2"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Personne en situation de handicap ?</label>
+                <select
+                  value={videoData.handicap}
+                  onChange={(e) => setVideoData(prev => ({ ...prev, handicap: e.target.value }))}
+                >
+                  <option value="">Sélectionner</option>
+                  <option value="NON">Non</option>
+                  <option value="OUI">Oui</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>E-mail</label>
+                <input 
+                  type="email"
+                  value={videoData.email}
+                  onChange={(e) => setVideoData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Email"
+                />
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Religion</label>
+                <input 
+                  value={videoData.religion}
+                  onChange={(e) => setVideoData(prev => ({ ...prev, religion: e.target.value }))}
+                  placeholder="Religion"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="row">
+            <div className="col-6">
+              <div className="field">
+                <label>Mot de passe</label>
+                <input 
+                  type="password"
+                  value={videoData.password}
+                  onChange={(e) => {
+                    setVideoData(prev => ({ ...prev, password: e.target.value }))
+                    if (e.target.value && e.target.value.length >= 6) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev)
+                        newErrors.delete('password')
+                        return newErrors
+                      })
+                    }
+                  }}
+                  placeholder="Mot de passe"
+                  minLength={6}
+                  required
+                  className={getFieldClassName('password', !!videoData.password && videoData.password.length >= 6)}
+                />
+                {videoData.password && videoData.password.length < 6 && (
+                  <small className="error">Le mot de passe doit contenir au moins 6 caractères</small>
+                )}
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Confirmer le mot de passe</label>
+                <input 
+                  type="password"
+                  value={videoData.confirmPassword}
+                  onChange={(e) => {
+                    setVideoData(prev => ({ ...prev, confirmPassword: e.target.value }))
+                    if (e.target.value && videoData.password === e.target.value && e.target.value.length >= 6) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev)
+                        newErrors.delete('confirmPassword')
+                        return newErrors
+                      })
+                    }
+                  }}
+                  placeholder="Confirmer"
+                  minLength={6}
+                  required
+                  className={getFieldClassName('confirmPassword', !!videoData.confirmPassword && videoData.password === videoData.confirmPassword && videoData.password.length >= 6)}
+                />
+                {videoData.confirmPassword && videoData.password !== videoData.confirmPassword && (
+                  <small className="error">Les mots de passe ne correspondent pas</small>
+                )}
+                {videoData.confirmPassword && videoData.password === videoData.confirmPassword && videoData.password.length >= 6 && (
+                  <small className="success">✓ Les mots de passe correspondent</small>
+                )}
               </div>
             </div>
           </div>
@@ -1115,20 +856,15 @@ export function VideoRegistration() {
           </div>
           
           <div className="actions">
-            {/* Indicateur de validation - Afficher les champs manquants */}
             {(() => {
               const missingFields: string[] = []
               if (!videoData.dateNaissance) missingFields.push('Date de naissance')
-              if (!videoData.continentCode) missingFields.push('Continent')
               if (!videoData.paysCode) missingFields.push('Pays')
-              if (!videoData.regionCode) missingFields.push('Région')
-              if (!videoData.prefectureCode) missingFields.push('Préfecture')
               if (!videoData.sousPrefectureCode) missingFields.push('Sous-préfecture')
               if (!videoData.quartierCode) missingFields.push('Quartier')
               if (!videoData.ethnie) missingFields.push('Ethnie')
               if (!videoData.famille) missingFields.push('Nom de famille')
               if (!videoData.prenom) missingFields.push('Prénom')
-              if (!videoData.activite1) missingFields.push('Activité principale')
               if (!videoData.password) missingFields.push('Mot de passe')
               if (!videoData.confirmPassword) missingFields.push('Confirmation du mot de passe')
               if (videoData.password && videoData.confirmPassword && videoData.password !== videoData.confirmPassword) {
@@ -1137,54 +873,30 @@ export function VideoRegistration() {
               if (videoData.password && videoData.password.length < 6) {
                 missingFields.push('Le mot de passe doit contenir au moins 6 caractères')
               }
-              if (!videoData.lieu1) missingFields.push('Lieu de résidence 1')
-              
               const isDisabled = missingFields.length > 0
-              
+
               return (
-                <>
-                  {isDisabled && (
-                    <div style={{
-                      padding: '15px',
-                      backgroundColor: '#fff3cd',
-                      border: '2px solid #ffc107',
-                      borderRadius: '8px',
-                      marginBottom: '15px',
-                      fontSize: '14px'
-                    }}>
-                      <strong style={{ color: '#856404', display: 'block', marginBottom: '10px' }}>
-                            ⚠️ Champs manquants ou invalides ({missingFields.length}) :
-                          </strong>
-                      <ul style={{ margin: '5px 0', paddingLeft: '20px', color: '#856404' }}>
-                        {missingFields.map((field, index) => (
-                          <li key={index} style={{ marginBottom: '5px' }}>{field}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-            <button 
-                    className={`btn ${isDisabled ? 'disabled' : ''}`}
-                    onClick={() => {
-                      // Valider avant de passer à l'étape vidéo
-                      if (!validateRequiredFields()) {
-                        alert('Veuillez remplir tous les champs obligatoires (marqués en rouge) avant de continuer.')
-                        const firstErrorField = document.querySelector('.border-red-500')
-                        if (firstErrorField) {
-                          firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                        }
-                        return
+                <button
+                  className={`btn ${isDisabled ? 'disabled' : ''}`}
+                  onClick={() => {
+                    if (!validateRequiredFields()) {
+                      alert('Veuillez remplir tous les champs obligatoires (marqués en rouge) avant de continuer.')
+                      const firstErrorField = document.querySelector('.border-red-500')
+                      if (firstErrorField) {
+                        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
                       }
-                      setCurrentStep('video')
-                    }}
-                    disabled={isDisabled}
-                    style={{
-                      opacity: isDisabled ? 0.6 : 1,
-                      cursor: isDisabled ? 'not-allowed' : 'pointer'
-                    }}
-            >
-                    {isDisabled ? '⚠️ Remplissez tous les champs ci-dessus' : '✅ Enregistrer la vidéo'}
-            </button>
-                </>
+                      return
+                    }
+                    setCurrentStep('video')
+                  }}
+                  disabled={isDisabled}
+                  style={{
+                    opacity: isDisabled ? 0.6 : 1,
+                    cursor: isDisabled ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isDisabled ? 'Remplir les champs obligatoires' : '✅ Enregistrer la vidéo'}
+                </button>
               )
             })()}
           </div>
@@ -1200,7 +912,7 @@ export function VideoRegistration() {
         <div className="card">
           <VideoRecorder 
             onVideoRecorded={handleVideoRecorded}
-            maxDuration={3}
+            maxDuration={30}
           />
           {videoData.video && (
             <div className="actions" style={{ marginTop: '20px' }}>

@@ -17,6 +17,19 @@ body {
 .safe-area-inset-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 .safe-area-inset-top { padding-top: max(0.5rem, env(safe-area-inset-top)); }
 
+/* Médias par défaut : éviter tout débordement horizontal sur petits écrans */
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+iframe {
+  max-width: 100%;
+}
+
 /* Zones tactiles minimales 44px en hauteur (recommandation accessibilité mobile) */
 @media (pointer: coarse) {
   button:not([aria-hidden]):not(.no-touch-target),
