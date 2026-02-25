@@ -7,6 +7,7 @@ export function Login() {
   const [numeroH, setNumeroH] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { t } = useI18n()
 
@@ -27,6 +28,7 @@ export function Login() {
   }, [])
 
   const onSubmit = async () => {
+    if (loading) return
     setError('')
     if (!numeroH || !password) {
       setError(t('login.error_required'))
@@ -34,6 +36,7 @@ export function Login() {
     }
     
     try {
+      setLoading(true)
       // Connexion directe et rapide
       const result = await api.login(numeroH, password)
       
@@ -51,6 +54,8 @@ export function Login() {
     } catch (error: any) {
       // Message d'erreur simple
       setError(error?.message || 'Erreur de connexion. Vérifiez vos identifiants.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -85,7 +90,15 @@ export function Login() {
         </div>
         {error && <div className="error">{error}</div>}
         <div className="actions">
-          <button type="button" className="btn min-h-[44px] w-full sm:w-auto" onClick={onSubmit}>{t('login.submit')}</button>
+        <button
+          type="button"
+          className="btn min-h-[44px] w-full sm:w-auto"
+          onClick={onSubmit}
+          disabled={loading}
+          style={loading ? { opacity: 0.7, cursor: 'wait' } : undefined}
+        >
+          {loading ? 'Connexion en cours…' : t('login.submit')}
+        </button>
         </div>
         <div className="text-center mt-5 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
           {t('login.signup_prompt')} <a href="/choix" className="text-indigo-500 dark:text-indigo-400 underline cursor-pointer hover:no-underline">{t('login.signup_link')}</a>

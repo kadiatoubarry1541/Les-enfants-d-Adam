@@ -95,6 +95,8 @@ export function VideoRegistration() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [hasShownReminder, setHasShownReminder] = useState(false)
   const [currentStep, setCurrentStep] = useState<'form' | 'video' | 'complete'>('form')
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set())
   
@@ -259,7 +261,8 @@ export function VideoRegistration() {
   }
 
   const showCredentialsReminder = (numeroH: string, password: string) => {
-    if (!numeroH || !password) return
+    if (!numeroH || !password || hasShownReminder) return
+    setHasShownReminder(true)
     alert(
       "Retenez bien votre NumeroH et votre mot de passe afin d'avoir toujours accès à votre compte.\n\n" +
         `NumeroH : ${numeroH}\n` +
@@ -268,6 +271,7 @@ export function VideoRegistration() {
   }
 
   const handleSubmit = async () => {
+    if (loading) return
     if (!videoData.video) {
       alert('Veuillez enregistrer votre vidéo.')
       return
@@ -283,6 +287,8 @@ export function VideoRegistration() {
       }
       return
     }
+
+    setLoading(true)
 
     const numeroH = await generateNumeroH(videoData)
     
@@ -400,6 +406,8 @@ export function VideoRegistration() {
       showCredentialsReminder(numeroH, videoData.password)
       // Redirection immédiate vers le compte utilisateur
       navigate('/compte')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -929,17 +937,8 @@ export function VideoRegistration() {
           />
           {videoData.video && (
             <div className="actions" style={{ marginTop: '20px' }}>
-              <div className="success-message" style={{ 
-                padding: '15px', 
-                backgroundColor: '#d4edda', 
-                border: '1px solid #c3e6cb', 
-                borderRadius: '5px',
-                marginBottom: '15px'
-              }}>
-                ✅ Vidéo enregistrée avec succès ! Vous allez être redirigé automatiquement...
-              </div>
-            <button className="btn" onClick={handleSubmit}>
-                Finaliser l'inscription
+              <button className="btn" onClick={handleSubmit}>
+                ✅ Envoyer
               </button>
               <button 
                 className="btn secondary" 

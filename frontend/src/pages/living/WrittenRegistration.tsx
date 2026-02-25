@@ -87,6 +87,8 @@ export function WrittenRegistration() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [hasShownReminder, setHasShownReminder] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
 
@@ -213,7 +215,8 @@ export function WrittenRegistration() {
   }
 
   const showCredentialsReminder = (numeroH: string, password: string) => {
-    if (!numeroH || !password) return
+    if (!numeroH || !password || hasShownReminder) return
+    setHasShownReminder(true)
     alert(
       "Retenez bien votre NumeroH et votre mot de passe afin d'avoir toujours accès à votre compte.\n\n" +
         `NumeroH : ${numeroH}\n` +
@@ -222,6 +225,7 @@ export function WrittenRegistration() {
   }
 
   const handleSubmit = async () => {
+    if (loading) return
     if (!validateRequiredFields()) {
       alert('Veuillez remplir tous les champs obligatoires (marqués en rouge).')
       const firstErrorField = document.querySelector('.border-red-500')
@@ -230,6 +234,8 @@ export function WrittenRegistration() {
       }
       return
     }
+
+    setLoading(true)
 
     const numeroH = await generateNumeroH(data)
 
@@ -325,6 +331,8 @@ export function WrittenRegistration() {
 
       showCredentialsReminder(numeroH, data.password)
       navigate('/compte')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -936,13 +944,17 @@ export function WrittenRegistration() {
           <button
             className={`btn ${isDisabled ? 'disabled' : ''}`}
             onClick={handleSubmit}
-            disabled={isDisabled}
+            disabled={isDisabled || loading}
             style={{
-              opacity: isDisabled ? 0.6 : 1,
-              cursor: isDisabled ? 'not-allowed' : 'pointer'
+              opacity: isDisabled || loading ? 0.6 : 1,
+              cursor: isDisabled || loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {isDisabled ? 'Remplir les champs obligatoires' : "✅ Finaliser l'inscription"}
+            {isDisabled
+              ? 'Remplir les champs obligatoires'
+              : loading
+              ? 'Envoi en cours…'
+              : '✅ Envoyer'}
           </button>
         </div>
       </div>

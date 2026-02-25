@@ -28,6 +28,9 @@ export interface User {
 export const api = {
   // Enregistrer un utilisateur vivant
   async registerLiving(userData: User) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000) // max ~8s pour éviter de bloquer l'UI
+
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
@@ -37,11 +40,22 @@ export const api = {
         body: JSON.stringify({
           ...userData,
           type: 'vivant'
-        })
+        }),
+        signal: controller.signal
       })
       
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`)
+        // Essayer de lire le message d'erreur renvoyé par le backend
+        let errorMessage = `Erreur HTTP: ${response.status}`
+        try {
+          const errorData = await response.json()
+          if (errorData?.message) {
+            errorMessage = errorData.message
+          }
+        } catch {
+          // ignore parse error, garder le message par défaut
+        }
+        return { success: false, user: null, message: errorMessage }
       }
       
       const result = await response.json()
@@ -65,9 +79,16 @@ export const api = {
       return { ...result, user: userDataWithPassword }
     } catch (error) {
       console.error('Erreur enregistrement vivant:', error)
-      // Fallback vers localStorage si le backend est indisponible
-      localStorage.setItem('dernier_vivant', JSON.stringify(userData))
-      return { success: true, user: userData, message: 'Sauvegardé localement (backend indisponible)' }
+      // Ne plus faire semblant que l'inscription a réussi :
+      // informer clairement l'utilisateur que le serveur est indisponible
+      return {
+        success: false,
+        user: null,
+        message:
+          "Le serveur est indisponible ou trop lent. Votre inscription n'a pas été enregistrée. Veuillez réessayer dans quelques minutes."
+      }
+    } finally {
+      clearTimeout(timeoutId)
     }
   },
 
@@ -105,18 +126,18 @@ export const api = {
       // On garde le mot de passe pour l'authentification locale
       const userDataWithPassword = {
         ...result.user,
-        password: defuntPassword // Garder le mot de passe pour le fallback
+        password: defuntPassword // Garder le mot de passe si besoin côté client
       }
-      
-      // Sauvegarder en localStorage comme backup avec le mot de passe
-      localStorage.setItem('dernier_defunt', JSON.stringify(userDataWithPassword))
       
       return { ...result, user: userDataWithPassword }
     } catch (error) {
       console.error('Erreur enregistrement défunt:', error)
-      // Fallback vers localStorage si le backend est indisponible
-      localStorage.setItem('dernier_defunt', JSON.stringify(userData))
-      return { success: true, user: userData, message: 'Sauvegardé localement (backend indisponible)' }
+      return {
+        success: false,
+        user: null,
+        message:
+          "Le serveur est indisponible ou trop lent. L'enregistrement du défunt n'a pas été effectué. Veuillez réessayer plus tard."
+      }
     }
   },
 
@@ -135,7 +156,8 @@ export const api = {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Erreur de connexion')
+        const message = errorData.message || 'Erreur de connexion'
+        return { success: false, message }
       }
       
       const result = await response.json()
@@ -153,79 +175,19 @@ export const api = {
         }
         return result
       } else {
-        // Fallback localStorage si backend retourne success: false
-        return this.loginFromLocalStorage(normalizedNumeroH, password)
+        return {
+          success: false,
+          message: result.message || 'NumeroH ou mot de passe incorrect',
+          numeroHExists: result.numeroHExists
+        }
       }
     } catch (error) {
-      // Fallback vers localStorage en cas d'erreur réseau
-      return this.loginFromLocalStorage(normalizedNumeroH, password)
-    }
-  },
-
-  // Connexion depuis localStorage (fallback) - Version optimisée
-  loginFromLocalStorage(numeroH: string, password: string) {
-    const searchKeys = [
-      'dernier_vivant',
-      'dernier_defunt',
-      'vivant_video',
-      'defunt_video',
-      'defunt_written',
-      'vivant_written',
-      `compte_test_${numeroH.replace(/\s/g, '_')}`
-    ]
-    
-    const normalizedNumeroH = numeroH.replace(/\s+/g, ' ').trim()
-    
-    // Recherche rapide dans les clés principales
-    for (const key of searchKeys) {
-      const raw = localStorage.getItem(key)
-      if (!raw) continue
-      
-      try {
-        const data = JSON.parse(raw)
-        const userNumeroH = data.numeroH || data.numeroHD
-        const normalizedUserNumeroH = userNumeroH?.replace(/\s+/g, ' ').trim()
-        
-        if (normalizedUserNumeroH === normalizedNumeroH) {
-          const storedPassword = data.password || data.confirmPassword
-          
-          if (storedPassword && storedPassword === password) {
-            // Générer un token factice pour le fallback localStorage
-            const fallbackToken = `fallback_${Date.now()}_${Math.random().toString(36).substring(7)}`
-
-            localStorage.setItem('session_user', JSON.stringify({
-              numeroH: normalizedUserNumeroH,
-              userData: data,
-              type: data.type || 'vivant',
-              source: key,
-              token: fallbackToken
-            }))
-
-            // Stocker aussi dans une clé séparée pour compatibilité
-            localStorage.setItem('token', fallbackToken)
-
-            return {
-              success: true,
-              user: data,
-              token: fallbackToken,
-              message: 'Connexion réussie'
-            }
-          } else {
-            return {
-              success: false,
-              message: 'Mot de passe incorrect',
-              numeroHExists: true
-            }
-          }
-        }
-      } catch (e) {
-        // Ignore les erreurs de parsing
+      console.error('Erreur connexion:', error)
+      return {
+        success: false,
+        message:
+          "Le serveur est indisponible ou trop lent. La connexion n'a pas pu être effectuée. Veuillez réessayer."
       }
-    }
-    
-    return {
-      success: false,
-      message: 'NumeroH ou mot de passe incorrect'
     }
   },
 

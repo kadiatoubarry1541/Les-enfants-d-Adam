@@ -11,13 +11,17 @@ const API_BASE_URL = config.API_BASE_URL
  * Vérifie d'abord dans la base de données, puis dans localStorage
  */
 export async function findLastNumeroForPrefix(prefix: string): Promise<number> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 2500) // ne pas bloquer longtemps si le backend est lent
+
   try {
     // Essayer de récupérer depuis le backend
     const response = await fetch(`${API_BASE_URL}/auth/last-numero?prefix=${encodeURIComponent(prefix)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      signal: controller.signal
     })
     
     if (response.ok) {
@@ -29,6 +33,8 @@ export async function findLastNumeroForPrefix(prefix: string): Promise<number> {
   } catch (error) {
     // Backend indisponible, utiliser localStorage
     console.warn('Backend indisponible pour vérifier le dernier numéro, utilisation de localStorage')
+  } finally {
+    clearTimeout(timeoutId)
   }
   
   // Fallback: chercher dans localStorage tous les NumeroH existants
