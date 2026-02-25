@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArbreGenealogique } from '../../components/ArbreGenealogique'
-import { InvitationsReceived } from '../../components/InvitationsReceived'
 import { buildFamilyTree, getCercleDesRacinesCounts } from '../../services/FamilyTreeBuilder'
 import { useI18n } from '../../i18n/useI18n'
 
@@ -163,17 +162,11 @@ export default function Arbre() {
           <>
             <h2 className="text-2xl font-bold mb-4">🌳 Mon arbre généalogique</h2>
             <ArbreGenealogique userData={effectiveUser} cercleCounts={cercleCounts} />
-
-            {/* Mes invitations de famille (pour accepter / refuser les ajouts) */}
-            <section className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
-              <h3 className="text-xl font-bold mb-4">📨 Mes invitations de famille</h3>
-              <InvitationsReceived userData={effectiveUser} />
-            </section>
           </>
         )}
 
         {activeTab === 'echanges' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
             <div className="lg:col-span-1 space-y-4">
               <h2 className="text-2xl font-bold">💬 Échanges familiaux</h2>
               <p className="text-gray-600">
@@ -194,7 +187,7 @@ export default function Arbre() {
             </div>
 
             <div className="lg:col-span-2">
-              <div className="rounded-2xl shadow-lg border border-gray-200 overflow-hidden flex flex-col h-[480px] bg-white">
+              <div className="rounded-2xl shadow-lg border border-gray-200 overflow-hidden flex flex-col h-[340px] sm:h-[480px] bg-white">
                 {/* Header style WhatsApp */}
                 <div className="bg-green-600 text-white px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">

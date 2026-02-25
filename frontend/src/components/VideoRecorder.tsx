@@ -335,22 +335,10 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorde
       <div className="video-instructions">
         <h4>Instructions d'enregistrement :</h4>
         <ul>
-          <li>Parlez clairement et regardez la caméra</li>
-          <li>Assurez-vous d'être dans un endroit calme</li>
-          <li>L'enregistrement s'arrêtera automatiquement après {maxDuration} minutes</li>
-          <li>Vous pouvez mettre en pause et reprendre si nécessaire</li>
+          <li>Parlez clairement et regardez la caméra.</li>
+          <li>Placez-vous dans un endroit calme et bien éclairé.</li>
+          <li>L'enregistrement s'arrêtera automatiquement quand le temps sera terminé.</li>
         </ul>
-        
-        <div className="debug-info">
-          <h5>🔧 Debug Info :</h5>
-          <p><strong>Caméra autorisée :</strong> {hasPermission ? '✅ Oui' : '❌ Non'}</p>
-          <p><strong>Caméra prête :</strong> {cameraReady ? '✅ Oui' : '❌ Non'}</p>
-          <p><strong>En cours d'enregistrement :</strong> {isRecording ? '✅ Oui' : '❌ Non'}</p>
-          <p><strong>Stream actif :</strong> {streamRef.current ? '✅ Oui' : '❌ Non'}</p>
-          <p><strong>Élément vidéo :</strong> {videoRef.current ? '✅ Oui' : '❌ Non'}</p>
-          <p><strong>Durée :</strong> {formatTime(duration)}</p>
-          {error && <p><strong>Erreur :</strong> <span className="error">{error}</span></p>}
-        </div>
       </div>
     </div>
   )

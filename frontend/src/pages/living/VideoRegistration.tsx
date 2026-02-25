@@ -93,6 +93,8 @@ export function VideoRegistration() {
     lieu2: '',
     lieu3: ''
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [currentStep, setCurrentStep] = useState<'form' | 'video' | 'complete'>('form')
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set())
   
@@ -256,6 +258,15 @@ export function VideoRegistration() {
     return await generateUniqueNumeroH(prefix)
   }
 
+  const showCredentialsReminder = (numeroH: string, password: string) => {
+    if (!numeroH || !password) return
+    alert(
+      "Retenez bien votre NumeroH et votre mot de passe afin d'avoir toujours accès à votre compte.\n\n" +
+        `NumeroH : ${numeroH}\n` +
+        `Mot de passe : ${password}`
+    )
+  }
+
   const handleSubmit = async () => {
     if (!videoData.video) {
       alert('Veuillez enregistrer votre vidéo.')
@@ -352,6 +363,7 @@ export function VideoRegistration() {
           passwordLength: userDataWithPassword.password?.length
         })
         
+        showCredentialsReminder(numeroH, videoData.password)
         // Redirection immédiate vers le compte utilisateur
         navigate('/compte')
       } else {
@@ -385,6 +397,7 @@ export function VideoRegistration() {
         passwordLength: dataWithClearPassword.password?.length
       })
       
+      showCredentialsReminder(numeroH, videoData.password)
       // Redirection immédiate vers le compte utilisateur
       navigate('/compte')
     }

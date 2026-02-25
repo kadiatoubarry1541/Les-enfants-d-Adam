@@ -622,9 +622,9 @@ export default function Solidarite() {
                       <strong>Note importante :</strong> Cette page est destinée aux <strong>dons généraux (Sadaqah)</strong> qui peuvent être donnés à tous les pauvres, quelle que soit leur religion. Pour les dons spécifiques aux musulmans (Zakat), veuillez utiliser la page <strong>Zaka (Musulman)</strong>.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                     {filteredPoorPeople.map((person) => (
-                      <div key={person.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div key={person.id} className="border rounded-lg p-3 sm:p-6 hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-3">
                           <h3 className="text-lg font-semibold text-gray-900">
                             {person.prenom} {person.nomFamille}

@@ -2,8 +2,9 @@
  * Générateur de NumeroH unique et fixe
  * Vérifie d'abord l'existence dans la base de données avant de générer un nouveau numéro
  */
+import { config } from '../config/api'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5002/api'
+const API_BASE_URL = config.API_BASE_URL
 
 /**
  * Trouve le dernier numéro utilisé pour un préfixe donné

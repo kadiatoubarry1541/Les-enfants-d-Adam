@@ -417,9 +417,9 @@ export default function Sante() {
 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">🏥 Hôpitaux Guinéens</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                 {filteredHospitals.map((hospital) => (
-                  <div key={hospital.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div key={hospital.id} className="border rounded-lg p-3 sm:p-6 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-3">
                       <h3 className="text-xl font-semibold text-gray-900">{hospital.name}</h3>
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -482,9 +482,9 @@ export default function Sante() {
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">👨‍⚕️ Médecins Compétents</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                 {filteredDoctors.map((doctor) => (
-                  <div key={doctor.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div key={doctor.id} className="border rounded-lg p-3 sm:p-6 hover:shadow-md transition-shadow">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">{doctor.name}</h3>
                     
                     <div className="space-y-2 mb-4">

@@ -102,11 +102,11 @@ export default function MonProfil() {
 
       {/* Header Principal */}
       <div
-        className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow duration-200 mb-8"
+        className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200 mb-8"
         style={{ borderLeftWidth: "4px", borderLeftColor: "#3b82f6" }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 sm:gap-6">
             {/* Avatar avec gradient professionnel */}
             <div className="relative">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-3xl font-bold shadow-lg border-4 border-white relative overflow-hidden">
@@ -190,28 +190,28 @@ export default function MonProfil() {
           </div>
 
           {/* Boutons d'action */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-row flex-wrap sm:flex-col gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={() => setOpen(true)}
-              className="min-w-[140px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors duration-200"
+              className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors duration-200 text-sm sm:text-base"
             >
               ✨ Identité
             </button>
             <button
               onClick={() => setShowEditProfile(true)}
-              className="min-w-[140px] px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-200"
+              className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-200 text-sm sm:text-base"
             >
-              ✏️ Modifier mon profil
+              ✏️ Modifier
             </button>
             <button
               onClick={() => setShowAdmin(!showAdmin)}
-              className="min-w-[140px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+              className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-sm sm:text-base"
             >
-              ⚙️ Administration
+              ⚙️ Admin
             </button>
             <button
               onClick={() => setShowActions(!showActions)}
-              className="min-w-[140px] px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-1 text-sm sm:text-base"
             >
               🚀 Actions
               <span className="text-xs bg-white/20 rounded px-1">

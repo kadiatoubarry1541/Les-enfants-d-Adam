@@ -4,6 +4,7 @@ import './ArbreGenealogique.css'
 import { buildFamilyTree, getTreeCompletionRecommendations, FamilyMember as FamilyMemberType, CercleDesRacinesCounts } from '../services/FamilyTreeBuilder'
 import { InvitationManager } from '../utils/invitationManager'
 import { useI18n } from '../i18n/useI18n'
+import { InvitationsReceived } from './InvitationsReceived'
 
 interface FamilyMember {
   id: string
@@ -953,6 +954,16 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* Mes invitations de famille (statistiques d'invitations) */}
+                <div className="mt-6">
+                  <h4 className="mb-2 text-base font-semibold text-white">
+                    📩 Mes invitations de famille
+                  </h4>
+                  <div className="bg-white rounded-xl p-3 sm:p-4">
+                    <InvitationsReceived userData={userData} />
                   </div>
                 </div>
               </div>

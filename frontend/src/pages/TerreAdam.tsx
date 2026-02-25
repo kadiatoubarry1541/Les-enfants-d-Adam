@@ -681,7 +681,7 @@ export default function TerreAdam() {
                             ))}
                           </div>
 
-                        <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ minHeight: '400px', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+                        <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ minHeight: '280px', maxHeight: '65vh', display: 'flex', flexDirection: 'column' }}>
                           {/* Header */}
                           <div className="bg-green-600 text-white px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-3">
@@ -699,7 +699,7 @@ export default function TerreAdam() {
                           </div>
                           
                           {/* Zone de messages */}
-                          <div className="flex-1 overflow-y-auto bg-gray-100 p-4" style={{ minHeight: '250px', maxHeight: 'calc(70vh - 140px)', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
+                          <div className="flex-1 overflow-y-auto bg-gray-100 p-3 sm:p-4" style={{ minHeight: '150px', maxHeight: 'calc(65vh - 140px)', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
                             {(() => {
                               const filtered = feedFilter === 'all' ? messages : messages.filter((m: ResidenceMessage) => (m.category || 'information') === feedFilter);
                               const emptyMsg = feedFilter === 'all' ? 'Aucun message pour le moment.' : `Aucun message « ${getCategoryName(feedFilter)} ». Soyez le premier !`;

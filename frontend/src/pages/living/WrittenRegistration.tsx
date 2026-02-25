@@ -85,6 +85,8 @@ export function WrittenRegistration() {
     lieu3: ''
   })
 
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
 
@@ -210,6 +212,15 @@ export function WrittenRegistration() {
     return await generateUniqueNumeroH(prefix)
   }
 
+  const showCredentialsReminder = (numeroH: string, password: string) => {
+    if (!numeroH || !password) return
+    alert(
+      "Retenez bien votre NumeroH et votre mot de passe afin d'avoir toujours accès à votre compte.\n\n" +
+        `NumeroH : ${numeroH}\n` +
+        `Mot de passe : ${password}`
+    )
+  }
+
   const handleSubmit = async () => {
     if (!validateRequiredFields()) {
       alert('Veuillez remplir tous les champs obligatoires (marqués en rouge).')
@@ -286,6 +297,7 @@ export function WrittenRegistration() {
           localStorage.setItem('token', result.token)
         }
 
+        showCredentialsReminder(numeroH, data.password)
         navigate('/compte')
       } else {
         alert(`❌ Erreur: ${result.message}`)
@@ -311,6 +323,7 @@ export function WrittenRegistration() {
         })
       )
 
+      showCredentialsReminder(numeroH, data.password)
       navigate('/compte')
     }
   }
@@ -361,6 +374,9 @@ export function WrittenRegistration() {
                 required
                 className={getFieldClassName('dateNaissance', !!data.dateNaissance)}
               />
+              <small style={{ fontSize: '0.8rem', color: '#4b5563' }}>
+                Vous pouvez aussi taper la date directement au clavier pour aller plus vite.
+              </small>
             </div>
           </div>
           <div className="col-6">
@@ -741,7 +757,7 @@ export function WrittenRegistration() {
 
         <div className="row">
           <div className="col-6">
-            <div className="field">
+            <div className="field" style={{ maxWidth: '16rem' }}>
               <label>Personne en situation de handicap ?</label>
               <select
                 value={data.handicap}
@@ -759,27 +775,44 @@ export function WrittenRegistration() {
           <div className="col-6">
             <div className="field">
               <label>Mot de passe *</label>
-              <input
-                type="password"
-                value={data.password}
-                onChange={(e) => {
-                  setData((prev) => ({ ...prev, password: e.target.value }))
-                  if (e.target.value && e.target.value.length >= 6) {
-                    setValidationErrors((prev) => {
-                      const next = new Set(prev)
-                      next.delete('password')
-                      return next
-                    })
-                  }
-                }}
-                placeholder="Mot de passe"
-                minLength={6}
-                required
-                className={getFieldClassName(
-                  'password',
-                  !!data.password && data.password.length >= 6
-                )}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={data.password}
+                  onChange={(e) => {
+                    setData((prev) => ({ ...prev, password: e.target.value }))
+                    if (e.target.value && e.target.value.length >= 6) {
+                      setValidationErrors((prev) => {
+                        const next = new Set(prev)
+                        next.delete('password')
+                        return next
+                      })
+                    }
+                  }}
+                  placeholder="Mot de passe"
+                  minLength={6}
+                  required
+                  className={getFieldClassName(
+                    'password',
+                    !!data.password && data.password.length >= 6
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  style={{
+                    border: '1px solid #d1d5db',
+                    borderRadius: '999px',
+                    padding: '0.4rem 0.7rem',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '1.1rem'
+                  }}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
               {data.password && data.password.length < 6 && (
                 <small className="error">
                   Le mot de passe doit contenir au moins 6 caractères
@@ -787,52 +820,75 @@ export function WrittenRegistration() {
               )}
             </div>
           </div>
-          <div className="col-6">
-            <div className="field">
-              <label>Confirmer le mot de passe *</label>
-              <input
-                type="password"
-                value={data.confirmPassword}
-                onChange={(e) => {
-                  setData((prev) => ({ ...prev, confirmPassword: e.target.value }))
-                  if (
-                    e.target.value &&
-                    data.password === e.target.value &&
-                    e.target.value.length >= 6
-                  ) {
-                    setValidationErrors((prev) => {
-                      const next = new Set(prev)
-                      next.delete('confirmPassword')
-                      return next
-                    })
-                  }
-                }}
-                placeholder="Confirmer"
-                minLength={6}
-                required
-                className={getFieldClassName(
-                  'confirmPassword',
-                  !!data.confirmPassword &&
-                    data.password === data.confirmPassword &&
-                    data.password.length >= 6
+          {data.password && (
+            <div className="col-6">
+              <div className="field">
+                <label>Confirmer le mot de passe *</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={data.confirmPassword}
+                    onChange={(e) => {
+                      setData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                      if (
+                        e.target.value &&
+                        data.password === e.target.value &&
+                        e.target.value.length >= 6
+                      ) {
+                        setValidationErrors((prev) => {
+                          const next = new Set(prev)
+                          next.delete('confirmPassword')
+                          return next
+                        })
+                      }
+                    }}
+                    placeholder="Confirmer"
+                    minLength={6}
+                    required
+                    className={getFieldClassName(
+                      'confirmPassword',
+                      !!data.confirmPassword &&
+                        data.password === data.confirmPassword &&
+                        data.password.length >= 6
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    aria-label={
+                      showConfirmPassword
+                        ? 'Masquer la confirmation du mot de passe'
+                        : 'Afficher la confirmation du mot de passe'
+                    }
+                    style={{
+                      border: '1px solid #d1d5db',
+                      borderRadius: '999px',
+                      padding: '0.4rem 0.7rem',
+                      background: 'white',
+                      cursor: 'pointer',
+                      fontSize: '1.1rem'
+                    }}
+                  >
+                    {showConfirmPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {data.confirmPassword && data.password !== data.confirmPassword && (
+                  <small className="error">Les mots de passe ne correspondent pas</small>
                 )}
-              />
-              {data.confirmPassword && data.password !== data.confirmPassword && (
-                <small className="error">Les mots de passe ne correspondent pas</small>
-              )}
-              {data.confirmPassword &&
-                data.password === data.confirmPassword &&
-                data.password.length >= 6 && (
-                  <small className="success">✓ Les mots de passe correspondent</small>
-                )}
+                {data.confirmPassword &&
+                  data.password === data.confirmPassword &&
+                  data.password.length >= 6 && (
+                    <small className="success">✓ Les mots de passe correspondent</small>
+                  )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="row">
           <div className="col-12">
             <div className="field">
-              <label>Photo de profil (optionnel)</label>
+              <label>Photo de profil</label>
               <div className="photo-upload-section">
                 {data.photoPreview ? (
                   <div className="photo-preview">
@@ -861,9 +917,13 @@ export function WrittenRegistration() {
                       style={{ display: 'none' }}
                     />
                     <label htmlFor="photo-upload-written" className="upload-button">
-                      <span className="upload-icon">📷</span>
-                      <span>Cliquer pour ajouter une photo</span>
-                      <small>Formats acceptés: JPG, PNG, GIF (max 5MB)</small>
+                      <span
+                        className="upload-icon"
+                        style={{ fontSize: '2.5rem', lineHeight: 1 }}
+                      >
+                        📷
+                      </span>
+                      <span style={{ fontWeight: 600 }}>Photo de profil</span>
                     </label>
                   </div>
                 )}

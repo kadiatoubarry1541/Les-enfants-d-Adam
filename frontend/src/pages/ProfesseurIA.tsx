@@ -145,8 +145,8 @@ export default function ProfesseurIA() {
       </div>
 
       {/* Chat Container */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-xl overflow-hidden" style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}>
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="bg-white rounded-xl shadow-xl overflow-hidden" style={{ height: 'calc(100vh - 250px)', minHeight: '400px' }}>
           {/* Messages Area */}
           <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">

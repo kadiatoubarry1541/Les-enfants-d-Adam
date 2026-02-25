@@ -6,6 +6,8 @@ const config = {
   DB_USER: process.env.DB_USER || 'postgres',
   DB_PASSWORD: process.env.DB_PASSWORD || 'password',
   JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key',
+  JWT_EXPIRE: process.env.JWT_EXPIRE || '7d',
+  BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 10,
   NODE_ENV: process.env.NODE_ENV || 'development'
 };
 
