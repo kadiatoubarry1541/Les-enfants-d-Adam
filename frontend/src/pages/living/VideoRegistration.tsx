@@ -373,7 +373,10 @@ export function VideoRegistration() {
         // Redirection immédiate vers le compte utilisateur
         navigate('/compte')
       } else {
-        alert(`❌ Erreur: ${result.message}`)
+        const details = (result as { errors?: Array<{ path: string; msg: string }> }).errors
+          ?.map(e => `${e.path}: ${e.msg}`)
+          .join('\n')
+        alert(`❌ Erreur: ${result.message}${details ? '\n\n' + details : ''}`)
       }
     } catch (error) {
       console.error('Erreur enregistrement:', error)

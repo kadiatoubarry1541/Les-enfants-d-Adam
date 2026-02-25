@@ -412,7 +412,7 @@ export function DeceasedWrittenForm() {
         <div className="card">
           <VideoRecorder
             onVideoRecorded={handleVideoRecorded}
-            maxDuration={3}
+            maxDuration={30}
           />
           <div className="actions">
             <button className="btn secondary" onClick={() => setStep('form')}>

@@ -262,11 +262,11 @@ async function addDeceasedToFamilyTree(numeroHD, numeroHPere, numeroHMere) {
 
 // Middleware de validation
 const validateUser = [
-  body('numeroH').notEmpty().withMessage('Le NumeroH est requis'),
-  body('prenom').notEmpty().withMessage('Le prénom est requis'),
-  body('nomFamille').notEmpty().withMessage('Le nom de famille est requis'),
+  body('numeroH').trim().notEmpty().withMessage('Le NumeroH est requis'),
+  body('prenom').trim().notEmpty().withMessage('Le prénom est requis'),
+  body('nomFamille').trim().notEmpty().withMessage('Le nom de famille est requis'),
   body('password').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères'),
-  body('email').optional().isEmail().withMessage('Email invalide'),
+  body('email').optional({ values: 'falsy' }).trim().isEmail().withMessage('Email invalide'),
 ];
 
 // @route   POST /api/auth/register
@@ -276,10 +276,13 @@ router.post('/register', validateUser, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      const errList = errors.array();
+      console.warn('[register] Validation échouée:', errList.map(e => ({ path: e.path, msg: e.msg })));
+      console.warn('[register] Body reçu (clés):', Object.keys(req.body || {}));
       return res.status(400).json({
         success: false,
         message: 'Données invalides',
-        errors: errors.array()
+        errors: errList
       });
     }
 

@@ -36,7 +36,6 @@ const Activite = lazy(() => import("./pages/Activite"));
 const Education = lazy(() => import("./pages/Education"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
-const AdminGovernments = lazy(() => import("./pages/AdminGovernments"));
 const TerreAdam = lazy(() => import("./pages/TerreAdam"));
 const Histoire = lazy(() => import("./pages/Histoire"));
 const ARetenir = lazy(() => import("./pages/ARetenir"));
@@ -154,7 +153,7 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/badges" element={<AdminBadges />} />
           <Route path="/admin/logos" element={<Navigate to="/admin/badges?tab=logos" replace />} />
-          <Route path="/admin/governments" element={<AdminGovernments />} />
+          <Route path="/admin/governments" element={<Navigate to="/admin" replace />} />
           <Route path="/famille" element={<Famille />} />
           <Route path="/famille/parents" element={<Parents />} />
           <Route path="/famille/femmes" element={<Partenaire />} />

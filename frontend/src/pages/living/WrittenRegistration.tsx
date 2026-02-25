@@ -266,7 +266,7 @@ export function WrittenRegistration() {
       confirmPassword: data.confirmPassword,
       prenom: data.prenom,
       nomFamille: data.famille,
-      email: data.email.trim(),
+      email: (data.email && data.email.trim()) ? data.email.trim() : `${numeroH}@example.com`,
       religion: data.religion?.trim() || '',
     handicap: data.handicap || '',
       genre: data.genre,

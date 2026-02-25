@@ -75,12 +75,14 @@ const connectDB = async () => {
       const { verifyAndInitGameModels } = await import('../models/verifyGameModels.js');
       await verifyAndInitGameModels();
       
-    // Synchroniser les modèles avec la base de données
-    if (process.env.NODE_ENV === 'development') {
+      // Synchroniser les modèles avec la base de données
+      // En local (NODE_ENV non défini ou "development"), on synchronise automatiquement
+      // En production (NODE_ENV === "production"), on évite alter:true et on compte sur les migrations
+      if (process.env.NODE_ENV !== 'production') {
         const { syncGameModels } = await import('../models/initGameModels.js');
-      await sequelize.sync({ alter: true });
+        await sequelize.sync({ alter: true });
         await syncGameModels({ alter: true });
-      console.log('🔄 Modèles synchronisés avec la base de données');
+        console.log('🔄 Modèles synchronisés avec la base de données');
       }
     } catch (error) {
       console.warn('⚠️ Avertissement lors de l\'initialisation des modèles Game:', error.message);

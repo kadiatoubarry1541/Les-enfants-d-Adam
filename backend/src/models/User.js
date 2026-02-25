@@ -275,10 +275,12 @@ User.init({
   
   // Médias
   photo: {
-    type: DataTypes.STRING, // URL ou chemin du fichier
+    // Utiliser TEXT pour supporter les longues données (ex: base64)
+    type: DataTypes.TEXT,
   },
   video: {
-    type: DataTypes.STRING, // URL ou chemin du fichier
+    // Utiliser TEXT pour supporter les longues données (ex: base64)
+    type: DataTypes.TEXT,
   },
   fingerprint: {
     type: DataTypes.TEXT, // Données biométriques

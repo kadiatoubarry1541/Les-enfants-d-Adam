@@ -13,7 +13,6 @@ import adminRoutes from './routes/admin.js';
 import badgeRoutes from './routes/badges.js';
 import logoRoutes from './routes/logos.js';
 import pageAdminRoutes from './routes/pageAdmins.js';
-import governmentRoutes from './routes/governments.js';
 import activityRoutes from './routes/activities.js';
 import residenceRoutes from './routes/residences.js';
 import educationRoutes from './routes/education.js';
@@ -179,8 +178,9 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Middleware pour parser le JSON
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Limite élevée pour enregistrement vivant (photo + vidéo en base64)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Servir les fichiers statiques
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -191,7 +191,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/logos', logoRoutes);
 app.use('/api/page-admins', pageAdminRoutes);
-app.use('/api/governments', governmentRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/residences', residenceRoutes);
 app.use('/api/education', educationRoutes);

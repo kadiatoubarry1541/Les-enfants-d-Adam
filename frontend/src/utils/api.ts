@@ -26,10 +26,11 @@ export interface User {
 }
 
 export const api = {
-  // Enregistrer un utilisateur vivant
+  // Enregistrer un utilisateur vivant (vidéo + photo → payload lourd, timeout long)
   async registerLiving(userData: User) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 8000) // max ~8s pour éviter de bloquer l'UI
+    const timeoutMs = 90000 // 90 s pour permettre l'upload vidéo + photo en base64
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -45,17 +46,16 @@ export const api = {
       })
       
       if (!response.ok) {
-        // Essayer de lire le message d'erreur renvoyé par le backend
         let errorMessage = `Erreur HTTP: ${response.status}`
+        let errors: Array<{ path: string; msg: string }> | undefined
         try {
           const errorData = await response.json()
-          if (errorData?.message) {
-            errorMessage = errorData.message
-          }
+          if (errorData?.message) errorMessage = errorData.message
+          if (Array.isArray(errorData?.errors)) errors = errorData.errors
         } catch {
-          // ignore parse error, garder le message par défaut
+          // ignore parse error
         }
-        return { success: false, user: null, message: errorMessage }
+        return { success: false, user: null, message: errorMessage, errors }
       }
       
       const result = await response.json()
@@ -77,15 +77,15 @@ export const api = {
       }
       
       return { ...result, user: userDataWithPassword }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur enregistrement vivant:', error)
-      // Ne plus faire semblant que l'inscription a réussi :
-      // informer clairement l'utilisateur que le serveur est indisponible
+      const isTimeout = error?.name === 'AbortError'
       return {
         success: false,
         user: null,
-        message:
-          "Le serveur est indisponible ou trop lent. Votre inscription n'a pas été enregistrée. Veuillez réessayer dans quelques minutes."
+        message: isTimeout
+          ? "L'envoi a pris trop de temps (vidéo ou photo trop lourde). Réessayez ou vérifiez votre connexion."
+          : "Le serveur est indisponible ou inaccessible. Vérifiez que le backend tourne sur " + (API_BASE_URL.replace(/\/api\/?$/, '')) + " et réessayez."
       }
     } finally {
       clearTimeout(timeoutId)

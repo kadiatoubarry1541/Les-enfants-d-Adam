@@ -51,13 +51,14 @@ class PageAdmin extends Model {
       indexes: [
         {
           unique: true,
-          fields: ['pagePath', 'adminNumeroH']
+          // Utiliser les noms de colonnes en base (snake_case) pour éviter l'erreur "pagePath" n'existe pas
+          fields: ['page_path', 'admin_numero_h']
         },
         {
-          fields: ['pagePath']
+          fields: ['page_path']
         },
         {
-          fields: ['adminNumeroH']
+          fields: ['admin_numero_h']
         }
       ]
     });

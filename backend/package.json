@@ -23,6 +23,7 @@
     "fix-page-admins": "node scripts/fix-page-admins-table.js",
     "init-admin": "node scripts/initAdmin.js",
     "verify-admin": "node scripts/verifyAdmin.js",
+    "list-users": "node scripts/listUsers.js",
     "seed-ia": "node scripts/seedIaKnowledge.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

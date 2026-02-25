@@ -66,7 +66,7 @@ export default function GuideEntrepreneur() {
 
   const organisations = [
     {
-      category: 'Gouvernement',
+      category: 'Secteur public',
       items: [
         { name: 'Ministère de l\'Économie et des Finances', role: 'Orientation et financements publics' },
         { name: 'Ministère de la Jeunesse et de l\'Emploi', role: 'Programmes pour les jeunes entrepreneurs' },

@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 
 interface VideoRecorderProps {
   onVideoRecorded: (videoBlob: Blob) => void
-  maxDuration?: number // en minutes
+  /** Durée max d'enregistrement en secondes (défaut 30) */
+  maxDuration?: number
 }
 
-export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorderProps) {
+export function VideoRecorder({ onVideoRecorded, maxDuration = 30 }: VideoRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [duration, setDuration] = useState(0)
@@ -19,7 +20,7 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorde
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const maxDurationMs = maxDuration * 60 * 1000 // Convertir en millisecondes
+  const maxDurationMs = maxDuration * 1000 // secondes → millisecondes
 
   useEffect(() => {
     return () => {
@@ -259,25 +260,6 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorde
           }}
         />
         
-        {!isRecording && hasPermission && !cameraReady && (
-          <div className="camera-preview-overlay">
-            <div className="preview-text">
-              <h4>📹 Chargement de la caméra...</h4>
-              <p>Veuillez patienter pendant que nous initialisons votre caméra.</p>
-              <div className="loading-spinner">⏳</div>
-            </div>
-          </div>
-        )}
-        
-        {!isRecording && hasPermission && cameraReady && (
-          <div className="camera-preview-overlay">
-            <div className="preview-text">
-              <h4>📹 Caméra prête !</h4>
-              <p>Vous devriez vous voir maintenant. Si l'écran est toujours noir, vérifiez que votre caméra n'est pas utilisée par une autre application.</p>
-            </div>
-          </div>
-        )}
-        
         {isRecording && (
           <div className="recording-overlay">
             <div className="recording-indicator">
@@ -285,7 +267,7 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorde
               <span>ENREGISTREMENT</span>
             </div>
             <div className="recording-timer">
-              {formatTime(duration)} / {maxDuration}min
+              {formatTime(duration)} / {maxDuration}s
             </div>
           </div>
         )}
@@ -327,7 +309,7 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorde
             />
           </div>
           <div className="progress-text">
-            {formatTime(duration)} / {maxDuration}min
+            {formatTime(duration)} / {maxDuration}s
           </div>
         </div>
       )}
@@ -337,7 +319,7 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 3 }: VideoRecorde
         <ul>
           <li>Parlez clairement et regardez la caméra.</li>
           <li>Placez-vous dans un endroit calme et bien éclairé.</li>
-          <li>L'enregistrement s'arrêtera automatiquement quand le temps sera terminé.</li>
+          <li>Durée max : {maxDuration} secondes. L'enregistrement s'arrêtera automatiquement.</li>
         </ul>
       </div>
     </div>

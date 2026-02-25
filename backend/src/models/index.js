@@ -43,8 +43,6 @@ export { default as Document } from './Document.js';
 export { default as DocumentPermission } from './DocumentPermission.js';
 export { default as DocumentValidation } from './DocumentValidation.js';
 export { default as PageAdmin } from './PageAdmin.js';
-export { default as Government } from './Government.js';
-export { default as GovernmentMember } from './GovernmentMember.js';
 export { default as Game } from './Game.js';
 export { default as GamePlayer } from './GamePlayer.js';
 export { default as GameQuestion } from './GameQuestion.js';

@@ -27,6 +27,7 @@ class Government extends Model {
       presidentNumeroH: {
         type: DataTypes.STRING(20),
         allowNull: false,
+        field: 'president_numero_h', // colonne en base (snake_case)
         references: {
           model: 'users',
           key: 'numero_h'
@@ -66,20 +67,14 @@ class Government extends Model {
       timestamps: true,
       indexes: [
         {
-          fields: ['presidentNumeroH']
+          // Utiliser les noms de colonnes réelles en base
+          fields: ['president_numero_h']
         },
         {
           fields: ['country']
         },
         {
-          fields: ['isActive']
-        },
-        {
-          unique: true,
-          fields: ['presidentNumeroH', 'isActive'],
-          where: {
-            isActive: true
-          }
+          fields: ['is_active']
         }
       ]
     });
