@@ -573,151 +573,178 @@ const enhancedUser: UserData = useMemo(() => {
 
       </div>
 
-      {/* ── GALERIE FAMILLE PAR ALBUMS ── */}
+      {/* ── GALERIE FAMILLE PAR ALBUMS (style galerie Android) ── */}
       {showGallery && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-white flex flex-col z-50">
 
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white">
-              <div>
-                <h3 className="text-base font-bold">📷 Galerie de la famille</h3>
-                <p className="text-[11px] text-gray-300 mt-0.5">Sélectionnez un album pour voir ou ajouter des médias</p>
-              </div>
+          {/* ── Header ── */}
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white border-b border-gray-800" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+            {galleryView === 'detail' ? (
               <button
-                onClick={() => { setShowGallery(false); setViewerMedia(null) }}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg transition-colors"
+                onClick={() => setGalleryView('list')}
+                className="flex items-center gap-2 text-white active:opacity-70"
+              >
+                <span className="text-xl leading-none">←</span>
+                <span className="font-semibold text-base">
+                  {ALBUM_CONFIG.find(c => c.key === activeAlbum)?.emoji}{' '}
+                  {ALBUM_CONFIG.find(c => c.key === activeAlbum)?.label}
+                </span>
+              </button>
+            ) : (
+              <h3 className="text-base font-bold">Galerie familiale</h3>
+            )}
+
+            <div className="flex items-center gap-2">
+              {/* Bouton Ajouter — visible seulement dans la vue détail */}
+              {galleryView === 'detail' && (
+                <label className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${uploading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95'}`}>
+                  {uploading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Envoi...
+                    </>
+                  ) : (
+                    <>＋ Ajouter</>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={async e => {
+                      const files = Array.from(e.target.files || [])
+                      for (const file of files) { await handleUploadMedia(file) }
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              )}
+              <button
+                onClick={() => { setShowGallery(false); setGalleryView('list'); setViewerMedia(null) }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 text-white text-lg"
               >✕</button>
             </div>
+          </div>
 
-            {/* ── Boutons albums ── */}
-            <div className="grid grid-cols-4 gap-0 border-b border-gray-200">
-              {ALBUM_CONFIG.map(cfg => {
-                const count = albums[cfg.key]?.length || 0
-                const isActive = activeAlbum === cfg.key
-                return (
-                  <button
-                    key={cfg.key}
-                    onClick={() => setActiveAlbum(cfg.key)}
-                    className={`flex flex-col items-center justify-center py-3 px-2 transition-all border-b-3 ${
-                      isActive
-                        ? 'bg-gray-50 border-b-2 border-gray-800 text-gray-900'
-                        : 'bg-white border-b-2 border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                    }`}
-                  >
-                    <span className="text-xl mb-0.5">{cfg.emoji}</span>
-                    <span className={`text-[11px] font-semibold ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>{cfg.label}</span>
-                    {count > 0 && (
-                      <span className={`mt-0.5 text-[9px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+          {/* ── Corps ── */}
+          {galleryLoading ? (
+            <div className="flex-1 flex items-center justify-center bg-white">
+              <div className="flex flex-col items-center gap-3 text-gray-500">
+                <div className="w-10 h-10 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Chargement...</span>
+              </div>
             </div>
 
-            {/* ── Contenu album ── */}
-            {galleryLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3 text-gray-400">
-                  <div className="w-10 h-10 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm">Chargement...</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto p-4">
-                {/* Titre + bouton upload */}
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-bold text-gray-800">
-                      {ALBUM_CONFIG.find(c => c.key === activeAlbum)?.emoji} Album {ALBUM_CONFIG.find(c => c.key === activeAlbum)?.label}
-                    </h4>
-                    <p className="text-xs text-gray-400">{albums[activeAlbum]?.length || 0} média(s)</p>
-                  </div>
-                  <label className={`cursor-pointer flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-all ${uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700 active:scale-95'}`}>
-                    {uploading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Envoi...
-                      </>
-                    ) : (
-                      <>＋ Ajouter</>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*,video/*"
-                      multiple
-                      className="hidden"
-                      disabled={uploading}
-                      onChange={async e => {
-                        const files = Array.from(e.target.files || [])
-                        for (const file of files) { await handleUploadMedia(file) }
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
-                </div>
-
-                {/* Grille médias */}
-                {(albums[activeAlbum]?.length || 0) === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 text-gray-300">
-                    <span className="text-5xl mb-3">{ALBUM_CONFIG.find(c => c.key === activeAlbum)?.emoji}</span>
-                    <p className="text-sm font-medium text-gray-400">Aucune photo ni vidéo dans cet album</p>
-                    <p className="text-xs text-gray-300 mt-1">Cliquez sur "＋ Ajouter" pour commencer</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                    {albums[activeAlbum].map((item, idx) => (
-                      <div key={idx} className="group relative rounded-xl overflow-hidden bg-gray-100 shadow-sm" style={{ aspectRatio: '1' }}>
-                        {/* Thumbnail */}
-                        {item.type === 'video' || isVideo(item.url) ? (
+          ) : galleryView === 'list' ? (
+            /* ── VUE LISTE : grille 2 colonnes ── */
+            <div className="flex-1 overflow-y-auto bg-white">
+              <div className="grid grid-cols-2 gap-0.5">
+                {ALBUM_CONFIG.map(cfg => {
+                  const albumItems = albums[cfg.key] || []
+                  const count = albumItems.length
+                  const thumb = albumItems[0] // le plus récent (unshift côté backend)
+                  return (
+                    <button
+                      key={cfg.key}
+                      onClick={() => { setActiveAlbum(cfg.key); setGalleryView('detail') }}
+                      className="relative overflow-hidden bg-gray-100 active:opacity-80"
+                      style={{ aspectRatio: '1' }}
+                    >
+                      {/* Miniature du dernier ajout */}
+                      {thumb ? (
+                        thumb.type === 'video' || isVideo(thumb.url) ? (
                           <video
-                            src={`${API_BASE}${item.url}`}
-                            className="w-full h-full object-cover cursor-pointer"
+                            src={`${API_BASE}${thumb.url}`}
+                            className="w-full h-full object-cover"
                             muted
-                            onClick={() => setViewerMedia(item)}
                           />
                         ) : (
                           <img
-                            src={`${API_BASE}${item.url}`}
-                            alt=""
-                            className="w-full h-full object-cover cursor-pointer"
-                            onClick={() => setViewerMedia(item)}
+                            src={`${API_BASE}${thumb.url}`}
+                            alt={cfg.label}
+                            className="w-full h-full object-cover"
                           />
-                        )}
-
-                        {/* Badge vidéo */}
-                        {(item.type === 'video' || isVideo(item.url)) && (
-                          <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full">▶ Vidéo</div>
-                        )}
-
-                        {/* Overlay actions */}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                          <button
-                            onClick={() => setViewerMedia(item)}
-                            className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center text-gray-800 hover:bg-white text-sm"
-                            title="Voir en grand"
-                          >🔍</button>
-                          <button
-                            onClick={() => handleDeleteMedia(idx)}
-                            disabled={deletingIdx === idx}
-                            className="w-8 h-8 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 text-sm"
-                            title="Supprimer"
-                          >{deletingIdx === idx ? '...' : '🗑️'}</button>
+                        )
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-7xl opacity-20 text-gray-400">
+                          {cfg.emoji}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                      )}
 
-            {/* Footer */}
-            <div className="px-5 py-2 border-t border-gray-100 text-[10px] text-gray-400 text-center">
-              JPG · PNG · MP4 · WebM · MOV · Taille max 100 MB · Sélection multiple possible
+                      {/* Dégradé bas avec nom + compteur */}
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-3 py-3 text-left">
+                        <p className="text-white text-sm font-bold leading-tight">
+                          {cfg.emoji} {cfg.label}
+                        </p>
+                        <p className="text-gray-200 text-[11px] mt-0.5">
+                          {count === 0 ? 'Vide' : `${count} élément${count > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+
+          ) : (
+            /* ── VUE DÉTAIL : grille 3 colonnes ── */
+            <div className="flex-1 overflow-y-auto bg-black">
+              {(albums[activeAlbum]?.length || 0) === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full py-20 text-gray-600">
+                  <span className="text-7xl mb-4 opacity-20">
+                    {ALBUM_CONFIG.find(c => c.key === activeAlbum)?.emoji}
+                  </span>
+                  <p className="text-sm font-medium text-gray-500">Aucune photo ni vidéo</p>
+                  <p className="text-xs text-gray-600 mt-1">Appuyez sur "＋ Ajouter" pour commencer</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-0.5">
+                  {albums[activeAlbum].map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="relative group overflow-hidden bg-gray-900"
+                      style={{ aspectRatio: '1' }}
+                    >
+                      {item.type === 'video' || isVideo(item.url) ? (
+                        <video
+                          src={`${API_BASE}${item.url}`}
+                          className="w-full h-full object-cover cursor-pointer"
+                          muted
+                          onClick={() => setViewerMedia(item)}
+                        />
+                      ) : (
+                        <img
+                          src={`${API_BASE}${item.url}`}
+                          alt=""
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={() => setViewerMedia(item)}
+                        />
+                      )}
+
+                      {/* Badge vidéo */}
+                      {(item.type === 'video' || isVideo(item.url)) && (
+                        <div className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-full pointer-events-none">
+                          ▶
+                        </div>
+                      )}
+
+                      {/* Bouton supprimer au survol */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all opacity-0 group-hover:opacity-100 flex items-end justify-end p-1">
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDeleteMedia(idx) }}
+                          disabled={deletingIdx === idx}
+                          className="w-7 h-7 rounded-full bg-red-600/90 flex items-center justify-center text-white text-xs active:scale-90"
+                        >
+                          {deletingIdx === idx ? '…' : '🗑️'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
