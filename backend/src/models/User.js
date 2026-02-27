@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Op } from 'sequelize';
 import { sequelize } from '../../config/database.js';
 
 class User extends Model {
@@ -29,9 +29,9 @@ class User extends Model {
     const trimmed = numeroH.trim();
     try {
       // Au plus 2 requêtes : index sur numero_h → réponse rapide
-      let user = await this.findOne({ where: { numeroH: normalizedNumeroH }, raw: false });
+      let user = await this.findOne({ where: { numeroH: { [Op.iLike]: normalizedNumeroH } }, raw: false });
       if (!user && trimmed !== normalizedNumeroH) {
-        user = await this.findOne({ where: { numeroH: trimmed }, raw: false });
+        user = await this.findOne({ where: { numeroH: { [Op.iLike]: trimmed } }, raw: false });
       }
       return user || null;
     } catch (error) {

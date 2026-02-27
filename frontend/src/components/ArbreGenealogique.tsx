@@ -499,10 +499,11 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
                   {familyMembers.find(m => m.id === '9')?.numeroH || 'GM002'}
                 </text>
 
-                {/* Lignes verticales descendantes vers les parents
-                    - Chaque parent est relié au centre entre ses deux propres parents */}
-                <line x1="250" y1="90" x2="250" y2="200" stroke="#4CAF50" strokeWidth="2" />
-                <line x1="900" y1="90" x2="900" y2="200" stroke="#4CAF50" strokeWidth="2" />
+                {/* Lignes en coude vers les parents : partent du milieu du couple G-1 et rejoignent le centre du parent G0 */}
+                {/* Grands-parents paternels (milieu x=250) → Père (centre x=320) */}
+                <polyline points="250,90 250,165 320,165 320,200" fill="none" stroke="#4CAF50" strokeWidth="2" />
+                {/* Grands-parents maternels (milieu x=900) → Mère (centre x=580) */}
+                <polyline points="900,90 900,165 580,165 580,200" fill="none" stroke="#4CAF50" strokeWidth="2" />
               </g>
             )}
 
