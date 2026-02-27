@@ -62,10 +62,20 @@ export default function InscriptionPro() {
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
-    name: "", description: "", address: "", city: "", country: "", phone: "", email: "",
+    name: "",
+    description: "",
+    address: "",
+    city: "",
+    country: "",
+    phone: "",
+    email: "",
+    website: "",
+    mediaUrl: "",
+    justificatifDocument: "",
     services: "",
     specialties: "",
   });
+  const [justificatifFileName, setJustificatifFileName] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,12 +92,14 @@ export default function InscriptionPro() {
         body: JSON.stringify({
           type: selectedType,
           name: form.name.trim(),
-          description: form.description.trim(),
+          description: (form.description.trim() || "") + (form.website.trim() ? `\nSite: ${form.website.trim()}` : ""),
           address: form.address.trim(),
           city: form.city.trim(),
           country: form.country.trim(),
           phone: form.phone.trim(),
           email: form.email.trim(),
+          photo: form.mediaUrl.trim() || undefined,
+          justificatifDocument: form.justificatifDocument.trim() || undefined,
           services: form.services ? form.services.split(",").map(s => s.trim()).filter(Boolean) : [],
           specialties: form.specialties ? form.specialties.split(",").map(s => s.trim()).filter(Boolean) : [],
         }),
@@ -137,20 +149,30 @@ export default function InscriptionPro() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-md ring-1 ring-gray-200 dark:ring-gray-700 p-6 sm:p-8">
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type de compte *</label>
-            <select
-              required
-              value={selectedType}
-              onChange={e => setSelectedType(e.target.value)}
-              className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Choisir un type...</option>
-              {PRO_TYPES.map((t) => (
-                <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
-              ))}
-            </select>
-          </div>
+          {/* Type déjà choisi en amont : on l'affiche, pas de liste déroulante */}
+          {selectedType ? (
+            <div className="mb-6 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Vous vous inscrivez en tant que :</span>
+              <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {PRO_TYPES.find((t) => t.id === selectedType)?.icon} {PRO_TYPES.find((t) => t.id === selectedType)?.label}
+              </p>
+            </div>
+          ) : (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type de compte *</label>
+              <select
+                required
+                value={selectedType}
+                onChange={e => setSelectedType(e.target.value)}
+                className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Choisir un type...</option>
+                {PRO_TYPES.map((t) => (
+                  <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {selectedType && PRO_TYPE_INFO[selectedType] && (
             <div className="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-left space-y-3">
@@ -183,6 +205,39 @@ export default function InscriptionPro() {
                 <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3}
                   className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
                   placeholder="Décrivez votre activité..." />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Image ou vidéo de présentation (max ~30s)
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Choisissez une photo ou une courte vidéo (≈ 30 secondes). Le fichier sera converti automatiquement.
+                </p>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      setForm(f => ({ ...f, mediaUrl: "" }));
+                      return;
+                    }
+                    // Option simple: limiter la taille (ex. 20 Mo) pour éviter les fichiers trop lourds
+                    if (file.size > 20 * 1024 * 1024) {
+                      setError("Le fichier ne doit pas dépasser 20 Mo.");
+                      setForm(f => ({ ...f, mediaUrl: "" }));
+                      return;
+                    }
+                    setError("");
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      // on stocke le base64 dans mediaUrl, comme prévu côté backend
+                      setForm(f => ({ ...f, mediaUrl: String(reader.result) }));
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                  className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-300"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adresse</label>
@@ -220,6 +275,51 @@ export default function InscriptionPro() {
                 <input type="text" value={form.specialties} onChange={e => setForm({ ...form, specialties: e.target.value })}
                   className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
                   placeholder="Ex: Cardiologie, Pédiatrie, Sécurité privée" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Justificatif d'activité (optionnel)
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Si vous en avez, joignez un document : diplôme, agrément, papiers (école, clinique…), Kbis, etc. PDF ou image. Taille max : 10 Mo. Réservé à l’administrateur pour validation ; personne d’autre ne le verra.
+                </p>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      setForm(f => ({ ...f, justificatifDocument: "" }));
+                      setJustificatifFileName("");
+                      return;
+                    }
+                    if (file.size > 10 * 1024 * 1024) {
+                      setError("Le fichier ne doit pas dépasser 10 Mo.");
+                      setForm(f => ({ ...f, justificatifDocument: "" }));
+                      setJustificatifFileName("");
+                      return;
+                    }
+                    setError("");
+                    const reader = new FileReader();
+                    reader.onload = () => setForm(f => ({ ...f, justificatifDocument: String(reader.result) }));
+                    reader.readAsDataURL(file);
+                    setJustificatifFileName(file.name);
+                  }}
+                  className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-300"
+                />
+                {justificatifFileName && (
+                  <p className="mt-1 text-sm text-green-600 dark:text-green-400">Fichier sélectionné : {justificatifFileName}</p>
+                )}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Site web (optionnel)</label>
+                <input
+                  type="url"
+                  value={form.website}
+                  onChange={e => setForm({ ...form, website: e.target.value })}
+                  className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: https://www.macliniquediallo.com"
+                />
               </div>
             </div>
 

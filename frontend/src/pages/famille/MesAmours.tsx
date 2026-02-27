@@ -137,16 +137,16 @@ export default function MesAmours() {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setFriends(data.friends || []);
       } else {
-        setFriends(getDefaultFriends());
+        setFriends([]);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des amis:', error);
-      setFriends(getDefaultFriends());
+      setFriends([]);
     }
   };
 
@@ -159,16 +159,16 @@ export default function MesAmours() {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setFriendRequests(data.requests || []);
       } else {
-        setFriendRequests(getDefaultFriendRequests());
+        setFriendRequests([]);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des demandes:', error);
-      setFriendRequests(getDefaultFriendRequests());
+      setFriendRequests([]);
     }
   };
 
@@ -291,6 +291,11 @@ export default function MesAmours() {
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Vous devez être connecté pour envoyer une demande d'amitié.");
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/api/friends/send-request`, {
         method: 'POST',
         headers: {
@@ -298,21 +303,23 @@ export default function MesAmours() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          toUser: addFriendForm.numeroH,
-          message: addFriendForm.message
+          toUser: addFriendForm.numeroH.trim(),
+          message: addFriendForm.message?.trim() || undefined
         })
       });
 
+      const data = await response.json();
       if (response.ok) {
-        alert('Demande d\'amitié envoyée !');
+        alert('Demande d\'amitié envoyée avec succès !');
         setShowAddFriend(false);
+        setAddFriendForm({ numeroH: '', message: '' });
         loadFriendRequests();
       } else {
-        alert('Erreur lors de l\'envoi de la demande');
+        alert(data?.message || 'Erreur lors de l\'envoi de la demande');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
-      alert('Erreur lors de l\'envoi de la demande');
+      alert('Erreur de connexion au serveur');
     }
   };
 
@@ -331,16 +338,17 @@ export default function MesAmours() {
         })
       });
 
+      const data = await response.json();
       if (response.ok) {
-        alert(action === 'accept' ? 'Demande acceptée !' : 'Demande rejetée');
-        loadFriendRequests();
-        loadFriends();
+        alert(action === 'accept' ? 'Demande acceptée ! Il apparaît maintenant dans votre liste d\'amis.' : 'Demande rejetée');
+        await loadFriendRequests();
+        await loadFriends();
       } else {
-        alert('Erreur lors de la réponse');
+        alert(data?.message || 'Erreur lors de la réponse');
       }
     } catch (error) {
       console.error('Erreur lors de la réponse:', error);
-      alert('Erreur lors de la réponse');
+      alert('Erreur de connexion au serveur');
     }
   };
 
@@ -484,6 +492,12 @@ export default function MesAmours() {
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">👥 Ma Liste d'Amis</h2>
+              {friends.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">Vous n'avez pas encore d'amis</p>
+                  <p className="text-gray-400 text-sm mt-2">Utilisez le bouton "Ajouter un ami" pour envoyer une demande</p>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {friends.map((friend) => (
                   <div key={friend.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">

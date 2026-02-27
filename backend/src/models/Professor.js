@@ -86,11 +86,13 @@ Professor.init({
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isAvailable: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_available'
   },
   numeroH: {
     type: DataTypes.STRING,
@@ -119,7 +121,8 @@ Professor.init({
       fields: ['specialty']
     },
     {
-      fields: ['isActive', 'isAvailable']
+      // Index sur les colonnes SQL réelles (snake_case)
+      fields: ['is_active', 'is_available']
     }
   ]
 });

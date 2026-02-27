@@ -95,11 +95,13 @@ Doctor.init({
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isAvailable: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_available'
   },
   ratings: {
     type: DataTypes.JSON,
@@ -128,7 +130,7 @@ Doctor.init({
       fields: ['city']
     },
     {
-      fields: ['isActive', 'isAvailable']
+      fields: ['is_active', 'is_available']
     }
   ]
 });

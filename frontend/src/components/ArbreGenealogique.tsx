@@ -20,6 +20,7 @@ interface FamilyMember {
   isDeceased?: boolean
   parentId?: string
   children?: string[]
+  isVisible?: boolean
 }
 
 interface ArbreGenealogiqueProps {
@@ -32,7 +33,7 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null)
   const [generationFilter, setGenerationFilter] = useState<string>('all')
-  const [showStats, setShowStats] = useState(true)
+  const [showStats, setShowStats] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [showAddMemberForm, setShowAddMemberForm] = useState(false)
   const [addMemberType, setAddMemberType] = useState<'vivant' | 'defunt' | null>(null)
@@ -48,6 +49,7 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
   })
 
   const [recommendations, setRecommendations] = useState<string[]>([])
+  const [pendingInvitationCount, setPendingInvitationCount] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -58,6 +60,11 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
     // Obtenir les recommandations pour compléter l'arbre
     const recs = getTreeCompletionRecommendations(userData)
     setRecommendations(recs)
+
+    // Compter les invitations de famille en attente pour cet utilisateur
+    const receivedInvitations = InvitationManager.getReceivedInvitations(userData.numeroH)
+    const pending = receivedInvitations.filter((inv) => inv.status === 'pending').length
+    setPendingInvitationCount(pending)
   }, [userData])
 
   const getGenerationMembers = (generation: string) => {
@@ -194,10 +201,8 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
   }
 
   // Filtrer les membres visibles uniquement
-  const visibleMembers = familyMembers.filter(m => m.isVisible !== false)
-  const hiddenMembers = familyMembers.filter(m => m.isVisible === false)
-  
-  const filteredMembers = getGenerationMembers(generationFilter).filter(m => m.isVisible !== false)
+  const visibleMembers = familyMembers.filter(m => (m as any).isVisible !== false)
+  const filteredMembers = getGenerationMembers(generationFilter).filter(m => (m as any).isVisible !== false)
   const generations = [...new Set(visibleMembers.map(m => m.generation))].sort()
 
   return (
@@ -215,7 +220,8 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
         }}>
           <strong style={{ color: '#0C4A6E' }}>
             📊 Progression de l'arbre : {visibleMembers.length} membre{visibleMembers.length > 1 ? 's' : ''} visible{visibleMembers.length > 1 ? 's' : ''}
-            {hiddenMembers.length > 0 && ` | ${hiddenMembers.length} membre${hiddenMembers.length > 1 ? 's' : ''} en attente`}
+            {pendingInvitationCount > 0 &&
+              ` | ${pendingInvitationCount} invitation${pendingInvitationCount > 1 ? 's' : ''} en attente`}
           </strong>
         </div>
         
@@ -493,12 +499,10 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
                   {familyMembers.find(m => m.id === '9')?.numeroH || 'GM002'}
                 </text>
 
-                {/* Lignes verticales descendantes vers les parents */}
-                <line x1="320" y1="130" x2="320" y2="200" stroke="#4CAF50" strokeWidth="2" />
-                <line x1="1010" y1="130" x2="1010" y2="160" stroke="#4CAF50" strokeWidth="2" />
-                {/* Ligne horizontale puis verticale vers la mère */}
-                <line x1="1010" y1="160" x2="580" y2="160" stroke="#4CAF50" strokeWidth="2" />
-                <line x1="580" y1="160" x2="580" y2="200" stroke="#4CAF50" strokeWidth="2" />
+                {/* Lignes verticales descendantes vers les parents
+                    - Chaque parent est relié au centre entre ses deux propres parents */}
+                <line x1="250" y1="90" x2="250" y2="200" stroke="#4CAF50" strokeWidth="2" />
+                <line x1="900" y1="90" x2="900" y2="200" stroke="#4CAF50" strokeWidth="2" />
               </g>
             )}
 
@@ -534,9 +538,9 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
                 {familyMembers.find(m => m.id === '2')?.numeroH || userData.numeroHPere}
               </text>
 
-              {/* Ligne horizontale entre parents */}
-              <line x1="410" y1="240" x2="490" y2="240" stroke="#4CAF50" strokeWidth="2" />
-              <text x="450" y="230" textAnchor="middle" fontSize="11" fill="#FF9800" fontWeight="bold">Conjoints</text>
+              {/* Ligne horizontale entre parents (du bord du père au bord de la mère) */}
+              <line x1="410" y1="240" x2="505" y2="240" stroke="#4CAF50" strokeWidth="2" />
+              <text x="458" y="230" textAnchor="middle" fontSize="11" fill="#FF9800" fontWeight="bold">Conjoints</text>
 
               {/* Mère - FEMME = HEXAGONE */}
               <polygon 
@@ -568,14 +572,14 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
                 {familyMembers.find(m => m.id === '3')?.numeroH || userData.numeroHMere}
               </text>
 
-              {/* Ligne verticale descendante depuis les parents */}
-              <line x1="450" y1="280" x2="450" y2="320" stroke="#4CAF50" strokeWidth="2" />
+              {/* Ligne verticale descendante reliant la barre Conjoints à la génération des enfants */}
+              <line x1="458" y1="240" x2="458" y2="320" stroke="#4CAF50" strokeWidth="2" />
             </g>
 
             {/* Génération G1: Vous et fratrie */}
             <g className="generation-g1">
-              {/* Ligne horizontale pour connecter les enfants */}
-              <line x1="200" y1="320" x2="700" y2="320" stroke="#4CAF50" strokeWidth="2" />
+              {/* Ligne horizontale pour connecter les enfants (passe exactement sous chaque branche verticale) */}
+              <line x1="190" y1="320" x2="610" y2="320" stroke="#4CAF50" strokeWidth="2" />
 
               {/* Frère - HOMME = CARRÉ */}
               <rect 
@@ -685,8 +689,53 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
               <circle cx="695" cy="365" r="5" fill="#FF9800" />
               <line x1="610" y1="320" x2="610" y2="350" stroke="#4CAF50" strokeWidth="2" />
 
-              {/* Ligne descendante pour vos enfants */}
-              <line x1="610" y1="430" x2="610" y2="470" stroke="#4CAF50" strokeWidth="2" />
+              {/* Conjoint(e) de VOUS (si partenaire lié confirmé) */}
+              {Boolean(userData.conjointNumeroH && userData.conjointPrenom) && (
+                <>
+                  {renderPersonNode(
+                    {
+                      genre:
+                        (userData.conjointGenre?.toUpperCase() as 'HOMME' | 'FEMME' | 'AUTRE') ||
+                        (userData.genre === 'HOMME' ? 'FEMME' : 'HOMME'),
+                      prenom: userData.conjointPrenom,
+                      nomFamille: userData.conjointNomFamille || userData.nomFamille,
+                      numeroH: userData.conjointNumeroH,
+                      photo: userData.conjointPhoto
+                    },
+                    740,
+                    350,
+                    180,
+                    80,
+                    {
+                      label:
+                      userData.conjointGenre?.toUpperCase() === 'HOMME'
+                        ? 'Mari/Époux'
+                        : 'Femme/Épouse'
+                    }
+                  )}
+                  {/* Barre horizontale "Conjoints" entre VOUS et le/la conjoint(e) */}
+                  <line x1="610" y1="340" x2="830" y2="340" stroke="#4CAF50" strokeWidth="2" />
+                  <text
+                    x="720"
+                    y="330"
+                    textAnchor="middle"
+                    fontSize="11"
+                    fill="#FF9800"
+                    fontWeight="bold"
+                  >
+                    Conjoints
+                  </text>
+                </>
+              )}
+
+              {/* Ligne descendante pour vos enfants
+                  - Si un conjoint est lié, la ligne part du centre du couple
+                  - Sinon, elle part de VOUS */}
+              {Boolean(userData.conjointNumeroH && userData.conjointPrenom) ? (
+                <line x1="720" y1="430" x2="720" y2="470" stroke="#4CAF50" strokeWidth="2" />
+              ) : (
+                <line x1="610" y1="430" x2="610" y2="470" stroke="#4CAF50" strokeWidth="2" />
+              )}
             </g>
 
             {/* Génération G2: Enfants + Conjoints + Petits-enfants (selon schéma) */}
@@ -695,12 +744,12 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
               <line x1="500" y1="470" x2="720" y2="470" stroke="#059669" strokeWidth="2" />
 
               {/* Fille */}
-              {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 420, 490, 170, 80, { label: 'Fille' })}
+              {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 440, 490, 170, 80, { label: 'Fille' })}
               <line x1="500" y1="470" x2="500" y2="490" stroke="#059669" strokeWidth="2" />
 
-              {/* Mari à gauche de la fille */}
+              {/* Mari à gauche de la fille : petite liaison visible mais qui ne rentre pas dans les cartes */}
               {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: '', numeroH: '' }, 290, 500, 110, 60, { label: 'Mari' })}
-              <line x1="410" y1="520" x2="290" y2="520" stroke="#059669" strokeWidth="2" />
+              <line x1="400" y1="520" x2="440" y2="520" stroke="#059669" strokeWidth="2" />
 
               {/* Petite-fille sous la fille */}
               <line x1="500" y1="570" x2="500" y2="610" stroke="#059669" strokeWidth="2" />
@@ -710,7 +759,7 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
               {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 630, 490, 180, 80, { label: 'Garçon' })}
               <line x1="720" y1="470" x2="720" y2="490" stroke="#059669" strokeWidth="2" />
 
-              {/* Femme à droite du garçon */}
+              {/* Femme à droite du garçon : petite liaison visible sans entrer dans les cartes */}
               {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: '', numeroH: '' }, 830, 500, 170, 80, { label: 'Femme' })}
               <line x1="810" y1="520" x2="830" y2="520" stroke="#059669" strokeWidth="2" />
 

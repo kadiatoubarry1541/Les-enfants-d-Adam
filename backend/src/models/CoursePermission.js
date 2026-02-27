@@ -43,6 +43,7 @@ CoursePermission.init({
   numeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -82,7 +83,7 @@ CoursePermission.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
       fields: ['courseType']

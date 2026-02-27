@@ -35,6 +35,7 @@ DocumentPermission.init({
   numeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -43,38 +44,46 @@ DocumentPermission.init({
   documentType: {
     type: DataTypes.STRING, // ENUM converti en STRING ('extrait_naissance', 'acte_mariage', 'certificat_deces', 'document_familial', 'autre'),
     allowNull: true, // null = tous les types de documents
-    comment: 'Type de document spécifique (null = tous les types)'
+    comment: 'Type de document spécifique (null = tous les types)',
+    field: 'document_type'
   },
   permissionType: {
     type: DataTypes.STRING, // ENUM converti en STRING ('send', 'receive', 'modify', 'all'),
     defaultValue: 'all',
-    comment: 'Type de permission: send (envoyer), receive (recevoir), modify (modifier), all (tout)'
+    comment: 'Type de permission: send (envoyer), receive (recevoir), modify (modifier), all (tout)',
+    field: 'permission_type'
   },
   role: {
     type: DataTypes.STRING, // 'state_agent', 'admin', 'supervisor'
     defaultValue: 'state_agent',
-    comment: 'Rôle de l\'agent de l\'État'
+    comment: 'Rôle de l\'agent de l\'État',
+    field: 'role'
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   grantedBy: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'NumeroH de l\'administrateur qui a accordé la permission'
+    comment: 'NumeroH de l\'administrateur qui a accordé la permission',
+    field: 'granted_by'
   },
   grantedAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    defaultValue: DataTypes.NOW,
+    field: 'granted_at'
   },
   expiresAt: {
     type: DataTypes.DATE,
-    comment: 'Date d\'expiration de la permission'
+    comment: 'Date d\'expiration de la permission',
+    field: 'expires_at'
   },
   notes: {
     type: DataTypes.TEXT,
-    comment: 'Notes sur la permission'
+    comment: 'Notes sur la permission',
+    field: 'notes'
   }
 }, {
   sequelize,
@@ -85,10 +94,10 @@ DocumentPermission.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
-      fields: ['documentType']
+      fields: ['document_type']
     },
     {
       fields: ['is_active']

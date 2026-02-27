@@ -37,6 +37,7 @@ PlatformCommission.init({
   orderId: {
     type: DataTypes.UUID,
     allowNull: false,
+    field: 'order_id',
     references: {
       model: 'orders',
       key: 'id'
@@ -46,6 +47,7 @@ PlatformCommission.init({
   productId: {
     type: DataTypes.UUID,
     allowNull: false,
+    field: 'product_id',
     references: {
       model: 'exchange_products',
       key: 'id'
@@ -55,6 +57,7 @@ PlatformCommission.init({
   buyerNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'buyer_numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -64,6 +67,7 @@ PlatformCommission.init({
   sellerNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'seller_numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -104,7 +108,7 @@ PlatformCommission.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['orderId']
+      fields: ['order_id']
     },
     {
       fields: ['status']

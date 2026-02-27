@@ -23,9 +23,9 @@ if (process.env.DATABASE_URL) {
       }
     },
     pool: {
-      max: 5,
+      max: 10,
       min: 0,
-      acquire: 30000,
+      acquire: 10000,
       idle: 10000
     },
     define: {
@@ -51,9 +51,9 @@ if (process.env.DATABASE_URL) {
       }
     } : {},
   pool: {
-    max: 5,
+    max: 10,
     min: 0,
-    acquire: 30000,
+    acquire: 10000,
     idle: 10000
   },
   define: {
@@ -76,13 +76,15 @@ const connectDB = async () => {
       await verifyAndInitGameModels();
       
       // Synchroniser les modèles avec la base de données
-      // En local (NODE_ENV non défini ou "development"), on synchronise automatiquement
-      // En production (NODE_ENV === "production"), on évite alter:true et on compte sur les migrations
+      // ⚠️ Important: on évite maintenant alter:true qui provoquait
+      // beaucoup d'erreurs de colonnes / syntaxe chez toi.
+      // - sequelize.sync() crée les tables manquantes sans modifier les colonnes existantes
+      // - les modèles Game sont synchronisés sans alter également
       if (process.env.NODE_ENV !== 'production') {
         const { syncGameModels } = await import('../models/initGameModels.js');
-        await sequelize.sync({ alter: true });
-        await syncGameModels({ alter: true });
-        console.log('🔄 Modèles synchronisés avec la base de données');
+        await sequelize.sync(); // pas de alter:true → pas de ALTER COLUMN dangereux
+        await syncGameModels({ alter: false });
+        console.log('🔄 Modèles synchronisés avec la base de données (sans alter)');
       }
     } catch (error) {
       console.warn('⚠️ Avertissement lors de l\'initialisation des modèles Game:', error.message);

@@ -1,4 +1,4 @@
-import { DataTypes, Model, Op } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../../config/database.js';
 
 class User extends Model {
@@ -24,94 +24,18 @@ class User extends Model {
 
   // Méthodes statiques
   static async findByNumeroH(numeroH) {
-    if (!numeroH) {
-      console.log('❌ NumeroH vide ou null');
-      return null;
-    }
-    
-    // Normaliser le NumeroH en supprimant les espaces supplémentaires
+    if (!numeroH || typeof numeroH !== 'string') return null;
     const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ');
-    console.log('🔍 Recherche utilisateur avec NumeroH:', numeroH, '→ normalisé:', normalizedNumeroH);
-    
+    const trimmed = numeroH.trim();
     try {
-      // Essayer d'abord une correspondance exacte avec le champ Sequelize (numeroH)
-      let user = await this.findOne({ 
-        where: { numeroH: normalizedNumeroH },
-        raw: false // S'assurer qu'on récupère une instance Sequelize
-      });
-      
-      // Si aucun utilisateur n'est trouvé, essayer avec le NumeroH original (sans normalisation)
-      if (!user && normalizedNumeroH !== numeroH.trim()) {
-        console.log('🔍 Essai avec NumeroH original (non normalisé):', numeroH.trim());
-        user = await this.findOne({ 
-          where: { numeroH: numeroH.trim() },
-          raw: false
-        });
+      // Au plus 2 requêtes : index sur numero_h → réponse rapide
+      let user = await this.findOne({ where: { numeroH: normalizedNumeroH }, raw: false });
+      if (!user && trimmed !== normalizedNumeroH) {
+        user = await this.findOne({ where: { numeroH: trimmed }, raw: false });
       }
-      
-      // Si toujours aucun utilisateur, essayer avec une recherche directe sur le champ de base de données
-      if (!user) {
-        console.log('🔍 Essai avec recherche directe sur numero_h (champ DB)');
-        user = await this.findOne({ 
-          where: {
-            [Op.or]: [
-              { numeroH: normalizedNumeroH },
-              { numeroH: numeroH.trim() }
-            ]
-          },
-          raw: false
-        });
-      }
-      
-      // Si toujours aucun utilisateur, essayer avec une recherche insensible aux espaces (dernier recours)
-      if (!user) {
-        console.log('🔍 Essai avec recherche insensible aux espaces (dernier recours)');
-        const numeroHSansEspaces = normalizedNumeroH.replace(/\s/g, '');
-        
-        try {
-          // Utiliser une requête SQL brute pour une recherche plus flexible
-          const [results] = await sequelize.query(
-            `SELECT numero_h FROM users WHERE REPLACE(numero_h, ' ', '') = :numeroHSansEspaces LIMIT 1`,
-            {
-              replacements: { numeroHSansEspaces },
-              type: sequelize.QueryTypes.SELECT
-            }
-          );
-          
-          if (results && results.length > 0 && results[0].numero_h) {
-            // Utiliser findByPk avec le numero_h trouvé
-            user = await this.findByPk(results[0].numero_h, { raw: false });
-            if (user) {
-              console.log('✅ Utilisateur trouvé avec recherche SQL insensible aux espaces:', user.numeroH);
-            }
-          }
-        } catch (sqlError) {
-          console.error('❌ Erreur lors de la recherche SQL:', sqlError);
-          // Continuer sans lever d'erreur
-        }
-      }
-      
-      // Dernier recours : essayer avec findByPk directement si le numeroH ressemble à une clé primaire
-      if (!user && normalizedNumeroH) {
-        try {
-          user = await this.findByPk(normalizedNumeroH, { raw: false });
-          if (user) {
-            console.log('✅ Utilisateur trouvé avec findByPk direct:', user.numeroH);
-          }
-        } catch (pkError) {
-          // Ignorer l'erreur, ce n'est qu'un dernier recours
-        }
-      }
-      
-      if (user) {
-        console.log('✅ Utilisateur trouvé:', user.numeroH, '(type:', user.type, ', actif:', user.isActive, ')');
-      } else {
-        console.log('❌ Aucun utilisateur trouvé avec NumeroH:', numeroH);
-      }
-      
-      return user;
+      return user || null;
     } catch (error) {
-      console.error('❌ Erreur lors de la recherche de l\'utilisateur:', error);
+      if (process.env.NODE_ENV === 'development') console.error('findByNumeroH:', error.message);
       return null;
     }
   }
@@ -172,7 +96,8 @@ User.init({
     type: DataTypes.STRING, // ENUM converti en STRING ('Vivant', 'Mort')
   },
   numeroHPere: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'numero_h_pere'
   },
   familleMere: {
     type: DataTypes.STRING
@@ -184,7 +109,8 @@ User.init({
     type: DataTypes.STRING, // ENUM converti en STRING ('Vivant', 'Mort')
   },
   numeroHMere: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'numero_h_mere'
   },
   
   // Informations géographiques et ethniques
@@ -305,7 +231,12 @@ User.init({
     type: DataTypes.TEXT, // Photos des enfants (JSON stringifié)
     field: 'children_photos'
   },
-  
+  galleryAlbums: {
+    type: DataTypes.TEXT, // Galerie famille par albums (JSON stringifié)
+    field: 'gallery_albums',
+    defaultValue: null
+  },
+
   // Informations pour les défunts
   dateDeces: {
     type: DataTypes.DATEONLY,
@@ -446,11 +377,13 @@ User.init({
   // Métadonnées
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isVerified: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    defaultValue: false,
+    field: 'is_verified'
   },
   role: {
     type: DataTypes.STRING, // ENUM converti en STRING ('user', 'admin', 'super-admin')
@@ -481,24 +414,16 @@ User.init({
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   indexes: [
-    {
-      fields: ['numeroH']
-    },
-    {
-      fields: ['type']
-    },
-    {
-      fields: ['nomFamille']
-    },
-    {
-      fields: ['prenom']
-    },
-    {
-      fields: ['generation']
-    },
-    {
-      fields: ['pays', 'regionOrigine', 'ethnie']
-    }
+    // On référence ici les noms de colonnes SQL réels (snake_case)
+    { fields: ['numero_h'] },
+    { fields: ['email'] },
+    { fields: ['numero_h_pere'] },
+    { fields: ['numero_h_mere'] },
+    { fields: ['type'] },
+    { fields: ['nom_famille'] },
+    { fields: ['prenom'] },
+    { fields: ['generation'] },
+    { fields: ['pays', 'region_origine', 'ethnie'] }
   ]
 });
 

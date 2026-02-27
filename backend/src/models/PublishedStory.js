@@ -91,19 +91,19 @@ PublishedStory.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
-      fields: ['sectionId']
+      fields: ['section_id']
     },
     {
-      fields: ['isPublished']
+      fields: ['is_published']
     },
     {
       fields: ['generation']
     },
     {
-      fields: ['publishedAt']
+      fields: ['published_at']
     }
   ]
 });

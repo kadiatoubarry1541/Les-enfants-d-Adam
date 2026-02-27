@@ -42,6 +42,7 @@ SciencePermission.init({
   numeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -77,14 +78,14 @@ SciencePermission.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
       fields: ['is_active']
     },
     {
       unique: true,
-      fields: ['numeroH']
+      fields: ['numero_h']
     }
   ]
 });

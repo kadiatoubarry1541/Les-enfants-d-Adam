@@ -52,6 +52,7 @@ class GovernmentMember extends Model {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true,
+        field: 'is_active',
         comment: 'Membre actif ou ancien membre'
       }
     }, {
@@ -67,13 +68,13 @@ class GovernmentMember extends Model {
           fields: ['memberNumeroH']
         },
         {
-          fields: ['isActive']
+          fields: ['is_active']
         },
         {
           unique: true,
-          fields: ['governmentId', 'memberNumeroH', 'isActive'],
+          fields: ['governmentId', 'memberNumeroH', 'is_active'],
           where: {
-            isActive: true
+            is_active: true
           }
         }
       ]

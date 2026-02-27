@@ -69,7 +69,7 @@ SecurityAgent.init({
   },
   badgeNumber: {
     type: DataTypes.STRING,
-    unique: true,
+    field: 'badge_number',
     comment: 'Numéro de badge'
   },
   country: {
@@ -117,11 +117,13 @@ SecurityAgent.init({
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isAvailable: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_available'
   },
   rating: {
     type: DataTypes.DECIMAL(3, 2),
@@ -160,10 +162,11 @@ SecurityAgent.init({
       fields: ['city']
     },
     {
-      fields: ['isActive', 'isAvailable']
+      fields: ['is_active', 'is_available']
     },
     {
-      fields: ['badgeNumber']
+      unique: true,
+      fields: ['badge_number']
     }
   ]
 });

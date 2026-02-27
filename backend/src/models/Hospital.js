@@ -76,11 +76,13 @@ Hospital.init({
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isEmergency: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+    field: 'is_emergency',
     comment: 'Dispose d\'un service d\'urgence'
   },
   rating: {
@@ -113,7 +115,7 @@ Hospital.init({
       fields: ['city']
     },
     {
-      fields: ['isActive', 'isEmergency']
+      fields: ['is_active', 'is_emergency']
     }
   ]
 });

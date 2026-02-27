@@ -32,6 +32,7 @@ ProfessorRequest.init({
   professorId: {
     type: DataTypes.UUID,
     allowNull: false,
+    field: 'professor_id',
     references: {
       model: 'professors',
       key: 'id'
@@ -40,6 +41,7 @@ ProfessorRequest.init({
   numeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -81,10 +83,10 @@ ProfessorRequest.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['professorId']
+      fields: ['professor_id']
     },
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
       fields: ['status']

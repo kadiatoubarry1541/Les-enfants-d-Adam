@@ -26,11 +26,13 @@ Friend.init({
   userNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'user_numero_h',
     comment: 'NumeroH de l\'utilisateur'
   },
   friendNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'friend_numero_h',
     comment: 'NumeroH de l\'ami'
   },
   status: {
@@ -63,10 +65,10 @@ Friend.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['userNumeroH']
+      fields: ['user_numero_h']
     },
     {
-      fields: ['friendNumeroH']
+      fields: ['friend_numero_h']
     },
     {
       fields: ['status']

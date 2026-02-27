@@ -13,6 +13,10 @@ interface UserData {
   dateNaissance?: string;
   date_naissance?: string;
   role?: string;
+  // Activités professionnelles choisies dans le profil
+  activite1?: string;
+  activite2?: string;
+  activite3?: string;
   [key: string]: any;
 }
 
@@ -89,8 +93,20 @@ export default function Activite() {
         navigate("/login");
         return;
       }
-      
       setUserData(user);
+
+      // Choisir l'onglet initial en fonction des activités réellement renseignées
+      if (user.activite1) {
+        setActiveTab('Activité1');
+      } else if (user.activite2) {
+        setActiveTab('Activité2');
+      } else if (user.activite3) {
+        setActiveTab('Activité3');
+      } else {
+        // Aucun activité renseignée: garder Activité1 par défaut
+        setActiveTab('Activité1');
+      }
+
       loadData();
     } catch {
       navigate("/login");
@@ -483,25 +499,36 @@ export default function Activite() {
       {/* Navigation Tabs */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav className="flex space-x-8">
-        {[
-            { id: 'Activité1', label: 'Activité 1', icon: '🏃‍♂️' },
-            { id: 'Activité2', label: 'Activité 2', icon: '👷‍♂️👷‍♀️' },
-            { id: 'Activité3', label: 'Activité 3', icon: '💼' }
-        ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
+          <nav className="flex space-x-8">
+            {(() => {
+              if (!userData) return null;
+
+              // Ne montrer que les onglets correspondant aux activités présentes dans le profil
+              const tabs = [
+                { id: 'Activité1' as const, defaultLabel: 'Activité 1', icon: '🏃‍♂️', field: 'activite1' },
+                { id: 'Activité2' as const, defaultLabel: 'Activité 2', icon: '👷‍♂️👷‍♀️', field: 'activite2' },
+                { id: 'Activité3' as const, defaultLabel: 'Activité 3', icon: '💼', field: 'activite3' }
+              ].filter(tab => !!userData[tab.field]);
+
+              // Si aucune activité n'est définie, on n'affiche pas de tabs et on laisse un message plus bas
+              if (tabs.length === 0) return null;
+
+              return tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {/* Nom de la page = nom de l'activité dans le profil */}
+                  {userData[tab.field] || tab.defaultLabel}
+                </button>
+              ));
+            })()}
           </nav>
         </div>
       </div>

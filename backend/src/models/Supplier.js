@@ -47,7 +47,8 @@ Supplier.init({
   },
   businessType: {
     type: DataTypes.STRING, // ENUM converti en STRING ('individuel', 'entreprise', 'coopérative', 'association'),
-    allowNull: false
+    allowNull: false,
+    field: 'business_type'
   },
   description: {
     type: DataTypes.TEXT,
@@ -75,11 +76,13 @@ Supplier.init({
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isApproved: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    defaultValue: false,
+    field: 'is_approved'
   },
   approvedBy: {
     type: DataTypes.STRING,
@@ -115,13 +118,13 @@ Supplier.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
-      fields: ['isActive', 'isApproved']
+      fields: ['is_active', 'is_approved']
     },
     {
-      fields: ['businessType']
+      fields: ['business_type']
     }
   ]
 });

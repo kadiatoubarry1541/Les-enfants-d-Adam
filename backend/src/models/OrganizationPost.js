@@ -30,6 +30,7 @@ OrganizationPost.init({
   groupId: {
     type: DataTypes.UUID,
     allowNull: false,
+    field: 'group_id',
     references: {
       model: 'organization_groups',
       key: 'id'
@@ -93,10 +94,10 @@ OrganizationPost.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['groupId']
+      fields: ['group_id']
     },
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
       fields: ['created_at']

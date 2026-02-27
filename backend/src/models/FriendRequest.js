@@ -23,16 +23,19 @@ FriendRequest.init({
   fromUser: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'from_user',
     comment: 'NumeroH de l\'expéditeur'
   },
   fromUserName: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
+    defaultValue: null,
     comment: 'Nom de l\'expéditeur'
   },
   toUser: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'to_user',
     comment: 'NumeroH du destinataire'
   },
   message: {
@@ -52,10 +55,10 @@ FriendRequest.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['fromUser']
+      fields: ['from_user']
     },
     {
-      fields: ['toUser']
+      fields: ['to_user']
     },
     {
       fields: ['status']

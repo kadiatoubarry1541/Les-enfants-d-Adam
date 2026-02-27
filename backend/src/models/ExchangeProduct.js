@@ -98,11 +98,13 @@ ExchangeProduct.init({
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   isAvailable: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_available'
   },
   quantity: {
     type: DataTypes.INTEGER,
@@ -147,10 +149,10 @@ ExchangeProduct.init({
       fields: ['category']
     },
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
-      fields: ['isActive', 'isAvailable']
+      fields: ['is_active', 'is_available']
     },
     {
       fields: ['price']

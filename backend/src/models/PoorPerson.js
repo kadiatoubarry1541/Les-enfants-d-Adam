@@ -112,7 +112,8 @@ PoorPerson.init({
   },
   isVerified: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    defaultValue: false,
+    field: 'is_verified'
   },
   verifiedBy: {
     type: DataTypes.STRING,
@@ -123,7 +124,8 @@ PoorPerson.init({
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
   },
   donations: {
     type: DataTypes.JSON,
@@ -163,13 +165,13 @@ PoorPerson.init({
       fields: ['city']
     },
     {
-      fields: ['isVerified', 'isActive']
+      fields: ['is_verified', 'is_active']
     },
     {
       fields: ['urgency']
     },
     {
-      fields: ['numeroH']
+      fields: ['numero_h']
     },
     {
       fields: ['religion']

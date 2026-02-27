@@ -6,10 +6,14 @@ interface ProAccount {
   type: string;
   name: string;
   description: string;
+  address?: string;
   city: string;
   country: string;
+  phone?: string;
+  email?: string;
   services: string[];
   specialties: string[];
+  photo?: string | null;
 }
 
 const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
@@ -157,6 +161,8 @@ export default function PrendreRendezVous() {
   if (!account) return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center"><div className="text-red-500">Établissement non trouvé</div></div>;
 
   const typeInfo = TYPE_LABELS[account.type] || { label: account.type, icon: "📄" };
+  const websiteMatch = account.description?.match(/https?:\/\/[^\s]+/);
+  const websiteUrl = websiteMatch ? websiteMatch[0] : "";
 
   // === Succès ===
   if (mode === "done") {
@@ -190,6 +196,75 @@ export default function PrendreRendezVous() {
             <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">{account.name}</h1>
             <p className="text-sm text-gray-500">{typeInfo.label} • {account.city}</p>
           </div>
+        </div>
+
+        {/* Fiche établissement avant la prise de rendez-vous */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md ring-1 ring-gray-200 dark:ring-gray-700 p-5 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {account.photo && (
+              <div className="sm:w-40 w-full">
+                {account.photo.startsWith("data:video") || account.photo.endsWith(".mp4") || account.photo.endsWith(".webm") ? (
+                  <video src={account.photo} className="w-full h-32 object-cover rounded-xl bg-black" controls />
+                ) : (
+                  <img src={account.photo} alt={account.name} className="w-full h-32 object-cover rounded-xl" />
+                )}
+              </div>
+            )}
+            <div className="flex-1 space-y-1 text-sm">
+              {account.address && (
+                <p className="text-gray-700 dark:text-gray-200">
+                  <span className="font-medium">Adresse :</span> {account.address}{account.city ? `, ${account.city}` : ""}{account.country ? `, ${account.country}` : ""}
+                </p>
+              )}
+              {account.phone && (
+                <p className="text-gray-700 dark:text-gray-200">
+                  <span className="font-medium">Téléphone :</span> {account.phone}
+                </p>
+              )}
+              {account.email && (
+                <p className="text-gray-700 dark:text-gray-200">
+                  <span className="font-medium">Email :</span> {account.email}
+                </p>
+              )}
+              {websiteUrl && (
+                <p className="text-gray-700 dark:text-gray-200">
+                  <span className="font-medium">Site web :</span>{" "}
+                  <a href={websiteUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">
+                    {websiteUrl}
+                  </a>
+                </p>
+              )}
+              {account.services?.length > 0 && (
+                <div className="pt-1">
+                  <span className="text-gray-700 dark:text-gray-200 font-medium text-sm">Services principaux :</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {account.services.slice(0, 6).map((s, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 text-xs rounded-full">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {account.specialties?.length > 0 && (
+                <div className="pt-1">
+                  <span className="text-gray-700 dark:text-gray-200 font-medium text-sm">Spécialités :</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {account.specialties.slice(0, 6).map((s, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-200 text-xs rounded-full">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          {account.description && (
+            <div className="mt-3 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">
+              {account.description}
+            </div>
+          )}
         </div>
 
         {error && <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">{error}</div>}

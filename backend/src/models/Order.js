@@ -28,6 +28,7 @@ Order.init({
   productId: {
     type: DataTypes.UUID,
     allowNull: false,
+    field: 'product_id',
     references: {
       model: 'exchange_products',
       key: 'id'
@@ -37,6 +38,7 @@ Order.init({
   buyerNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'buyer_numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -46,6 +48,7 @@ Order.init({
   sellerNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'seller_numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -114,13 +117,13 @@ Order.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['buyerNumeroH']
+      fields: ['buyer_numero_h']
     },
     {
-      fields: ['sellerNumeroH']
+      fields: ['seller_numero_h']
     },
     {
-      fields: ['productId']
+      fields: ['product_id']
     },
     {
       fields: ['status']

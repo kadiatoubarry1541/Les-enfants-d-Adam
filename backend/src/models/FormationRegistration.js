@@ -32,6 +32,7 @@ FormationRegistration.init({
   formationId: {
     type: DataTypes.UUID,
     allowNull: false,
+    field: 'formation_id',
     references: {
       model: 'formations',
       key: 'id'
@@ -40,6 +41,7 @@ FormationRegistration.init({
   numeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -78,7 +80,7 @@ FormationRegistration.init({
   indexes: [
     {
       unique: true,
-      fields: ['formationId', 'numeroH']
+      fields: ['formation_id', 'numero_h']
     },
     {
       fields: ['status']

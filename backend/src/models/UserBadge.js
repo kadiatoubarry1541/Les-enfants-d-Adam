@@ -53,7 +53,7 @@ class UserBadge extends Model {
       indexes: [
         {
           unique: true,
-          fields: ['numeroH', 'badgeId']
+          fields: ['numero_h', 'badgeId']
         }
       ]
     });
