@@ -307,7 +307,14 @@ router.post('/register', validateUser, async (req, res) => {
       role: 'user'
     };
 
+    // Timeout 25 s max pour ne jamais bloquer plus d'une minute
+    const REGISTER_TIMEOUT_MS = 25000;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), REGISTER_TIMEOUT_MS)
+    );
+
     try {
+      const registerWork = (async () => {
       // Essayer d'utiliser la base de données PostgreSQL
       const where = email
         ? { [Op.or]: [{ numeroH: numeroH }, { email: email }] }
@@ -368,73 +375,18 @@ router.post('/register', validateUser, async (req, res) => {
       }
 
       // ✅ CRÉER L'UTILISATEUR EN BASE DE DONNÉES
-      console.log('💾 Tentative de création utilisateur avec NumeroH:', userData.numeroH);
       const newUser = await User.create(userData);
-      
-      // ✅ VÉRIFIER QUE L'UTILISATEUR EST BIEN SAUVEGARDÉ EN BASE
-      console.log('🔍 Vérification que le NumeroH est bien sauvegardé en base:', newUser.numeroH);
-      
-      // Recharger depuis la base pour s'assurer que tout est correct
-      let savedUser = await User.findByNumeroH(newUser.numeroH);
-      
-      // Si l'utilisateur n'est pas trouvé, essayer plusieurs fois avec des délais
-      if (!savedUser) {
-        console.warn('⚠️ Utilisateur non trouvé immédiatement, nouvelle tentative...');
-        // Attendre un peu pour la synchronisation de la base
-        await new Promise(resolve => setTimeout(resolve, 500));
-        savedUser = await User.findByNumeroH(newUser.numeroH);
-      }
-      
-      // Si toujours pas trouvé, essayer avec findByPk
-      if (!savedUser && newUser.numeroH) {
-        console.warn('⚠️ Essai avec findByPk...');
-        savedUser = await User.findByPk(newUser.numeroH);
-      }
-      
-      // Si toujours pas trouvé, utiliser newUser directement mais logger l'erreur
-      if (!savedUser) {
-        console.error('❌ ERREUR: L\'utilisateur n\'a pas été trouvé en base après création!', {
-          numeroH: newUser.numeroH,
-          id: newUser.id || 'N/A'
-        });
-        // Utiliser newUser comme fallback mais continuer quand même
-        savedUser = newUser;
-      } else {
-        console.log('✅ ✅ ✅ UTILISATEUR CRÉÉ ET VÉRIFIÉ EN BASE DE DONNÉES ✅ ✅ ✅');
-        console.log('✅ NumeroH sauvegardé:', savedUser.numeroH);
-        console.log('✅ Prénom:', savedUser.prenom);
-        console.log('✅ Nom de famille:', savedUser.nomFamille);
-        console.log('✅ L\'utilisateur peut maintenant se connecter avec ce NumeroH et son mot de passe');
-      }
 
-      // Gérer les confirmations par les parents vivants
-      if (newUser.numeroHPere || newUser.numeroHMere) {
-        await handleParentConfirmations(newUser);
-      }
-
-      // Créer automatiquement les groupes d'activités et ajouter l'utilisateur
-      await createActivityGroupsForUser(newUser);
-
-      // Générer le token JWT
+      // Générer le token et préparer la réponse tout de suite
       const token = jwt.sign(
-        { userId: savedUser.numeroH, numeroH: savedUser.numeroH },
+        { userId: newUser.numeroH, numeroH: newUser.numeroH },
         config.JWT_SECRET,
         { expiresIn: config.JWT_EXPIRE }
       );
-
-      // Retourner la réponse (sans le mot de passe) - utiliser savedUser qui est vérifié en base
-      const userWithoutPassword = { ...savedUser.dataValues };
+      const userWithoutPassword = { ...newUser.dataValues };
       delete userWithoutPassword.password;
 
-      console.log('✅ ✅ ✅ INSCRIPTION RÉUSSIE ✅ ✅ ✅');
-      console.log('✅ NumeroH sauvegardé en base de données PostgreSQL:', savedUser.numeroH);
-      console.log('✅ Utilisateur peut maintenant se connecter avec:');
-      console.log('   - NumeroH:', savedUser.numeroH);
-      console.log('   - Mot de passe: (celui qu\'il a choisi)');
-      console.log('✅ Le NumeroH est UNIQUE et FIXE - il ne changera jamais');
-      console.log('✅ NumeroH sauvegardé en base:', savedUser.numeroH);
-      console.log('✅ Utilisateur peut maintenant se connecter avec ce NumeroH et son mot de passe');
-
+      // ✅ RÉPONSE IMMÉDIATE (< 1 s) : l'utilisateur voit tout de suite le succès
       res.status(201).json({
         success: true,
         message: 'Utilisateur créé avec succès',
@@ -442,7 +394,24 @@ router.post('/register', validateUser, async (req, res) => {
         token
       });
 
+      // Tâches lourdes en arrière-plan (ne bloquent plus la réponse)
+      setImmediate(() => {
+        if (newUser.numeroHPere || newUser.numeroHMere) {
+          handleParentConfirmations(newUser).catch(err => console.error('handleParentConfirmations:', err.message));
+        }
+        createActivityGroupsForUser(newUser).catch(err => console.error('createActivityGroupsForUser:', err.message));
+      });
+      })();
+
+      await Promise.race([registerWork, timeoutPromise]);
     } catch (dbError) {
+      if (dbError?.message === 'TIMEOUT' && !res.headersSent) {
+        console.error('❌ Inscription: timeout (réponse trop lente)');
+        return res.status(503).json({
+          success: false,
+          message: 'Le serveur met trop de temps à répondre. Réessayez dans un moment.'
+        });
+      }
       console.error('❌ Erreur base de données lors de l\'inscription:', dbError);
       return res.status(500).json({
         success: false,

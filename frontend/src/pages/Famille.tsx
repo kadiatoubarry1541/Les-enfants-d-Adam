@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { calculerAge } from '../utils/calculs';
 
 interface UserData {
   numeroH: string;
   prenom: string;
   nomFamille: string;
+  dateNaissance?: string;
+  date_naissance?: string;
   [key: string]: any;
 }
 
@@ -87,6 +90,7 @@ export default function Famille() {
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showTreeChat, setShowTreeChat] = useState(false);
+  const [showFamilyGallery, setShowFamilyGallery] = useState(false);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const navigate = useNavigate();
 
@@ -625,6 +629,12 @@ export default function Famille() {
     );
   }
 
+  // Calcul de l'âge et droit de publier dans la galerie (>= 18 ans)
+  // Si la date de naissance est inconnue, on autorise par défaut la publication
+  const birth = userData?.dateNaissance || userData?.date_naissance;
+  const age = birth ? (calculerAge(birth) ?? 0) : 99;
+  const canPublishGallery = age >= 18;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -680,7 +690,14 @@ export default function Famille() {
       {/* Section Photos de Famille */}
       <div className="bg-white border-b py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">📸 Photos de Famille</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">📸 Photos de Famille</h2>
+            {!canPublishGallery && (
+              <p className="text-xs sm:text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-1">
+                La publication est réservée aux membres de la famille âgés de 18 ans ou plus. Vous pouvez seulement regarder la galerie.
+              </p>
+            )}
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Photo de famille */}
@@ -699,22 +716,24 @@ export default function Famille() {
                   </div>
                 )}
               </div>
-              <label className="block w-full">
-                <input
-                  type="file"
-                  accept="image/*,video/*,audio/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadPhoto('family', file);
-                  }}
-                  disabled={uploading === 'family'}
-                />
-                <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                  {uploading === 'family' ? '⏳ Upload...' : '📷 Ajouter'}
-                </span>
-              </label>
+              {canPublishGallery && (
+                <label className="block w-full">
+                  <input
+                    type="file"
+                    accept="image/*,video/*,audio/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadPhoto('family', file);
+                    }}
+                    disabled={uploading === 'family'}
+                  />
+                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
+                    {uploading === 'family' ? '⏳ Upload...' : '📷 Ajouter'}
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Photo de l'homme */}
@@ -733,22 +752,24 @@ export default function Famille() {
                   </div>
                 )}
               </div>
-              <label className="block w-full">
-                <input
-                  type="file"
-                  accept="image/*,video/*,audio/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadPhoto('man', file);
-                  }}
-                  disabled={uploading === 'man'}
-                />
-                <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                  {uploading === 'man' ? '⏳ Upload...' : '📷 Ajouter'}
-                </span>
-              </label>
+              {canPublishGallery && (
+                <label className="block w-full">
+                  <input
+                    type="file"
+                    accept="image/*,video/*,audio/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadPhoto('man', file);
+                    }}
+                    disabled={uploading === 'man'}
+                  />
+                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
+                    {uploading === 'man' ? '⏳ Upload...' : '📷 Ajouter'}
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Photo de la femme */}
@@ -767,22 +788,24 @@ export default function Famille() {
                   </div>
                 )}
               </div>
-              <label className="block w-full">
-                <input
-                  type="file"
-                  accept="image/*,video/*,audio/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadPhoto('wife', file);
-                  }}
-                  disabled={uploading === 'wife'}
-                />
-                <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                  {uploading === 'wife' ? '⏳ Upload...' : '📷 Ajouter'}
-                </span>
-              </label>
+              {canPublishGallery && (
+                <label className="block w-full">
+                  <input
+                    type="file"
+                    accept="image/*,video/*,audio/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadPhoto('wife', file);
+                    }}
+                    disabled={uploading === 'wife'}
+                  />
+                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
+                    {uploading === 'wife' ? '⏳ Upload...' : '📷 Ajouter'}
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Section Enfants */}
@@ -817,25 +840,27 @@ export default function Famille() {
                   </div>
                 )}
               </div>
-              <label className="block w-full">
-                <input
-                  type="file"
-                  accept="image/*,video/*,audio/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const childName = prompt('Nom de l\'enfant (optionnel):') || 'Enfant';
-                      uploadPhoto('children', file, childName);
-                    }
-                  }}
-                  disabled={uploading === 'children'}
-                />
-                <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                  {uploading === 'children' ? '⏳ Upload...' : '📷 Ajouter'}
-                </span>
-              </label>
+              {canPublishGallery && (
+                <label className="block w-full">
+                  <input
+                    type="file"
+                    accept="image/*,video/*,audio/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const childName = prompt('Nom de l\'enfant (optionnel):') || 'Enfant';
+                        uploadPhoto('children', file, childName);
+                      }
+                    }}
+                    disabled={uploading === 'children'}
+                  />
+                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
+                    {uploading === 'children' ? '⏳ Upload...' : '📷 Ajouter'}
+                  </span>
+                </label>
+              )}
             </div>
           </div>
         </div>
@@ -931,12 +956,18 @@ export default function Famille() {
         </div>
 
               {/* Boutons pour l'arbre */}
-              <div className="flex justify-center space-x-4 mt-8">
+              <div className="flex justify-center flex-wrap gap-4 mt-8">
                 <button
                   onClick={() => setShowTreeChat(true)}
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors"
                 >
                   💬 Chat Familial
+                </button>
+                <button
+                  onClick={() => setShowFamilyGallery(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition-colors"
+                >
+                  🖼️ Galerie famille
                 </button>
               </div>
             </div>
@@ -1409,25 +1440,137 @@ export default function Famille() {
                 placeholder="Tapez votre message..."
                 onKeyPress={(e) => e.key === 'Enter' && submitFamilyMessage()}
               />
-                  <button
+              <button
                 onClick={submitFamilyMessage}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
+              >
                 Envoyer
-                  </button>
-              </div>
+              </button>
+            </div>
               
             <div className="flex space-x-3 mt-4">
-                      <button
-                        onClick={() => setShowTreeChat(false)}
+              <button
+                onClick={() => setShowTreeChat(false)}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
-                      >
+              >
                 Fermer
-                      </button>
-              </div>
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Modal Galerie famille */}
+      {showFamilyGallery && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] flex flex-col">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">🖼️ Galerie de la famille</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Photos et vidéos partagées par les membres de la famille.
+            </p>
+
+            {!canPublishGallery && (
+              <div className="mb-3 text-xs sm:text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2">
+                La publication est réservée aux membres de la famille âgés de 18 ans ou plus. Vous pouvez seulement
+                consulter la galerie.
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Vignette photo de famille */}
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Photo de Famille</h4>
+                  <div className="relative w-full h-40 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                    {familyPhotos.familyPhoto ? (
+                      <img
+                        src={familyPhotos.familyPhoto}
+                        alt="Photo de famille"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl text-gray-400">👨‍👩‍👧‍👦</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Vignette homme */}
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Mon Homme</h4>
+                  <div className="relative w-full h-40 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                    {familyPhotos.manPhoto ? (
+                      <img
+                        src={familyPhotos.manPhoto}
+                        alt="Photo de l'homme"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl text-gray-400">👨</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Vignette femme */}
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Ma Femme</h4>
+                  <div className="relative w-full h-40 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                    {familyPhotos.wifePhoto ? (
+                      <img
+                        src={familyPhotos.wifePhoto}
+                        alt="Photo de la femme"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl text-gray-400">👩</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Vignettes enfants */}
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 md:col-span-2 lg:col-span-3">
+                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Mes Enfants</h4>
+                  <div className="flex flex-wrap gap-3 justify-center max-h-40 overflow-y-auto">
+                    {familyPhotos.childrenPhotos.length > 0 ? (
+                      familyPhotos.childrenPhotos.map((child, index) => (
+                        <div
+                          key={index}
+                          className="w-24 h-24 rounded overflow-hidden border border-gray-200 flex flex-col items-center justify-center bg-white"
+                        >
+                          <img
+                            src={child.photoUrl}
+                            alt={child.name}
+                            className="w-full h-16 object-cover"
+                          />
+                          <span className="text-[10px] text-gray-700 px-1 truncate w-full text-center">
+                            {child.name}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400">Aucune photo d'enfant pour le moment.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {canPublishGallery && (
+              <p className="mt-3 text-xs text-gray-500">
+                Pour ajouter de nouvelles photos ou vidéos, utilisez la section « Photos de Famille » en bas de la page.
+              </p>
+            )}
+
+            <div className="mt-4 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowFamilyGallery(false)}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

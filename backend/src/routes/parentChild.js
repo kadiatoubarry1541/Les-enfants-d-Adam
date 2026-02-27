@@ -201,6 +201,38 @@ router.post('/confirm/:linkId', async (req, res) => {
 });
 
 /**
+ * POST /api/parent-child/reject/:linkId
+ * L'enfant (destinataire) refuse le lien. Le parent verra le refus (message "Désolé").
+ */
+router.post('/reject/:linkId', async (req, res) => {
+  try {
+    const user = req.user;
+    const { linkId } = req.params;
+    const { message } = req.body || {};
+    const link = await ParentChildLink.findByPk(linkId);
+    if (!link || !link.isActive) {
+      return res.status(404).json({ success: false, message: 'Lien non trouvé' });
+    }
+    if (link.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Ce lien n\'est plus en attente' });
+    }
+    if (link.childNumeroH !== user.numeroH && !isAdmin(user)) {
+      return res.status(403).json({ success: false, message: 'Seul l\'apprenant (destinataire) peut refuser ce lien' });
+    }
+    link.status = 'rejected';
+    await link.save();
+    res.json({
+      success: true,
+      message: 'Lien refusé. Le parent sera notifié.',
+      rejectedMessage: message || 'Désolé, je ne souhaite pas créer ce lien.'
+    });
+  } catch (error) {
+    console.error('Erreur rejet lien parent-enfant:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
  * DELETE /api/parent-child/link/:linkId
  * Quitter / supprimer le lien (parent ou enfant, chacun est libre à tout moment).
  */

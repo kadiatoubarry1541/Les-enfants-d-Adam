@@ -84,13 +84,13 @@ export default function TerreAdam() {
   const userPrefecture = userData?.prefectureCode ? findLocationByCode(userData.prefectureCode) : null;
   const userSousPrefecture = userData?.sousPrefectureCode ? findLocationByCode(userData.sousPrefectureCode) : null;
   const userQuartier = userData?.quartierCode ? findLocationByCode(userData.quartierCode) : null;
-
-  /** Liste des codes des 1 à 3 quartiers de l'utilisateur (formulaire d'inscription) */
-  const userQuartierCodes = [
-    userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1,
-    userData?.quartierCode2 || userData?.lieu2 || userData?.lieuResidence2,
-    userData?.quartierCode3 || userData?.lieu3 || userData?.lieuResidence3
-  ].filter(Boolean) as string[];
+  
+  /** Codes des 1 à 3 quartiers de l'utilisateur (peuvent être null si non renseignés) */
+  const userQuartierCodes: (string | null)[] = [
+    userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1 || null,
+    userData?.quartierCode2 || userData?.lieu2 || userData?.lieuResidence2 || null,
+    userData?.quartierCode3 || userData?.lieu3 || userData?.lieuResidence3 || null
+  ];
 
   useEffect(() => {
     const session = localStorage.getItem("session_user");
@@ -125,6 +125,23 @@ export default function TerreAdam() {
       // ✅ Dynamiquement renommer le label du quartier
       const quartierName = user.quartierCode ? findLocationByCode(user.quartierCode)?.name : 'Quartier';
       setTabLabels(quartierName || 'Quartier');
+
+      // ✅ Choisir automatiquement le bon onglet de résidence:
+      // - si seul le 1er quartier est renseigné → Résidence 1
+      // - sinon, utiliser le premier des quartiers renseignés (2 ou 3)
+      const slot1Code = user.quartierCode || user.lieu1 || user.lieuResidence1;
+      const slot2Code = user.quartierCode2 || user.lieu2 || user.lieuResidence2;
+      const slot3Code = user.quartierCode3 || user.lieu3 || user.lieuResidence3;
+      if (slot1Code) {
+        setActiveLieuTab('quartier-1');
+      } else if (slot2Code) {
+        setActiveLieuTab('quartier-2');
+      } else if (slot3Code) {
+        setActiveLieuTab('quartier-3');
+      } else {
+        // Aucun quartier configuré → basculer directement sur la sous-préfecture
+        setActiveLieuTab('sous-prefecture');
+      }
       
       if (activeTab === 'lieux' && (activeLieuTab === 'quartier-1' || activeLieuTab === 'quartier-2' || activeLieuTab === 'quartier-3')) {
         loadGroups();
@@ -451,9 +468,16 @@ export default function TerreAdam() {
               <div className="border-b border-gray-200 mb-3 sm:mb-4 md:mb-6 overflow-hidden">
                 <nav className="flex space-x-1 sm:space-x-2 md:space-x-4 overflow-x-auto">
                   {[
-                    { id: 'quartier-1' as LieuTabId, label: (() => { const c = userQuartierCodes[0]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 1'; })(), icon: '🏘️' },
-                    { id: 'quartier-2' as LieuTabId, label: (() => { const c = userQuartierCodes[1]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 2'; })(), icon: '🏘️' },
-                    { id: 'quartier-3' as LieuTabId, label: (() => { const c = userQuartierCodes[2]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 3'; })(), icon: '🏘️' },
+                    // Afficher uniquement les résidences réellement configurées dans le profil
+                    ...(userQuartierCodes[0]
+                      ? [{ id: 'quartier-1' as LieuTabId, label: (() => { const c = userQuartierCodes[0]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 1'; })(), icon: '🏘️' }]
+                      : []),
+                    ...(userQuartierCodes[1]
+                      ? [{ id: 'quartier-2' as LieuTabId, label: (() => { const c = userQuartierCodes[1]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 2'; })(), icon: '🏘️' }]
+                      : []),
+                    ...(userQuartierCodes[2]
+                      ? [{ id: 'quartier-3' as LieuTabId, label: (() => { const c = userQuartierCodes[2]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 3'; })(), icon: '🏘️' }]
+                      : []),
                     { id: 'sous-prefecture' as LieuTabId, label: 'Sous-préfecture', icon: '🏛️' },
                     { id: 'prefecture' as LieuTabId, label: 'Préfecture', icon: '🏢' }
                   ].map((tab) => (
@@ -494,7 +518,7 @@ export default function TerreAdam() {
                             <div className="text-center mb-4">
                               <div className="text-2xl sm:text-3xl mb-1">🏘️</div>
                               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
-                                Résidence {slotNum}
+                                {name || `Résidence ${slotNum}`}
                               </h3>
                             </div>
                             {/* Un seul emplacement : ce quartier (rempli ou bouton Ajouter) */}
@@ -502,7 +526,7 @@ export default function TerreAdam() {
                               {name ? (
                                 <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow border-2 border-blue-300 dark:border-blue-700 max-w-md mx-auto">
                                   <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
-                                    Résidence {slotNum}
+                                    Quartier
                                   </p>
                                   <p className="text-sm sm:text-base font-semibold text-blue-700 dark:text-blue-300 break-words">
                                     {name}

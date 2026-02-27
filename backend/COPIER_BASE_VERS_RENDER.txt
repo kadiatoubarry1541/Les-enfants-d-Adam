@@ -1,0 +1,38 @@
+========================================
+  COPIER TA BASE LOCALE VERS RENDER
+  (en 2 étapes)
+========================================
+
+ÉTAPE 1 — Copier l’URL de la base Render
+----------------------------------------
+1. Va sur https://dashboard.render.com
+2. Clique sur ta base de données PostgreSQL (pas le site, la base).
+3. Dans "Connection", copie "Internal Database URL" (ou "External" si tu es sur ton PC).
+   Elle ressemble à : postgresql://user:motdepasse@dpg-xxx/database?sslmode=require
+
+4. Ouvre le fichier : backend/config.env
+5. Ajoute une ligne (ou modifie si elle existe déjà) :
+   RENDER_DATABASE_URL=postgresql://user:motdepasse@...
+   Colle ton URL juste après le =, sans espace, sans guillemets.
+6. Enregistre le fichier.
+
+
+ÉTAPE 2 — Lancer la copie
+----------------------------------------
+1. Ouvre un terminal (PowerShell ou CMD).
+2. Va dans le dossier du projet, puis dans backend :
+   cd chemin\vers\Les-enfants-d-Adam-main\backend
+
+3. Lance cette commande :
+   npm run db:sync-render
+
+4. Attends la fin. Si tout va bien tu verras à la fin :
+   "C'est fait : ta base Render = ta base locale."
+
+
+C’EST TOUT.
+Après ça, ton site sur Render utilisera les mêmes données (comptes, admin) que ta base locale.
+
+Note : Il faut que PostgreSQL soit installé sur ton PC (avec pg_dump et psql).
+Si tu as une erreur "pg_dump introuvable", installe PostgreSQL depuis https://www.postgresql.org/download/windows/
+et redémarre le terminal.

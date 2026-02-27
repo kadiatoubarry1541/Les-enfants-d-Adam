@@ -19,6 +19,8 @@ interface ProfessionalAccount {
   ownerNumeroH: string;
   status: string;
   created_at: string;
+  /** Justificatif d'activité : visible par l'admin uniquement pour accepter/refuser */
+  justificatifDocument?: string | null;
 }
 
 interface UserData {
@@ -727,7 +729,16 @@ export default function AdminDashboard() {
                         <div className="text-xs text-gray-400 mt-1">Propriétaire: {pro.ownerNumeroH} • {new Date(pro.created_at).toLocaleDateString("fr-FR")}</div>
                         {pro.description && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{pro.description}</div>}
                       </div>
-                      <div className="flex gap-2 self-end sm:self-center">
+                      <div className="flex flex-wrap gap-2 self-end sm:self-center">
+                        {pro.justificatifDocument && (
+                          <button
+                            type="button"
+                            onClick={() => window.open(pro.justificatifDocument!, "_blank")}
+                            className="min-h-[40px] px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            Voir le justificatif
+                          </button>
+                        )}
                         {pro.status === "pending" && (
                           <>
                             <button onClick={() => handleApprove(pro.id)} className="min-h-[40px] px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors">Approuver</button>

@@ -31,6 +31,7 @@ interface PendingSent {
   id: string
   childNumeroH: string
   parentType: string
+  status?: string
   child?: { numeroH: string; prenom: string; nomFamille: string }
 }
 
@@ -345,8 +346,8 @@ export default function Enfants() {
 
       {pendingSent.length > 0 && (
         <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 mb-6">
-          <h3 className="text-lg font-bold text-amber-800 mb-4">⏳ En attente de confirmation</h3>
-          <p className="text-slate-600 mb-4">L'enfant doit confirmer le lien. Vous pouvez supprimer la demande si besoin.</p>
+          <h3 className="text-lg font-bold text-amber-800 mb-4">📤 Demandes envoyées</h3>
+          <p className="text-slate-600 mb-4">L&apos;enfant peut accepter ou refuser. S&apos;il refuse, vous verrez « Refusé - Désolé ».</p>
           <div className="space-y-3">
             {pendingSent.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between bg-white rounded-lg p-4 border border-amber-200">
@@ -357,15 +358,24 @@ export default function Enfants() {
                       {inv.child ? `${inv.child.prenom} ${inv.child.nomFamille}` : inv.childNumeroH}
                     </p>
                     <p className="text-sm text-slate-500">{inv.childNumeroH}</p>
+                    <p className="text-sm mt-1">
+                      {inv.status === 'rejected' ? (
+                        <span className="text-red-600 font-medium">❌ Refusé - Désolé</span>
+                      ) : (
+                        <span className="text-amber-600">⏳ En attente</span>
+                      )}
+                    </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleLeaveLink(inv.id)}
-                  disabled={submitting}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded-lg text-sm"
-                >
-                  Supprimer la demande
-                </button>
+                {inv.status !== 'rejected' && (
+                  <button
+                    onClick={() => handleLeaveLink(inv.id)}
+                    disabled={submitting}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded-lg text-sm"
+                  >
+                    Annuler la demande
+                  </button>
+                )}
               </div>
             ))}
           </div>

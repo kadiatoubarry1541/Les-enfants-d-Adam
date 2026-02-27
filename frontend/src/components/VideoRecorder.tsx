@@ -313,15 +313,6 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 30 }: VideoRecord
           </div>
         </div>
       )}
-
-      <div className="video-instructions">
-        <h4>Instructions d'enregistrement :</h4>
-        <ul>
-          <li>Parlez clairement et regardez la caméra.</li>
-          <li>Placez-vous dans un endroit calme et bien éclairé.</li>
-          <li>Durée max : {maxDuration} secondes. L'enregistrement s'arrêtera automatiquement.</li>
-        </ul>
-      </div>
     </div>
   )
 }

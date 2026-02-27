@@ -13,7 +13,6 @@ IaKnowledge.init(
     slug: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
       comment: 'Identifiant lisible pour la connaissance (ex: salutations, alphabet)',
     },
     title: {

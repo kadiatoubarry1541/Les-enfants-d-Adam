@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Op } from 'sequelize';
 import { sequelize } from '../../config/database.js';
 
 class Friendship extends Model {
@@ -58,6 +58,7 @@ Friendship.init({
   requesterNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'requester_numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -66,6 +67,7 @@ Friendship.init({
   receiverNumeroH: {
     type: DataTypes.STRING,
     allowNull: false,
+    field: 'receiver_numero_h',
     references: {
       model: 'users',
       key: 'numero_h'
@@ -102,16 +104,16 @@ Friendship.init({
   indexes: [
     {
       unique: true,
-      fields: ['requesterNumeroH', 'receiverNumeroH']
+      fields: ['requester_numero_h', 'receiver_numero_h']
     },
     {
       fields: ['status']
     },
     {
-      fields: ['requesterNumeroH']
+      fields: ['requester_numero_h']
     },
     {
-      fields: ['receiverNumeroH']
+      fields: ['receiver_numero_h']
     }
   ]
 });

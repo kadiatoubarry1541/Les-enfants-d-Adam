@@ -65,25 +65,37 @@ if (process.env.DATABASE_URL) {
 });
 }
 
-// Fonction pour tester la connexion
+const MAX_DB_RETRIES = 5;
+const DB_RETRY_DELAY_MS = 2000;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Fonction pour tester la connexion (avec retries pour éviter les échecs temporaires)
 const connectDB = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ PostgreSQL connecté avec succès');
-    
-    // Synchroniser les modèles avec la base de données
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('🔄 Modèles synchronisés avec la base de données');
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_DB_RETRIES; attempt++) {
+    try {
+      await sequelize.authenticate();
+      console.log('✅ PostgreSQL connecté avec succès');
+      if (process.env.NODE_ENV === 'development') {
+        await sequelize.sync({ alter: true });
+        console.log('🔄 Modèles synchronisés avec la base de données');
+      }
+      return sequelize;
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_DB_RETRIES) {
+        console.warn(`⚠️ Connexion PostgreSQL (tentative ${attempt}/${MAX_DB_RETRIES}), nouvel essai dans ${DB_RETRY_DELAY_MS / 1000}s…`);
+        await sleep(DB_RETRY_DELAY_MS);
+      }
     }
-    
-    return sequelize;
-  } catch (error) {
-    console.error('❌ Erreur de connexion PostgreSQL:', error.message);
-    console.error('💡 Vérifiez que PostgreSQL tourne et que config.env (DB_*) est correct.');
-    console.error('💡 Pour corriger la table page_admins : npm run fix-page-admins');
-    throw error;
   }
+  console.error('❌ Connexion PostgreSQL impossible après', MAX_DB_RETRIES, 'tentatives.');
+  console.error('   Dernière erreur:', lastError?.message || lastError);
+  console.error('💡 Vérifiez que PostgreSQL tourne et que backend/config.env (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME) est correct.');
+  console.error(‘💡 Si l\’erreur parle d\’une colonne manquante : cd backend puis npm run fix-page-admins puis npm run fix-users-table’)
+  console.error(‘💡 Si l\’erreur parle d\’une valeur ENUM manquante (ex: ngo) : cd backend puis npm run fix-pro-enum’);
+  throw lastError;
 };
 
 // Fonction pour fermer la connexion

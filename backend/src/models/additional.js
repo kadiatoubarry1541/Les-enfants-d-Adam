@@ -175,45 +175,56 @@ export const Document = sequelize.define('Document', {
   },
   fileUrl: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    field: 'file_url'
   },
   fileName: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    field: 'file_name'
   },
   fileSize: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    field: 'file_size'
   },
   uploadedBy: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    field: 'uploaded_by'
   },
   uploadedByName: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    field: 'uploaded_by_name'
   },
   recipient: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'recipient'
   },
   recipientName: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'recipient_name'
   },
   status: {
     type: DataTypes.STRING, // ENUM converti en STRING ('pending', 'approved', 'rejected')
-    defaultValue: 'pending'
+    defaultValue: 'pending',
+    field: 'status'
   },
   isPublic: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    defaultValue: false,
+    field: 'is_public'
   },
   category: {
     type: DataTypes.STRING, // ENUM converti en STRING ('civil', 'administrative', 'legal', 'other')
-    allowNull: false
+    allowNull: false,
+    field: 'category'
   },
   tags: {
     type: DataTypes.JSON,
-    defaultValue: []
+    defaultValue: [],
+    field: 'tags'
   }
 }, {
   tableName: 'documents',

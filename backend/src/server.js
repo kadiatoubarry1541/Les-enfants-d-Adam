@@ -39,6 +39,8 @@ import notificationRoutes from './routes/notifications.js';
 import iaRoutes from './routes/ia.js';
 import { handleUploadError } from './middleware/upload.js';
 import { config } from '../config.js';
+import User from './models/User.js';
+import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -105,12 +107,59 @@ const startIaServer = () => {
   trySpawn(0);
 };
 
-// Connexion à la base de données (async)
-connectDB().catch(error => {
-  console.error('❌ Erreur lors de la connexion à la base de données:', error);
-  console.error('⚠️ Le serveur démarre quand même, mais certaines fonctionnalités peuvent ne pas fonctionner');
-  // Le serveur démarre quand même pour permettre les tests
-});
+// Créer ou mettre à jour le compte admin au démarrage (pour Render / production)
+async function ensureAdmin() {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) return;
+  const adminNumeroH = (process.env.ADMIN_NUMERO_H || 'G0C0P0R0E0F0 0').trim().replace(/\s+/g, ' ');
+  try {
+    let admin = await User.findByNumeroH(adminNumeroH);
+    const saltRounds = config.BCRYPT_ROUNDS || 12;
+    const hashedPassword = await bcrypt.hash(adminPassword, saltRounds);
+    if (admin) {
+      const valid = await bcrypt.compare(adminPassword, admin.password);
+      if (!valid) {
+        await admin.update({ password: hashedPassword, role: 'super-admin', isActive: true });
+        console.log('✅ Compte admin mis à jour (mot de passe synchronisé avec ADMIN_PASSWORD)');
+      }
+    } else {
+      admin = await User.create({
+        numeroH: adminNumeroH,
+        prenom: 'Administrateur',
+        nomFamille: 'Principal',
+        password: hashedPassword,
+        role: 'super-admin',
+        isActive: true,
+        isVerified: true,
+        type: 'vivant',
+        genre: 'AUTRE',
+        generation: 'G0'
+      });
+      console.log('✅ Compte admin créé (NumeroH:', adminNumeroH, ')');
+    }
+  } catch (e) {
+    console.warn('⚠️ ensureAdmin:', e.message);
+  }
+}
+
+// Connexion à la base puis démarrage du serveur (le serveur ne démarre que si la base est OK)
+connectDB()
+  .then(() => ensureAdmin())
+  .then(() => {
+    // Middleware de sécurité (déjà déclarés plus bas) — on démarre l'écoute ici
+    app.listen(PORT, () => {
+      console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+      console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🌐 URL: http://localhost:${PORT}`);
+      console.log(`📁 Dossier uploads: ${path.join(__dirname, '../uploads')}`);
+      startIaServer();
+    });
+  })
+  .catch((error) => {
+    console.error('❌ Impossible de démarrer sans base de données.');
+    console.error('   ', error?.message || error);
+    process.exit(1);
+  });
 
 // Middleware de sécurité
 app.use(helmet());
@@ -263,15 +312,6 @@ app.use('*', (req, res) => {
   });
 });
 
-// Démarrage du serveur
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 URL: http://localhost:${PORT}`);
-  console.log(`📁 Dossier uploads: ${path.join(__dirname, '../uploads')}`);
-
-  // Démarrer automatiquement le Professeur IA (serveur Python) en parallèle
-  startIaServer();
-});
+// Démarrage du serveur : fait dans connectDB().then() plus haut (serveur ne démarre que si la base est connectée)
 
 export default app;

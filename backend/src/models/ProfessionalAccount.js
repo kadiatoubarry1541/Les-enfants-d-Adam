@@ -45,7 +45,7 @@ ProfessionalAccount.init({
     primaryKey: true
   },
   type: {
-    type: DataTypes.ENUM('clinic', 'security_agency', 'journalist', 'enterprise', 'school', 'supplier', 'scientist'),
+    type: DataTypes.ENUM('clinic', 'security_agency', 'journalist', 'enterprise', 'school', 'supplier', 'scientist', 'ngo'),
     allowNull: false
   },
   name: {
@@ -122,6 +122,12 @@ ProfessionalAccount.init({
   photo: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  justificatifDocument: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'justificatif_document',
+    comment: 'Document prouvant l\'activité (diplôme, agrément, Kbis…) : URL ou base64'
   },
   isActive: {
     type: DataTypes.BOOLEAN,

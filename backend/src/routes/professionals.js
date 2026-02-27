@@ -5,12 +5,19 @@ import Notification from '../models/Notification.js';
 
 const router = express.Router();
 
+/** Retire le justificatif des réponses publiques : réservé à l'admin uniquement. */
+function sanitizeAccountForPublic(account) {
+  const a = account?.toJSON ? account.toJSON() : { ...account };
+  const { justificatifDocument, ...rest } = a;
+  return rest;
+}
+
 // ============ INSCRIPTION PROFESSIONNELLE ============
 
 // POST /api/professionals/register - Inscription d'un compte professionnel
 router.post('/register', authenticate, async (req, res) => {
   try {
-    const { type, name, description, address, city, country, phone, email, services, specialties, photo } = req.body;
+    const { type, name, description, address, city, country, phone, email, services, specialties, photo, justificatifDocument } = req.body;
 
     if (!type || !name) {
       return res.status(400).json({ success: false, message: 'Type et nom requis' });
@@ -33,6 +40,7 @@ router.post('/register', authenticate, async (req, res) => {
       services: services || [],
       specialties: specialties || [],
       photo: photo || null,
+      justificatifDocument: String(justificatifDocument).trim() || null,
       ownerNumeroH: req.userId,
       status: 'pending'
     });
@@ -40,7 +48,7 @@ router.post('/register', authenticate, async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Inscription envoyée. En attente de validation par l\'administrateur.',
-      account
+      account: sanitizeAccountForPublic(account)
     });
   } catch (error) {
     console.error('Erreur inscription professionnelle:', error);
@@ -63,7 +71,8 @@ router.get('/approved', async (req, res) => {
         order: [['name', 'ASC']]
       });
     }
-    res.json({ success: true, accounts });
+    const sanitized = (accounts || []).map(sanitizeAccountForPublic);
+    res.json({ success: true, accounts: sanitized });
   } catch (error) {
     console.error('Erreur liste approuvés:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
@@ -76,7 +85,8 @@ router.get('/search', async (req, res) => {
     const { q, type } = req.query;
     if (!q) return res.json({ success: true, accounts: [] });
     const accounts = await ProfessionalAccount.searchAccounts(q, type || null);
-    res.json({ success: true, accounts });
+    const sanitized = (accounts || []).map(sanitizeAccountForPublic);
+    res.json({ success: true, accounts: sanitized });
   } catch (error) {
     console.error('Erreur recherche:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
@@ -90,7 +100,7 @@ router.get('/detail/:id', async (req, res) => {
     if (!account || !account.isActive) {
       return res.status(404).json({ success: false, message: 'Compte non trouvé' });
     }
-    res.json({ success: true, account });
+    res.json({ success: true, account: sanitizeAccountForPublic(account) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
@@ -102,7 +112,8 @@ router.get('/detail/:id', async (req, res) => {
 router.get('/my-accounts', authenticate, async (req, res) => {
   try {
     const accounts = await ProfessionalAccount.getByOwner(req.userId);
-    res.json({ success: true, accounts });
+    const sanitized = (accounts || []).map(sanitizeAccountForPublic);
+    res.json({ success: true, accounts: sanitized });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
@@ -133,7 +144,7 @@ router.put('/:id', authenticate, async (req, res) => {
       photo: photo !== undefined ? photo : account.photo
     });
 
-    res.json({ success: true, account });
+    res.json({ success: true, account: sanitizeAccountForPublic(account) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }

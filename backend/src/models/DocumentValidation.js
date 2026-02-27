@@ -32,7 +32,8 @@ DocumentValidation.init({
       model: 'documents',
       key: 'id'
     },
-    comment: 'ID du document validé'
+    comment: 'ID du document validé',
+    field: 'document_id'
   },
   action: {
     type: DataTypes.STRING, // 'confirmed', 'error_reported', 'corrected', 'resubmitted'
@@ -46,7 +47,8 @@ DocumentValidation.init({
       model: 'users',
       key: 'numero_h'
     },
-    comment: 'NumeroH de la personne qui a effectué l\'action'
+    comment: 'NumeroH de la personne qui a effectué l\'action',
+    field: 'performed_by'
   },
   notes: {
     type: DataTypes.TEXT,
@@ -54,7 +56,8 @@ DocumentValidation.init({
   },
   errorDetails: {
     type: DataTypes.JSON,
-    comment: 'Détails des erreurs signalées (si applicable)'
+    comment: 'Détails des erreurs signalées (si applicable)',
+    field: 'error_details'
   }
 }, {
   sequelize,
@@ -65,10 +68,10 @@ DocumentValidation.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['documentId']
+      fields: ['document_id']
     },
     {
-      fields: ['performedBy']
+      fields: ['performed_by']
     },
     {
       fields: ['action']

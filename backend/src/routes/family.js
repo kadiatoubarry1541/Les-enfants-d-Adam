@@ -24,14 +24,14 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB max (pour les vidéos)
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Seuls les fichiers image sont autorisés'), false);
+      cb(new Error('Seuls les fichiers image et vidéo sont autorisés'), false);
     }
   }
 });
@@ -272,6 +272,80 @@ router.delete('/photos/children/:index', async (req, res) => {
       success: false,
       message: 'Erreur serveur lors de la suppression de la photo'
     });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GALERIE FAMILLE PAR ALBUMS  (bapteme | mariage | deces | rencontre)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const VALID_ALBUMS = ['bapteme', 'mariage', 'deces', 'rencontre'];
+
+function parseAlbums(raw) {
+  try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
+}
+
+// GET /api/family/gallery → retourne tous les albums
+router.get('/gallery', async (req, res) => {
+  try {
+    const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
+    const albums = parseAlbums(userData?.galleryAlbums);
+    for (const key of VALID_ALBUMS) { if (!albums[key]) albums[key] = []; }
+    res.json({ success: true, albums });
+  } catch (error) {
+    console.error('Erreur /family/gallery GET:', error);
+    res.status(500).json({ success: false, message: error.message || 'Erreur serveur' });
+  }
+});
+
+// POST /api/family/gallery/:album → ajouter un média à un album
+router.post('/gallery/:album', upload.single('media'), async (req, res) => {
+  try {
+    const { album } = req.params;
+    if (!VALID_ALBUMS.includes(album)) {
+      return res.status(400).json({ success: false, message: 'Album invalide' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
+    }
+    const mediaUrl = `/uploads/family/${req.file.filename}`;
+    const isVideo = req.file.mimetype.startsWith('video/');
+
+    const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
+    const albums = parseAlbums(userData?.galleryAlbums);
+    if (!albums[album]) albums[album] = [];
+    // unshift = les plus récents en premier
+    albums[album].unshift({ url: mediaUrl, type: isVideo ? 'video' : 'image', uploadedAt: new Date().toISOString() });
+
+    await User.update({ galleryAlbums: JSON.stringify(albums) }, { where: { numeroH: req.user.numeroH } });
+    res.json({ success: true, mediaUrl, albums });
+  } catch (error) {
+    console.error('Erreur /family/gallery POST:', error);
+    res.status(500).json({ success: false, message: error.message || 'Erreur serveur' });
+  }
+});
+
+// DELETE /api/family/gallery/:album/:index → supprimer un média
+router.delete('/gallery/:album/:index', async (req, res) => {
+  try {
+    const { album } = req.params;
+    const index = parseInt(req.params.index);
+    if (!VALID_ALBUMS.includes(album)) {
+      return res.status(400).json({ success: false, message: 'Album invalide' });
+    }
+    const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
+    const albums = parseAlbums(userData?.galleryAlbums);
+    if (!albums[album] || index < 0 || index >= albums[album].length) {
+      return res.status(400).json({ success: false, message: 'Média introuvable' });
+    }
+    const filePath = path.join(path.dirname(path.dirname(__dirname)), albums[album][index].url);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    albums[album].splice(index, 1);
+    await User.update({ galleryAlbums: JSON.stringify(albums) }, { where: { numeroH: req.user.numeroH } });
+    res.json({ success: true, albums });
+  } catch (error) {
+    console.error('Erreur /family/gallery DELETE:', error);
+    res.status(500).json({ success: false, message: error.message || 'Erreur serveur' });
   }
 });
 

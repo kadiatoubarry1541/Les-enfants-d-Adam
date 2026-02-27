@@ -162,6 +162,67 @@ router.post('/confirm/:linkId', async (req, res) => {
 });
 
 /**
+ * POST /api/couple/reject/:linkId
+ * Le destinataire (partenaire) refuse le lien. L'initiateur pourra voir le refus (message "Désolé").
+ */
+router.post('/reject/:linkId', async (req, res) => {
+  try {
+    const user = req.user;
+    const { linkId } = req.params;
+    const { message } = req.body || {};
+    const link = await CoupleLink.findByPk(linkId);
+    if (!link || !link.isActive) {
+      return res.status(404).json({ success: false, message: 'Lien non trouvé' });
+    }
+    if (link.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Ce lien n\'est plus en attente' });
+    }
+    const isDestinataire = link.initiatedByNumeroH !== user.numeroH && (link.numeroH1 === user.numeroH || link.numeroH2 === user.numeroH);
+    if (!isDestinataire && !isAdmin(user)) {
+      return res.status(403).json({ success: false, message: 'Seul le destinataire peut refuser ce lien' });
+    }
+    link.status = 'rejected';
+    await link.save();
+    res.json({
+      success: true,
+      message: 'Lien refusé. L\'autre personne sera notifiée.',
+      rejectedMessage: message || 'Désolé, je ne souhaite pas créer ce lien.'
+    });
+  } catch (error) {
+    console.error('Erreur rejet lien couple:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/couple/pending-sent
+ * Demandes envoyées par moi (en attente ou refusées), pour voir les réponses.
+ */
+router.get('/pending-sent', async (req, res) => {
+  try {
+    const user = req.user;
+    const links = await CoupleLink.findAll({
+      where: { initiatedByNumeroH: user.numeroH, isActive: true },
+      order: [['createdAt', 'DESC']]
+    });
+    const withPartner = await Promise.all(
+      links.map(async (link) => {
+        const partnerNumeroH = link.numeroH1 === user.numeroH ? link.numeroH2 : link.numeroH1;
+        const partner = await User.findOne({
+          where: { numeroH: partnerNumeroH },
+          attributes: ['numeroH', 'prenom', 'nomFamille', 'photo', 'genre']
+        });
+        return { ...link.toJSON(), partner: partner ? partner.toJSON() : null };
+      })
+    );
+    res.json({ success: true, invitations: withPartner });
+  } catch (error) {
+    console.error('Erreur demandes envoyées couple:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
  * DELETE /api/couple/leave
  * Quitter / supprimer le lien (chacun est libre à tout moment). Body: linkId ou on trouve le lien de l'utilisateur.
  */

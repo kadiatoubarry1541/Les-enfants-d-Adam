@@ -70,6 +70,7 @@ export default function Partenaire() {
   const [partner, setPartner] = useState<PartnerInfo | null>(null)
   const [linkInfo, setLinkInfo] = useState<LinkInfo | null>(null)
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
+  const [pendingSent, setPendingSent] = useState<Array<{ id: string; status: string; partner?: PartnerInfo }>>([])
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [showLinkForm, setShowLinkForm] = useState(false)
@@ -153,11 +154,50 @@ export default function Partenaire() {
         loadPendingInvitations()
         loadMyPartner()
         loadActivities()
+        loadPendingSent()
       } else alert(data.message || 'Erreur')
     } catch (e) {
       alert('Erreur réseau')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleRejectLink = async (linkId: string) => {
+    if (!confirm('Refuser cette demande ? L\'autre personne sera notifiée (Désolé).')) return
+    setSubmitting(true)
+    try {
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/api/couple/reject/${linkId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Désolé, je ne souhaite pas créer ce lien.' })
+      })
+      const data = await res.json()
+      if (data.success) {
+        loadPendingInvitations()
+        loadPendingSent()
+      } else alert(data.message || 'Erreur')
+    } catch (e) {
+      alert('Erreur réseau')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const loadPendingSent = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/couple/pending-sent`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setPendingSent(data.invitations || [])
+      }
+    } catch (e) {
+      console.error('Erreur demandes envoyées:', e)
     }
   }
 
@@ -216,6 +256,7 @@ export default function Partenaire() {
       loadMyPartner()
       loadActivities()
       loadPendingInvitations()
+      loadPendingSent()
     } else {
       setLoading(false)
     }
@@ -247,6 +288,7 @@ export default function Partenaire() {
         loadMyPartner()
         loadActivities()
         loadPendingInvitations()
+        loadPendingSent()
       } else {
         alert(data.message || 'Erreur lors de la liaison')
       }
@@ -379,6 +421,29 @@ export default function Partenaire() {
         </div>
       )}
 
+      {pendingSent.length > 0 && (
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-6 mb-6">
+          <h3 className="text-lg font-bold text-slate-800 mb-4">📤 Demandes que j&apos;ai envoyées</h3>
+          <div className="space-y-3">
+            {pendingSent.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between bg-white rounded-lg p-4 border border-slate-200">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">💑</span>
+                  <div>
+                    <p className="font-semibold text-slate-800">
+                      {inv.partner ? `${inv.partner.prenom} ${inv.partner.nomFamille}` : 'Partenaire'}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {inv.status === 'rejected' ? '❌ Refusé (Désolé)' : '⏳ En attente'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {pendingInvitations.length > 0 && (
         <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 mb-6">
           <h3 className="text-lg font-bold text-amber-800 mb-4">📩 Invitations reçues (à confirmer)</h3>
@@ -404,26 +469,11 @@ export default function Partenaire() {
                     ✓ Confirmer
                   </button>
                   <button
-                    onClick={async () => {
-                      if (!confirm('Supprimer cette invitation ?')) return
-                      setSubmitting(true)
-                      try {
-                        const token = getToken()
-                        const res = await fetch(`${API_BASE}/api/couple/leave`, {
-                          method: 'DELETE',
-                          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ linkId: inv.id })
-                        })
-                        const data = await res.json()
-                        if (data.success) loadPendingInvitations()
-                      } finally {
-                        setSubmitting(false)
-                      }
-                    }}
+                    onClick={() => handleRejectLink(inv.id)}
                     disabled={submitting}
-                    className="px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:opacity-50 text-white font-medium rounded-lg"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded-lg"
                   >
-                    Supprimer
+                    Refuser
                   </button>
                 </div>
               </div>

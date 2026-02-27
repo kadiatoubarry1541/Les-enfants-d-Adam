@@ -12,38 +12,75 @@ interface ProAccount {
 }
 
 const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
-  clinic: { label: "Clinique / Hôpital", icon: "🏥" },
-  security_agency: { label: "Agence de sécurité", icon: "🛡️" },
-  journalist: { label: "Journaliste", icon: "📰" },
-  enterprise: { label: "Entreprise", icon: "🏢" },
-  school: { label: "École / Professeur", icon: "🎓" },
-  supplier: { label: "Fournisseur", icon: "📦" },
-  ngo: { label: "ONG / Association", icon: "🤝" },
+  clinic:          { label: "Clinique / Hôpital",       icon: "🏥" },
+  security_agency: { label: "Agence de sécurité",        icon: "🛡️" },
+  journalist:      { label: "Journaliste / Média",        icon: "📰" },
+  enterprise:      { label: "Entreprise",                 icon: "🏢" },
+  school:          { label: "École / Professeur",         icon: "🎓" },
+  supplier:        { label: "Fournisseur",                icon: "📦" },
+  ngo:             { label: "ONG / Association",          icon: "🤝" },
+  scientist:       { label: "Chercheur / Scientifique",  icon: "🔬" },
+};
+
+/* Couleur du bouton "Ouvrir le dashboard" selon le service */
+const TYPE_TO_BTN: Record<string, string> = {
+  clinic:          "bg-emerald-600 hover:bg-emerald-700",
+  security_agency: "bg-slate-700   hover:bg-slate-800",
+  journalist:      "bg-cyan-600    hover:bg-cyan-700",
+  enterprise:      "bg-amber-500   hover:bg-amber-600",
+  school:          "bg-amber-500   hover:bg-amber-600",
+  supplier:        "bg-cyan-600    hover:bg-cyan-700",
+  ngo:             "bg-rose-600    hover:bg-rose-700",
+  scientist:       "bg-indigo-600  hover:bg-indigo-700",
+};
+
+/* Badge couleur service */
+const TYPE_TO_BADGE: Record<string, string> = {
+  clinic:          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  security_agency: "bg-slate-200   text-slate-700   dark:bg-slate-700 dark:text-slate-300",
+  journalist:      "bg-cyan-100    text-cyan-700    dark:bg-cyan-900/40 dark:text-cyan-300",
+  enterprise:      "bg-amber-100   text-amber-700   dark:bg-amber-900/40 dark:text-amber-300",
+  school:          "bg-amber-100   text-amber-700   dark:bg-amber-900/40 dark:text-amber-300",
+  supplier:        "bg-cyan-100    text-cyan-700    dark:bg-cyan-900/40 dark:text-cyan-300",
+  ngo:             "bg-rose-100    text-rose-700    dark:bg-rose-900/40 dark:text-rose-300",
+  scientist:       "bg-indigo-100  text-indigo-700  dark:bg-indigo-900/40 dark:text-indigo-300",
+};
+
+/* Label service affiché */
+const TYPE_TO_SERVICE_LABEL: Record<string, string> = {
+  clinic:          "Santé",
+  security_agency: "Sécurité",
+  journalist:      "Échanges",
+  enterprise:      "Activité",
+  school:          "Activité",
+  supplier:        "Échanges",
+  ngo:             "Solidarité",
+  scientist:       "Science",
 };
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
-  pending: { label: "En attente", cls: "bg-yellow-100 text-yellow-700" },
-  approved: { label: "Approuvé", cls: "bg-green-100 text-green-700" },
-  rejected: { label: "Rejeté", cls: "bg-red-100 text-red-700" },
+  pending:  { label: "En attente d'approbation", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" },
+  approved: { label: "Approuvé ✓",               cls: "bg-green-100  text-green-700  dark:bg-green-900/40  dark:text-green-300"  },
+  rejected: { label: "Rejeté",                   cls: "bg-red-100    text-red-700    dark:bg-red-900/40    dark:text-red-300"    },
 };
 
 export default function MesComptesPro() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<ProAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => { loadAccounts(); }, []);
 
   const loadAccounts = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5002/api/professionals/my-accounts", {
-        headers: { Authorization: `Bearer ${token}` }
+      const res   = await fetch("http://localhost:5002/api/professionals/my-accounts", {
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.success) setAccounts(data.accounts || []);
-    } catch (error) {
-      console.error("Erreur:", error);
+    } catch (err) {
+      console.error("Erreur:", err);
     } finally {
       setLoading(false);
     }
@@ -52,55 +89,123 @@ export default function MesComptesPro() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto px-4 py-6">
+
+        {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate("/compte")} className="min-h-[44px] px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-200 font-medium transition-colors">
+          <button
+            onClick={() => navigate("/compte")}
+            className="min-h-[44px] px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl text-gray-700 dark:text-gray-200 font-medium transition-colors"
+          >
             ← Retour
           </button>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Mes comptes professionnels</h1>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Mes comptes professionnels
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Gérez et accédez à vos dashboards par service
+            </p>
+          </div>
         </div>
 
+        {/* Contenu */}
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Chargement...</div>
+          <div className="flex justify-center items-center py-16 gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <span className="text-gray-500 dark:text-gray-400">Chargement...</span>
+          </div>
         ) : accounts.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl shadow-sm">
-            <div className="text-5xl mb-4">🏢</div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Aucun compte professionnel</h3>
-            <p className="text-gray-500 mb-2">Vous n'avez pas encore de compte professionnel.</p>
-            <p className="text-sm text-gray-400">
-              Pour créer un compte, allez dans{' '}
+          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+            <div className="text-6xl mb-4">🏢</div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Aucun compte professionnel
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-1 text-sm">
+              Vous n'avez pas encore de compte professionnel.
+            </p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              Créez-en un dans{" "}
               <button
-                onClick={() => navigate('/mon-profil')}
-                className="text-blue-600 hover:underline font-medium"
+                onClick={() => navigate("/inscription-pro")}
+                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
               >
-                Mon Profil
-              </button>{' '}
-              puis cliquez sur le bouton <strong>🚀 Actions</strong>.
+                Inscription Pro
+              </button>
             </p>
           </div>
         ) : (
           <div className="space-y-3">
             {accounts.map((acc) => {
-              const typeInfo = TYPE_LABELS[acc.type] || { label: acc.type, icon: "📄" };
-              const statusInfo = STATUS_STYLES[acc.status] || { label: acc.status, cls: "bg-gray-100 text-gray-700" };
+              const typeInfo   = TYPE_LABELS[acc.type]      || { label: acc.type, icon: "📄" };
+              const statusInfo = STATUS_STYLES[acc.status]  || { label: acc.status, cls: "bg-gray-100 text-gray-700" };
+              const btnClass   = TYPE_TO_BTN[acc.type]      || "bg-blue-600 hover:bg-blue-700";
+              const badgeClass = TYPE_TO_BADGE[acc.type]    || "bg-gray-100 text-gray-700";
+              const svcLabel   = TYPE_TO_SERVICE_LABEL[acc.type] || "";
+
               return (
-                <div key={acc.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  <span className="text-3xl">{typeInfo.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-gray-900 dark:text-gray-100">{acc.name}</div>
-                    <div className="text-sm text-gray-500">{typeInfo.label} • {acc.city || "Ville non précisée"}</div>
+                <div
+                  key={acc.id}
+                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+                >
+                  {/* Icône */}
+                  <div className={`w-14 h-14 rounded-2xl ${badgeClass} flex items-center justify-center text-3xl flex-shrink-0`}>
+                    {typeInfo.icon}
                   </div>
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${statusInfo.cls}`}>{statusInfo.label}</span>
+
+                  {/* Info principale */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center flex-wrap gap-2 mb-1">
+                      <span className="font-bold text-gray-900 dark:text-gray-100 text-base">{acc.name}</span>
+                      {svcLabel && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${badgeClass}`}>
+                          {svcLabel}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {typeInfo.label}
+                      {acc.city ? ` · ${acc.city}` : ""}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      Créé le {new Date(acc.created_at).toLocaleDateString("fr-FR")}
+                    </p>
+                  </div>
+
+                  {/* Statut */}
+                  <span className={`px-3 py-1.5 text-xs font-semibold rounded-full flex-shrink-0 ${statusInfo.cls}`}>
+                    {statusInfo.label}
+                  </span>
+
+                  {/* Bouton dashboard */}
                   {acc.status === "approved" && (
-                    <button onClick={() => navigate(`/espace-pro/${acc.id}`)}
-                      className="min-h-[40px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                      Ouvrir espace
+                    <button
+                      onClick={() => navigate(`/espace-pro/${acc.id}`)}
+                      className={`min-h-[42px] px-5 py-2 ${btnClass} text-white text-sm font-semibold rounded-xl transition-colors flex-shrink-0 flex items-center gap-2`}
+                    >
+                      📊 Mon dashboard
                     </button>
+                  )}
+
+                  {acc.status === "pending" && (
+                    <div className="flex-shrink-0 text-xs text-yellow-600 dark:text-yellow-400 font-medium bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2 rounded-xl">
+                      ⏳ En cours de vérification par l'équipe
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
         )}
+
+        {/* Bouton créer un nouveau compte */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => navigate("/inscription-pro")}
+            className="min-h-[44px] px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-sm"
+          >
+            + Créer un nouveau compte professionnel
+          </button>
+        </div>
       </div>
     </div>
   );

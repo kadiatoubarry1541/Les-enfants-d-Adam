@@ -75,7 +75,8 @@ StateMessage.init({
       model: 'documents',
       key: 'id'
     },
-    comment: 'ID du document associé (null pour messages généraux)'
+    comment: 'ID du document associé (null pour messages généraux)',
+    field: 'document_id'
   },
   senderId: {
     type: DataTypes.STRING,
@@ -84,7 +85,8 @@ StateMessage.init({
       model: 'users',
       key: 'numero_h'
     },
-    comment: 'NumeroH de l\'expéditeur'
+    comment: 'NumeroH de l\'expéditeur',
+    field: 'sender_id'
   },
   senderName: {
     type: DataTypes.STRING,
@@ -98,7 +100,8 @@ StateMessage.init({
       model: 'users',
       key: 'numero_h'
     },
-    comment: 'NumeroH du destinataire'
+    comment: 'NumeroH du destinataire',
+    field: 'recipient_id'
   },
   recipientName: {
     type: DataTypes.STRING,
@@ -128,12 +131,14 @@ StateMessage.init({
   isRead: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-    comment: 'Message lu ou non'
+    comment: 'Message lu ou non',
+    field: 'is_read'
   },
   readAt: {
     type: DataTypes.DATE,
     allowNull: true,
-    comment: 'Date de lecture du message'
+    comment: 'Date de lecture du message',
+    field: 'read_at'
   },
   isImportant: {
     type: DataTypes.BOOLEAN,
@@ -154,22 +159,22 @@ StateMessage.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['documentId']
+      fields: ['document_id']
     },
     {
-      fields: ['senderId']
+      fields: ['sender_id']
     },
     {
-      fields: ['recipientId']
+      fields: ['recipient_id']
     },
     {
-      fields: ['isRead']
+      fields: ['is_read']
     },
     {
       fields: ['created_at']
     },
     {
-      fields: ['documentId', 'senderId', 'recipientId']
+      fields: ['document_id', 'sender_id', 'recipient_id']
     }
   ]
 });

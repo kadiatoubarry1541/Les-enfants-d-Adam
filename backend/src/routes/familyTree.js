@@ -276,8 +276,17 @@ router.post('/confirm-access/:confirmationId', async (req, res) => {
     // Confirmer l'accès
     await FamilyTreeConfirmation.confirmAccess(confirmation.childNumeroH, user.numeroH);
 
-    // Ajouter l'enfant à l'arbre familial
-    await addUserToFamilyTree(confirmation.childNumeroH, null, null);
+    // Récupérer les parents de l'enfant pour le rattacher au bon arbre
+    const child = await User.findOne({
+      where: { numeroH: confirmation.childNumeroH }
+    });
+
+    // Ajouter l'enfant à l'arbre familial existant (basé sur numeroHPere / numeroHMere)
+    await addUserToFamilyTree(
+      confirmation.childNumeroH,
+      child?.numeroHPere || null,
+      child?.numeroHMere || null
+    );
 
     res.json({
       success: true,

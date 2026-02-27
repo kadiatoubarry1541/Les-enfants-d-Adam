@@ -32,6 +32,8 @@ interface UserData {
   numeroHPere?: string;
   prenomMere?: string;
   numeroHMere?: string;
+  perePhoto?: string;
+  merePhoto?: string;
   photo?: string;
   [key: string]: any;
 }
@@ -130,6 +132,7 @@ export function buildFamilyTree(userData: UserData): FamilyMember[] {
       prenom: userData.prenomPere!,
       nomFamille: userData.nomFamille,
       genre: 'HOMME',
+      photo: userData.perePhoto,
       relation: 'pere',
       generation: calculatePreviousGeneration(userData.generation || 'G1'),
       isVisible: true,
@@ -163,6 +166,7 @@ export function buildFamilyTree(userData: UserData): FamilyMember[] {
       prenom: userData.prenomMere!,
       nomFamille: userData.nomFamille,
       genre: 'FEMME',
+      photo: userData.merePhoto,
       relation: 'mere',
       generation: calculatePreviousGeneration(userData.generation || 'G1'),
       isVisible: true,

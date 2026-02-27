@@ -61,7 +61,6 @@ CoupleLink.init({
   numeroMariageMairie: {
     type: DataTypes.STRING,
     allowNull: true,
-    unique: true,
     comment: 'Numéro reçu lors du mariage à la mairie (optionnel, unique si renseigné)',
     field: 'numero_mariage_mairie'
   },

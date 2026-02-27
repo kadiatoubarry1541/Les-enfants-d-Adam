@@ -54,16 +54,19 @@ Document.init({
   fileUrl: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'URL du fichier PDF uploadé'
+    comment: 'URL du fichier PDF uploadé',
+    field: 'file_url'
   },
   fileName: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'Nom du fichier original'
+    comment: 'Nom du fichier original',
+    field: 'file_name'
   },
   fileSize: {
     type: DataTypes.INTEGER,
-    comment: 'Taille du fichier en octets'
+    comment: 'Taille du fichier en octets',
+    field: 'file_size'
   },
   uploadedBy: {
     type: DataTypes.STRING,
@@ -72,7 +75,8 @@ Document.init({
       model: 'users',
       key: 'numero_h'
     },
-    comment: 'NumeroH de l\'utilisateur qui a uploadé le document'
+    comment: 'NumeroH de l\'utilisateur qui a uploadé le document',
+    field: 'uploaded_by'
   },
   recipient: {
     type: DataTypes.STRING,
@@ -89,7 +93,8 @@ Document.init({
   isPublic: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-    comment: 'Document accessible à tous si true'
+    comment: 'Document accessible à tous si true',
+    field: 'is_public'
   },
   category: {
     type: DataTypes.STRING, // ENUM converti en STRING ('civil', 'administrative', 'legal', 'other'),
@@ -104,7 +109,8 @@ Document.init({
   sentByState: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-    comment: 'Document envoyé par un agent de l\'État'
+    comment: 'Document envoyé par un agent de l\'État',
+    field: 'sent_by_state'
   },
   stateAgentNumeroH: {
     type: DataTypes.STRING,
@@ -112,24 +118,29 @@ Document.init({
       model: 'users',
       key: 'numero_h'
     },
-    comment: 'NumeroH de l\'agent de l\'État qui a envoyé le document'
+    comment: 'NumeroH de l\'agent de l\'État qui a envoyé le document',
+    field: 'state_agent_numero_h'
   },
   userValidationStatus: {
     type: DataTypes.STRING, // 'pending', 'confirmed', 'error_reported', 'corrected'
     defaultValue: 'pending',
-    comment: 'Statut de validation par l\'utilisateur'
+    comment: 'Statut de validation par l\'utilisateur',
+    field: 'user_validation_status'
   },
   errorReport: {
     type: DataTypes.TEXT,
-    comment: 'Erreurs signalées par l\'utilisateur'
+    comment: 'Erreurs signalées par l\'utilisateur',
+    field: 'error_report'
   },
   errorReportedAt: {
     type: DataTypes.DATE,
-    comment: 'Date de signalement d\'erreur'
+    comment: 'Date de signalement d\'erreur',
+    field: 'error_reported_at'
   },
   correctionNotes: {
     type: DataTypes.TEXT,
-    comment: 'Notes de correction par l\'agent'
+    comment: 'Notes de correction par l\'agent',
+    field: 'correction_notes'
   },
   correctedAt: {
     type: DataTypes.DATE,
@@ -157,7 +168,7 @@ Document.init({
   updatedAt: 'updated_at',
   indexes: [
     {
-      fields: ['uploadedBy']
+      fields: ['uploaded_by']
     },
     {
       fields: ['recipient']
