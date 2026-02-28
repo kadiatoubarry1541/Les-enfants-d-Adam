@@ -60,7 +60,7 @@ export function Login() {
   }
 
   return (
-    <div className="stack max-w-lg mx-auto w-full px-2 xs:px-0">
+    <div className="stack max-w-lg mx-auto w-full px-4 xs:px-2 py-8 sm:py-12">
       <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t('login.title')}</h1>
       <div className="card stack">
         <div className="row">

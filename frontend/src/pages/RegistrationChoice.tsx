@@ -4,7 +4,7 @@ import { useI18n } from '../i18n/useI18n'
 export function RegistrationChoice() {
   const { t } = useI18n()
   return (
-    <div className="stack">
+    <div className="stack max-w-lg mx-auto w-full px-4 py-8">
       <h2>{t('choice.title')}</h2>
       <div className="card">
         <div className="simple-options">

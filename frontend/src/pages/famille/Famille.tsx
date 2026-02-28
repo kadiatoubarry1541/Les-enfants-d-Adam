@@ -46,9 +46,11 @@ export default function Famille() {
     if (u?.numeroH) setUser(u)
   }, [])
 
-  // Redirection : parent → Mes Enfants, enfant → Mes Parents (page unique liée par le numéro)
+  // Redirection : parent → Mes Enfants, enfant → Mes Parents (sauf Retour à Famille ou admin)
   useEffect(() => {
     if (location.pathname !== '/famille' || !user?.numeroH) return
+    if ((location.state as { returnToHub?: boolean })?.returnToHub) return
+    if (isAdmin(user)) return // Admin : pas de redirection, tout reste visible depuis le hub
     const token = localStorage.getItem('token')
     if (!token) return
     let cancelled = false

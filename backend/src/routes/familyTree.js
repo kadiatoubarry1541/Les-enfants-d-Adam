@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import DeceasedMember from '../models/DeceasedMember.js';
 import FamilyTreeConfirmation from '../models/FamilyTreeConfirmation.js';
 import FamilyTreeMessage from '../models/FamilyTreeMessage.js';
+import ParentChildLink from '../models/ParentChildLink.js';
 import { FamilyTree } from '../models/additional.js';
 import { Op } from 'sequelize';
 
@@ -275,6 +276,32 @@ router.post('/confirm-access/:confirmationId', async (req, res) => {
 
     // Confirmer l'accès
     await FamilyTreeConfirmation.confirmAccess(confirmation.childNumeroH, user.numeroH);
+
+    // Créer ou activer le lien parent-enfant pour que la liaison s'applique partout (Mes Parents / Mes Enfants)
+    const parentType = (confirmation.parentType === 'mere' ? 'mere' : 'pere');
+    let link = await ParentChildLink.findOne({
+      where: {
+        parentNumeroH: user.numeroH,
+        childNumeroH: confirmation.childNumeroH,
+        parentType
+      }
+    });
+    if (link) {
+      link.status = 'active';
+      link.confirmedAt = new Date();
+      link.isActive = true;
+      await link.save();
+    } else {
+      await ParentChildLink.create({
+        parentNumeroH: user.numeroH,
+        childNumeroH: confirmation.childNumeroH,
+        parentType,
+        status: 'active',
+        confirmedAt: new Date(),
+        codeLiaison: null,
+        numeroMaternite: null
+      });
+    }
 
     // Récupérer les parents de l'enfant pour le rattacher au bon arbre
     const child = await User.findOne({

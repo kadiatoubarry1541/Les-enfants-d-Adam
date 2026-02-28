@@ -52,9 +52,17 @@ export default function Identite() {
       </button>
 
       <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-blue-500 border border-slate-200 p-6 hover:shadow-md transition-shadow duration-200">
-        <h3 className="text-xl font-semibold text-slate-700 mb-6 flex items-center gap-2">
-          🆔 Mon Identité
-        </h3>
+        <div className="flex items-center justify-between mb-6 gap-3">
+          <h3 className="text-xl font-semibold text-slate-700 flex items-center gap-2">
+            🆔 Mon Identité
+          </h3>
+          <button
+            onClick={() => navigate("/moi/profil")}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors duration-200"
+          >
+            ✏️ Modifier mon profil
+          </button>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">

@@ -63,7 +63,7 @@ export function LoginMembre() {
   }
 
   return (
-    <div className="login-membre">
+    <div className="login-membre py-8 px-4">
       <div className="login-container">
         <div className="login-header">
           <h1>{t('member.login.title')}</h1>

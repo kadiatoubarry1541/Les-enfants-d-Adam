@@ -17,9 +17,11 @@ interface UserData {
 export default function IdentiteModal({
   open,
   onClose,
+  onEditProfile,
 }: {
   open: boolean;
   onClose: () => void;
+  onEditProfile?: () => void;
 }) {
   const [userData, setUserData] = useState<UserData | null>(null);
 
@@ -48,14 +50,28 @@ export default function IdentiteModal({
         className="bg-white rounded-xl shadow-xl p-6 max-w-2xl w-11/12"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h3 className="text-2xl font-bold">Identité</h3>
-          <button
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            onClick={onClose}
-          >
-            Fermer
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors"
+              onClick={() => {
+                if (onEditProfile) {
+                  onEditProfile();
+                } else {
+                  onClose();
+                }
+              }}
+            >
+              ✏️ Modifier mon profil
+            </button>
+            <button
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              onClick={onClose}
+            >
+              Fermer
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 flex gap-6 items-start">

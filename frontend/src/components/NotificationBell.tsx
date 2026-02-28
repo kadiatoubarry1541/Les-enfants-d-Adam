@@ -107,37 +107,37 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 w-80 sm:w-96 max-h-[70vh] bg-white dark:bg-gray-800 rounded-xl shadow-2xl ring-1 ring-gray-200 dark:ring-gray-700 z-50 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100">Notifications</h3>
+        <div className="absolute right-0 top-12 w-[min(95vw,480px)] sm:w-[min(95vw,520px)] min-w-[320px] max-h-[85vh] bg-white dark:bg-gray-800 rounded-xl shadow-2xl ring-1 ring-gray-200 dark:ring-gray-700 z-50 overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Notifications</h3>
             {unreadCount > 0 && (
-              <button onClick={markAllRead} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+              <button onClick={markAllRead} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                 Tout marquer comme lu
               </button>
             )}
           </div>
-          <div className="overflow-y-auto max-h-[calc(70vh-50px)]">
+          <div className="overflow-y-auto flex-1 min-h-0 p-1">
             {notifications.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 text-sm">Aucune notification</div>
+              <div className="text-center py-12 text-gray-500 text-base">Aucune notification</div>
             ) : (
               notifications.map((n) => (
                 <div
                   key={n.id}
                   onClick={() => !n.isRead && markRead(n.id)}
-                  className={`px-4 py-3 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-colors ${
+                  className={`px-4 py-4 rounded-lg mx-2 my-1 border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer transition-colors ${
                     n.isRead ? "bg-white dark:bg-gray-800" : "bg-blue-50 dark:bg-blue-900/20"
-                  } hover:bg-gray-50 dark:hover:bg-gray-750`}
+                  } hover:bg-gray-50 dark:hover:bg-gray-700/50`}
                 >
-                  <div className="flex gap-3">
-                    <span className="text-lg flex-shrink-0">{typeIcons[n.type] || "🔔"}</span>
-                    <div className="min-w-0">
-                      <div className="font-medium text-sm text-gray-900 dark:text-gray-100">{n.title}</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</div>
-                      <div className="text-[10px] text-gray-400 mt-1">
-                        {new Date(n.created_at).toLocaleDateString("fr-FR")} {new Date(n.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                  <div className="flex gap-4">
+                    <span className="text-2xl flex-shrink-0">{typeIcons[n.type] || "🔔"}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-base text-gray-900 dark:text-gray-100">{n.title}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed whitespace-pre-wrap">{n.message}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                        {new Date(n.created_at).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} à {new Date(n.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                       </div>
                     </div>
-                    {!n.isRead && <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />}
+                    {!n.isRead && <div className="w-2.5 h-2.5 bg-blue-500 rounded-full flex-shrink-0 mt-2" />}
                   </div>
                 </div>
               ))

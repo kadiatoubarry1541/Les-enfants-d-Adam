@@ -4,6 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import { authenticate } from '../middleware/auth.js';
 import User from '../models/User.js';
+import FamilyGallery from '../models/FamilyGallery.js';
+import { sequelize } from '../config/database.js';
 
 const router = express.Router();
 
@@ -39,28 +41,46 @@ const upload = multer({
 // Toutes les routes nécessitent l'authentification
 router.use(authenticate);
 
+// S'assurer que les colonnes des photos de famille existent
+async function ensureFamilyPhotoColumns() {
+  try {
+    const q = sequelize.getQueryInterface();
+    const desc = await q.describeTable('users');
+    const columns = ['family_photo', 'man_photo', 'wife_photo', 'children_photos'];
+    for (const col of columns) {
+      if (!desc[col]) {
+        const type = col === 'children_photos' ? 'TEXT' : 'VARCHAR(512)';
+        await sequelize.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "${col}" ${type};`);
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ ensureFamilyPhotoColumns:', err.message);
+  }
+}
+
 // @route   GET /api/family/photos
 // @desc    Récupérer les photos de famille de l'utilisateur
 // @access  Authentifié
 router.get('/photos', async (req, res) => {
   try {
+    await ensureFamilyPhotoColumns();
     const user = req.user;
-    
-    // Récupérer les photos depuis le modèle User (on ajoutera ces champs plus tard)
-    // Pour l'instant, on retourne les données depuis le profil utilisateur
     const userData = await User.findOne({ where: { numeroH: user.numeroH } });
-    
+    const raw = userData && userData.get ? userData.get({ plain: true }) : userData || {};
+    let childrenPhotos = [];
+    if (raw.childrenPhotos) {
+      try {
+        childrenPhotos = typeof raw.childrenPhotos === 'string' ? JSON.parse(raw.childrenPhotos) : raw.childrenPhotos;
+      } catch (_) {}
+      if (!Array.isArray(childrenPhotos)) childrenPhotos = [];
+    }
     const photos = {
-      familyPhoto: userData?.familyPhoto || null,
-      manPhoto: userData?.manPhoto || null,
-      wifePhoto: userData?.wifePhoto || null,
-      childrenPhotos: userData?.childrenPhotos ? JSON.parse(userData.childrenPhotos) : []
+      familyPhoto: raw.familyPhoto || null,
+      manPhoto: raw.manPhoto || null,
+      wifePhoto: raw.wifePhoto || null,
+      childrenPhotos
     };
-
-    res.json({
-      success: true,
-      photos
-    });
+    res.json({ success: true, photos });
   } catch (error) {
     console.error('Erreur lors de la récupération des photos:', error);
     res.status(500).json({
@@ -75,8 +95,8 @@ router.get('/photos', async (req, res) => {
 // @access  Authentifié
 router.post('/photos/family', upload.single('photo'), async (req, res) => {
   try {
+    await ensureFamilyPhotoColumns();
     const user = req.user;
-    
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -195,10 +215,14 @@ router.post('/photos/children', upload.single('photo'), async (req, res) => {
     const photoUrl = `/uploads/family/${req.file.filename}`;
     const { childName } = req.body;
     
-    // Récupérer les photos d'enfants existantes
     const userData = await User.findOne({ where: { numeroH: user.numeroH } });
-    const childrenPhotos = userData?.childrenPhotos ? JSON.parse(userData.childrenPhotos) : [];
-    
+    let childrenPhotos = [];
+    if (userData?.childrenPhotos) {
+      try {
+        childrenPhotos = typeof userData.childrenPhotos === 'string' ? JSON.parse(userData.childrenPhotos) : userData.childrenPhotos;
+      } catch (_) {}
+      if (!Array.isArray(childrenPhotos)) childrenPhotos = [];
+    }
     // Ajouter la nouvelle photo
     childrenPhotos.push({
       name: childName || 'Enfant',
@@ -235,10 +259,14 @@ router.delete('/photos/children/:index', async (req, res) => {
     const user = req.user;
     const index = parseInt(req.params.index);
     
-    // Récupérer les photos d'enfants existantes
     const userData = await User.findOne({ where: { numeroH: user.numeroH } });
-    const childrenPhotos = userData?.childrenPhotos ? JSON.parse(userData.childrenPhotos) : [];
-    
+    let childrenPhotos = [];
+    if (userData?.childrenPhotos) {
+      try {
+        childrenPhotos = typeof userData.childrenPhotos === 'string' ? JSON.parse(userData.childrenPhotos) : userData.childrenPhotos;
+      } catch (_) {}
+      if (!Array.isArray(childrenPhotos)) childrenPhotos = [];
+    }
     if (index < 0 || index >= childrenPhotos.length) {
       return res.status(400).json({
         success: false,
@@ -285,9 +313,23 @@ function parseAlbums(raw) {
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
+// S'assurer que la colonne gallery_albums existe dans la table users
+async function ensureGalleryColumn() {
+  try {
+    const q = sequelize.getQueryInterface();
+    const desc = await q.describeTable('users');
+    if (!desc.gallery_albums) {
+      await sequelize.query('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "gallery_albums" TEXT;');
+    }
+  } catch (err) {
+    console.warn('⚠️ Impossible de vérifier/ajouter la colonne gallery_albums:', err.message);
+  }
+}
+
 // GET /api/family/gallery → retourne tous les albums
 router.get('/gallery', async (req, res) => {
   try {
+    await ensureGalleryColumn();
     const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
     const albums = parseAlbums(userData?.galleryAlbums);
     for (const key of VALID_ALBUMS) { if (!albums[key]) albums[key] = []; }
@@ -301,6 +343,7 @@ router.get('/gallery', async (req, res) => {
 // POST /api/family/gallery/:album → ajouter un média à un album
 router.post('/gallery/:album', upload.single('media'), async (req, res) => {
   try {
+    await ensureGalleryColumn();
     const { album } = req.params;
     if (!VALID_ALBUMS.includes(album)) {
       return res.status(400).json({ success: false, message: 'Album invalide' });
@@ -338,14 +381,95 @@ router.delete('/gallery/:album/:index', async (req, res) => {
     if (!albums[album] || index < 0 || index >= albums[album].length) {
       return res.status(400).json({ success: false, message: 'Média introuvable' });
     }
-    const filePath = path.join(path.dirname(path.dirname(__dirname)), albums[album][index].url);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    const relativeUrl = albums[album][index].url || '';
+    const filename = path.basename(relativeUrl);
+    const baseDir = path.join(path.dirname(path.dirname(__dirname)), 'uploads', 'family');
+    const filePath = path.join(baseDir, filename);
+    if (filename && fs.existsSync(filePath)) fs.unlinkSync(filePath);
     albums[album].splice(index, 1);
     await User.update({ galleryAlbums: JSON.stringify(albums) }, { where: { numeroH: req.user.numeroH } });
     res.json({ success: true, albums });
   } catch (error) {
     console.error('Erreur /family/gallery DELETE:', error);
     res.status(500).json({ success: false, message: error.message || 'Erreur serveur' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GALERIE PARTAGÉE — visible par tous les membres de la même famille
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/family/shared-gallery
+router.get('/shared-gallery', async (req, res) => {
+  try {
+    const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
+    const familyName = userData?.nomFamille;
+    if (!familyName) {
+      return res.json({ success: true, items: [] });
+    }
+    const items = await FamilyGallery.findAll({
+      where: { familyName },
+      order: [['created_at', 'DESC']]
+    });
+    res.json({ success: true, items });
+  } catch (error) {
+    console.error('Erreur shared-gallery GET:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/family/shared-gallery/:album
+router.post('/shared-gallery/:album', upload.single('media'), async (req, res) => {
+  try {
+    const { album } = req.params;
+    if (!VALID_ALBUMS.includes(album)) {
+      return res.status(400).json({ success: false, message: 'Album invalide' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
+    }
+    const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
+    const familyName = userData?.nomFamille;
+    if (!familyName) {
+      return res.status(400).json({ success: false, message: 'Vous devez avoir un nom de famille pour partager des médias' });
+    }
+    const mediaUrl = `/uploads/family/${req.file.filename}`;
+    const isVideoFile = req.file.mimetype.startsWith('video/');
+    const uploaderName = [userData.prenom, userData.nomFamille].filter(Boolean).join(' ') || 'Membre';
+
+    const item = await FamilyGallery.create({
+      familyName,
+      uploaderNumeroH: req.user.numeroH,
+      uploaderName,
+      album,
+      url: mediaUrl,
+      type: isVideoFile ? 'video' : 'image'
+    });
+    res.json({ success: true, item });
+  } catch (error) {
+    console.error('Erreur shared-gallery POST:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/family/shared-gallery/:id (propriétaire uniquement)
+router.delete('/shared-gallery/:id', async (req, res) => {
+  try {
+    const item = await FamilyGallery.findByPk(req.params.id);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Média introuvable' });
+    }
+    if (item.uploaderNumeroH !== req.user.numeroH) {
+      return res.status(403).json({ success: false, message: 'Non autorisé' });
+    }
+    const filename = path.basename(item.url);
+    const filePath = path.resolve('uploads', 'family', filename);
+    if (filename && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    await item.destroy();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur shared-gallery DELETE:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

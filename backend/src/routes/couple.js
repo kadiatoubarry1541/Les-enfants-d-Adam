@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import User from '../models/User.js';
 import CoupleLink from '../models/CoupleLink.js';
 import CoupleActivity from '../models/CoupleActivity.js';
+import PartnerRating from '../models/PartnerRating.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -289,6 +290,73 @@ router.get('/my-partner', async (req, res) => {
       success: false,
       message: 'Erreur serveur'
     });
+  }
+});
+
+/**
+ * GET /api/couple/ratings/received
+ * Notes que mon partenaire m'a données (pour la femme : tableau uniquement).
+ */
+router.get('/ratings/received', async (req, res) => {
+  try {
+    const user = req.user;
+    const list = await PartnerRating.getReceivedBy(user.numeroH);
+    res.json({ success: true, ratings: list.map((r) => r.toJSON()) });
+  } catch (error) {
+    console.error('Erreur récupération notes reçues:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/couple/ratings/given
+ * Notes que j'ai données à mon partenaire (pour le mari : tableau + formulaire).
+ * Nécessite un lien actif.
+ */
+router.get('/ratings/given', async (req, res) => {
+  try {
+    const user = req.user;
+    const link = await CoupleLink.getMyPartner(user.numeroH);
+    if (!link) {
+      return res.json({ success: true, ratings: [] });
+    }
+    const partnerNumeroH = link.numeroH1 === user.numeroH ? link.numeroH2 : link.numeroH1;
+    const list = await PartnerRating.getForPair(user.numeroH, partnerNumeroH);
+    res.json({ success: true, ratings: list.map((r) => r.toJSON()) });
+  } catch (error) {
+    console.error('Erreur récupération notes données:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/couple/ratings
+ * Ajouter une note pour mon partenaire (ex: mari → femme). Body: { annee, note }.
+ */
+router.post('/ratings', async (req, res) => {
+  try {
+    const user = req.user;
+    const { annee, note } = req.body;
+    if (annee == null || note == null) {
+      return res.status(400).json({ success: false, message: 'annee et note sont requis' });
+    }
+    const link = await CoupleLink.getMyPartner(user.numeroH);
+    if (!link) {
+      return res.status(403).json({ success: false, message: 'Aucun partenaire lié' });
+    }
+    const partnerNumeroH = link.numeroH1 === user.numeroH ? link.numeroH2 : link.numeroH1;
+    const numNote = Math.min(5, Math.max(1, parseInt(note, 10)));
+    const numAnnee = parseInt(annee, 10) || new Date().getFullYear();
+    const rating = await PartnerRating.create({
+      fromNumeroH: user.numeroH,
+      toNumeroH: partnerNumeroH,
+      annee: numAnnee,
+      note: numNote
+    });
+    res.json({ success: true, rating: rating.toJSON() });
+  } catch (error) {
+    console.error('Erreur ajout note partenaire:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

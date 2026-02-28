@@ -46,6 +46,17 @@ interface FamilyMessage {
   familyName?: string
 }
 
+interface GalleryItem {
+  id: string
+  familyName: string
+  uploaderNumeroH: string
+  uploaderName: string
+  album: string
+  url: string
+  type: 'image' | 'video'
+  created_at: string
+}
+
 export default function Arbre() {
   const [user, setUser] = useState<UserData | null>(null)
   const [partner, setPartner] = useState<PartnerInfo | null>(null)
@@ -62,16 +73,15 @@ export default function Arbre() {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
-  // Galerie famille par albums
+  // Galerie famille partagée
   const [showGallery, setShowGallery] = useState(false)
-  const [galleryLoading, setGalleryLoading] = useState(false)
-  const [activeAlbum, setActiveAlbum] = useState<'bapteme' | 'mariage' | 'deces' | 'rencontre'>('bapteme')
+  const [sharedItems, setSharedItems] = useState<GalleryItem[]>([])
+  const [sharedLoading, setSharedLoading] = useState(false)
+  const [activeAlbum, setActiveAlbum] = useState('rencontre')
   const [uploading, setUploading] = useState(false)
-  const [deletingIdx, setDeletingIdx] = useState<number | null>(null)
-  const [viewerMedia, setViewerMedia] = useState<{ url: string; type: string } | null>(null)
-  const [albums, setAlbums] = useState<Record<string, Array<{ url: string; type: string; uploadedAt: string }>>>({
-    bapteme: [], mariage: [], deces: [], rencontre: []
-  })
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewerMedia, setViewerMedia] = useState<GalleryItem | null>(null)
+  const [galleryView, setGalleryView] = useState<'list' | 'detail'>('list')
 
 useEffect(() => {
   const sessionData = JSON.parse(localStorage.getItem('session_user') || '{}')
@@ -276,45 +286,45 @@ const enhancedUser: UserData = useMemo(() => {
     }
   }
 
-  const loadGallery = async () => {
+  const loadSharedGallery = async () => {
     try {
-      setGalleryLoading(true)
+      setSharedLoading(true)
       const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/family/gallery`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      const res = await fetch(`${API_BASE}/api/family/shared-gallery`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
         const data = await res.json()
-        setAlbums(data.albums || { bapteme: [], mariage: [], deces: [], rencontre: [] })
+        setSharedItems(data.items || [])
       }
     } catch (e) {
-      console.error('Erreur chargement galerie:', e)
+      console.error('Erreur chargement galerie partagée:', e)
     } finally {
-      setGalleryLoading(false)
+      setSharedLoading(false)
     }
   }
 
   const openGallery = () => {
     setShowGallery(true)
-    loadGallery()
+    loadSharedGallery()
   }
 
-  const handleUploadMedia = async (file: File) => {
+  const uploadToSharedGallery = async (file: File) => {
     try {
       setUploading(true)
       const token = localStorage.getItem('token')
       const formData = new FormData()
       formData.append('media', file)
-      const res = await fetch(`${API_BASE}/api/family/gallery/${activeAlbum}`, {
+      const res = await fetch(`${API_BASE}/api/family/shared-gallery/${activeAlbum}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       })
       const data = await res.json()
-      if (res.ok) {
-        setAlbums(data.albums)
+      if (res.ok && data.item) {
+        setSharedItems(prev => [data.item, ...prev])
       } else {
-        alert(data.message || 'Erreur lors de l\'upload')
+        alert(data.message || 'Erreur lors de la publication')
       }
     } catch {
       alert('Erreur de connexion au serveur')
@@ -323,29 +333,32 @@ const enhancedUser: UserData = useMemo(() => {
     }
   }
 
-  const handleDeleteMedia = async (index: number) => {
-    if (!confirm('Supprimer ce média ?')) return
+  const deleteFromSharedGallery = async (id: string) => {
+    if (!confirm('Supprimer ce média ? Cette action est irréversible.')) return
     try {
-      setDeletingIdx(index)
+      setDeletingId(id)
       const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/family/gallery/${activeAlbum}/${index}`, {
+      const res = await fetch(`${API_BASE}/api/family/shared-gallery/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      const data = await res.json()
       if (res.ok) {
-        setAlbums(data.albums)
+        setSharedItems(prev => prev.filter(item => item.id !== id))
       } else {
+        const data = await res.json()
         alert(data.message || 'Erreur lors de la suppression')
       }
     } catch {
       alert('Erreur de connexion au serveur')
     } finally {
-      setDeletingIdx(null)
+      setDeletingId(null)
     }
   }
 
   const isVideo = (url: string) => /\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(url)
+
+  // Gérer à la fois les URLs relatives (/uploads/...) et absolues (http...)
+  const buildMediaUrl = (url: string) => (url.startsWith('http') ? url : `${API_BASE}${url}`)
 
   // Rencontre en PREMIER comme demandé
   const ALBUM_CONFIG = [
@@ -355,8 +368,17 @@ const enhancedUser: UserData = useMemo(() => {
     { key: 'deces'    as const,  label: 'Décès',     emoji: '🕯️' },
   ]
 
-  // Vue : 'list' = liste albums | 'detail' = contenu album
-  const [galleryView, setGalleryView] = useState<'list' | 'detail'>('list')
+  const albums = useMemo(() => {
+    const keys = ['rencontre', 'bapteme', 'mariage', 'deces'] as const
+    const a: Record<string, GalleryItem[]> = {}
+    for (const k of keys) a[k] = []
+    for (const item of sharedItems) {
+      const k = (item.album || 'rencontre') as string
+      if (!a[k]) a[k] = []
+      a[k].push(item)
+    }
+    return a
+  }, [sharedItems])
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -573,16 +595,19 @@ const enhancedUser: UserData = useMemo(() => {
 
       </div>
 
-      {/* ── GALERIE FAMILLE PAR ALBUMS (style galerie Android) ── */}
+      {/* ── GALERIE FAMILLE PAR ALBUMS (vue en deux colonnes) ── */}
       {showGallery && (
         <div className="fixed inset-0 bg-white flex flex-col z-50">
 
-          {/* ── Header ── */}
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white border-b border-gray-800" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+          {/* Header (style clair type WhatsApp Web) */}
+          <div
+            className="flex items-center justify-between px-4 py-3 bg-white text-gray-900 border-b border-gray-200"
+            style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+          >
             {galleryView === 'detail' ? (
               <button
                 onClick={() => setGalleryView('list')}
-                className="flex items-center gap-2 text-white active:opacity-70"
+                className="flex items-center gap-2 text-gray-900 active:opacity-70"
               >
                 <span className="text-xl leading-none">←</span>
                 <span className="font-semibold text-base">
@@ -595,9 +620,13 @@ const enhancedUser: UserData = useMemo(() => {
             )}
 
             <div className="flex items-center gap-2">
-              {/* Bouton Ajouter — visible seulement dans la vue détail */}
-              {galleryView === 'detail' && (
-                <label className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${uploading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95'}`}>
+              <label
+                  className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                    uploading
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95'
+                  }`}
+                >
                   {uploading ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -614,135 +643,147 @@ const enhancedUser: UserData = useMemo(() => {
                     disabled={uploading}
                     onChange={async e => {
                       const files = Array.from(e.target.files || [])
-                      for (const file of files) { await handleUploadMedia(file) }
+                      for (const file of files) {
+                        await uploadToSharedGallery(file)
+                      }
                       e.target.value = ''
                     }}
                   />
                 </label>
-              )}
               <button
-                onClick={() => { setShowGallery(false); setGalleryView('list'); setViewerMedia(null) }}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 text-white text-lg"
-              >✕</button>
+                onClick={() => {
+                  setShowGallery(false)
+                  setGalleryView('list')
+                  setViewerMedia(null)
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-lg"
+              >
+                ✕
+              </button>
             </div>
           </div>
 
-          {/* ── Corps ── */}
-          {galleryLoading ? (
+          {/* Corps */}
+          {sharedLoading ? (
             <div className="flex-1 flex items-center justify-center bg-white">
               <div className="flex flex-col items-center gap-3 text-gray-500">
                 <div className="w-10 h-10 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm">Chargement...</span>
               </div>
             </div>
+          ) : (
+            <div className="flex flex-1 bg-[#f0f2f5]">
+              {/* Colonne gauche : liste des albums */}
+              <div className="w-64 border-r border-gray-200 overflow-y-auto bg-white">
+                <div className="divide-y divide-gray-200">
+                  {ALBUM_CONFIG.map(cfg => {
+                    const albumItems = albums[cfg.key] || []
+                    const count = albumItems.length
+                    const thumb = albumItems[0]
+                    const isActive = activeAlbum === cfg.key
+                    return (
+                      <button
+                        key={cfg.key}
+                        onClick={() => {
+                          setActiveAlbum(cfg.key)
+                          setGalleryView('detail')
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left ${
+                          isActive ? 'bg-gray-100' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+                          {thumb ? (
+                            thumb.type === 'video' || isVideo(thumb.url) ? (
+                              <video
+                                src={buildMediaUrl(thumb.url)}
+                                className="w-full h-full object-cover"
+                                muted
+                              />
+                            ) : (
+                              <img
+                                src={buildMediaUrl(thumb.url)}
+                                alt={cfg.label}
+                                className="w-full h-full object-cover"
+                              />
+                            )
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-2xl text-gray-400">
+                              {cfg.emoji}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {cfg.label}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {count === 0 ? 'Vide' : `${count} élément${count > 1 ? 's' : ''}`}
+                          </p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-          ) : galleryView === 'list' ? (
-            /* ── VUE LISTE : grille 2 colonnes ── */
-            <div className="flex-1 overflow-y-auto bg-white">
-              <div className="grid grid-cols-2 gap-0.5">
-                {ALBUM_CONFIG.map(cfg => {
-                  const albumItems = albums[cfg.key] || []
-                  const count = albumItems.length
-                  const thumb = albumItems[0] // le plus récent (unshift côté backend)
-                  return (
-                    <button
-                      key={cfg.key}
-                      onClick={() => { setActiveAlbum(cfg.key); setGalleryView('detail') }}
-                      className="relative overflow-hidden bg-gray-100 active:opacity-80"
-                      style={{ aspectRatio: '1' }}
-                    >
-                      {/* Miniature du dernier ajout */}
-                      {thumb ? (
-                        thumb.type === 'video' || isVideo(thumb.url) ? (
+              {/* Colonne droite : contenu de l'album sélectionné */}
+              <div className="flex-1 overflow-y-auto bg-[#f0f2f5]">
+                {(albums[activeAlbum]?.length || 0) === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full py-20 text-gray-600">
+                    <span className="text-7xl mb-4 opacity-20">
+                      {ALBUM_CONFIG.find(c => c.key === activeAlbum)?.emoji}
+                    </span>
+                    <p className="text-sm font-medium text-gray-500">Aucune photo ni vidéo</p>
+                    <p className="text-xs text-gray-600 mt-1">Appuyez sur "＋ Ajouter" pour commencer</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-0.5 p-4">
+                    {albums[activeAlbum].map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="relative group overflow-hidden bg-white rounded-md shadow-sm"
+                        style={{ aspectRatio: '1' }}
+                      >
+                        {item.type === 'video' || isVideo(item.url) ? (
                           <video
-                            src={`${API_BASE}${thumb.url}`}
-                            className="w-full h-full object-cover"
+                            src={buildMediaUrl(item.url)}
+                            className="w-full h-full object-cover cursor-pointer"
                             muted
+                            onClick={() => setViewerMedia(item)}
                           />
                         ) : (
                           <img
-                            src={`${API_BASE}${thumb.url}`}
-                            alt={cfg.label}
-                            className="w-full h-full object-cover"
+                            src={buildMediaUrl(item.url)}
+                            alt=""
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => setViewerMedia(item)}
                           />
-                        )
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-7xl opacity-20 text-gray-400">
-                          {cfg.emoji}
-                        </div>
-                      )}
+                        )}
 
-                      {/* Dégradé bas avec nom + compteur */}
-                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-3 py-3 text-left">
-                        <p className="text-white text-sm font-bold leading-tight">
-                          {cfg.emoji} {cfg.label}
-                        </p>
-                        <p className="text-gray-200 text-[11px] mt-0.5">
-                          {count === 0 ? 'Vide' : `${count} élément${count > 1 ? 's' : ''}`}
-                        </p>
+                        {(item.type === 'video' || isVideo(item.url)) && (
+                          <div className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-full pointer-events-none">
+                            ▶
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all opacity-0 group-hover:opacity-100 flex items-end justify-end p-1">
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              handleDeleteMedia(idx)
+                            }}
+                            disabled={deletingIdx === idx}
+                            className="w-7 h-7 rounded-full bg-red-600/90 flex items-center justify-center text-white text-xs active:scale-90"
+                          >
+                            {deletingIdx === idx ? '…' : '🗑️'}
+                          </button>
+                        </div>
                       </div>
-                    </button>
-                  )
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-
-          ) : (
-            /* ── VUE DÉTAIL : grille 3 colonnes ── */
-            <div className="flex-1 overflow-y-auto bg-black">
-              {(albums[activeAlbum]?.length || 0) === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full py-20 text-gray-600">
-                  <span className="text-7xl mb-4 opacity-20">
-                    {ALBUM_CONFIG.find(c => c.key === activeAlbum)?.emoji}
-                  </span>
-                  <p className="text-sm font-medium text-gray-500">Aucune photo ni vidéo</p>
-                  <p className="text-xs text-gray-600 mt-1">Appuyez sur "＋ Ajouter" pour commencer</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-0.5">
-                  {albums[activeAlbum].map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="relative group overflow-hidden bg-gray-900"
-                      style={{ aspectRatio: '1' }}
-                    >
-                      {item.type === 'video' || isVideo(item.url) ? (
-                        <video
-                          src={`${API_BASE}${item.url}`}
-                          className="w-full h-full object-cover cursor-pointer"
-                          muted
-                          onClick={() => setViewerMedia(item)}
-                        />
-                      ) : (
-                        <img
-                          src={`${API_BASE}${item.url}`}
-                          alt=""
-                          className="w-full h-full object-cover cursor-pointer"
-                          onClick={() => setViewerMedia(item)}
-                        />
-                      )}
-
-                      {/* Badge vidéo */}
-                      {(item.type === 'video' || isVideo(item.url)) && (
-                        <div className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-full pointer-events-none">
-                          ▶
-                        </div>
-                      )}
-
-                      {/* Bouton supprimer au survol */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all opacity-0 group-hover:opacity-100 flex items-end justify-end p-1">
-                        <button
-                          onClick={e => { e.stopPropagation(); handleDeleteMedia(idx) }}
-                          disabled={deletingIdx === idx}
-                          className="w-7 h-7 rounded-full bg-red-600/90 flex items-center justify-center text-white text-xs active:scale-90"
-                        >
-                          {deletingIdx === idx ? '…' : '🗑️'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -757,7 +798,7 @@ const enhancedUser: UserData = useMemo(() => {
           <button className="absolute top-4 right-4 text-white text-3xl w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20" onClick={() => setViewerMedia(null)}>✕</button>
           {viewerMedia.type === 'video' || isVideo(viewerMedia.url) ? (
             <video
-              src={`${API_BASE}${viewerMedia.url}`}
+              src={buildMediaUrl(viewerMedia.url)}
               controls
               autoPlay
               className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
@@ -765,7 +806,7 @@ const enhancedUser: UserData = useMemo(() => {
             />
           ) : (
             <img
-              src={`${API_BASE}${viewerMedia.url}`}
+              src={buildMediaUrl(viewerMedia.url)}
               alt=""
               className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain"
               onClick={e => e.stopPropagation()}

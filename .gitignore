@@ -25,11 +25,12 @@ build/
 logs/
 *.log
 
-# Database files
+# Database files (ne jamais pousser la base locale)
 *.db
 *.sqlite
 *.sqlite3
 backend/dumps/
+backend/*.sql
 
 # Uploads (fichiers utilisateurs)
 uploads/

@@ -2,6 +2,24 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { calculerAge } from '../utils/calculs';
 
+const API_BASE = (import.meta as any)?.env?.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5002';
+const getImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  return `${API_BASE}${url}`;
+};
+
+type AlbumKey = 'rencontre' | 'bapteme' | 'mariage' | 'deces';
+interface AlbumMedia { url: string; type: 'image' | 'video'; uploadedAt: string; }
+type GalleryAlbums = Record<AlbumKey, AlbumMedia[]>;
+
+const ALBUMS_CONFIG: { key: AlbumKey; label: string; emoji: string; color: string }[] = [
+  { key: 'rencontre', label: 'Rencontre',  emoji: '💑', color: 'from-rose-400 to-pink-600' },
+  { key: 'bapteme',  label: 'Baptême',    emoji: '👶', color: 'from-sky-400 to-blue-600' },
+  { key: 'mariage',  label: 'Mariage',    emoji: '💍', color: 'from-amber-400 to-yellow-600' },
+  { key: 'deces',    label: 'Deuil',      emoji: '🕊️', color: 'from-slate-400 to-gray-600' },
+];
+
 interface UserData {
   numeroH: string;
   prenom: string;
@@ -103,6 +121,15 @@ export default function Famille() {
   });
   const [uploading, setUploading] = useState<string | null>(null);
 
+  // Galerie albums
+  const [galleryAlbums, setGalleryAlbums] = useState<GalleryAlbums>({ rencontre: [], bapteme: [], mariage: [], deces: [] });
+  const [activeAlbum, setActiveAlbum] = useState<AlbumKey | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [uploadingAlbum, setUploadingAlbum] = useState<string | null>(null);
+  const [gallerySection, setGallerySection] = useState<'photos' | 'albums'>('photos');
+  const [viewerMedia, setViewerMedia] = useState<AlbumMedia | null>(null);
+  const [deletingGalleryIdx, setDeletingGalleryIdx] = useState<number | null>(null);
+
   const [newMember, setNewMember] = useState({
     numeroH: '',
     prenom: '',
@@ -153,7 +180,8 @@ export default function Famille() {
         loadFamilyMessages(),
         loadFamilyPhotos(),
         loadFamilyTreeData(),
-        loadPendingConfirmations()
+        loadPendingConfirmations(),
+        loadGalleryAlbums()
       ]);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
@@ -165,20 +193,20 @@ export default function Famille() {
   const loadFamilyPhotos = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('/api/family/photos', {
+      const response = await fetch(`${API_BASE}/api/family/photos`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
       if (response.ok) {
         const data = await response.json();
-        setFamilyPhotos(data.photos || {
-          familyPhoto: null,
-          manPhoto: null,
-          wifePhoto: null,
-          childrenPhotos: []
+        const raw = data.photos || {};
+        setFamilyPhotos({
+          familyPhoto: raw.familyPhoto ?? null,
+          manPhoto: raw.manPhoto ?? null,
+          wifePhoto: raw.wifePhoto ?? null,
+          childrenPhotos: Array.isArray(raw.childrenPhotos) ? raw.childrenPhotos : []
         });
       }
     } catch (error) {
@@ -196,7 +224,7 @@ export default function Famille() {
         formData.append('childName', childName);
       }
 
-      const endpoint = type === 'children' ? '/api/family/photos/children' : `/api/family/photos/${type}`;
+      const endpoint = type === 'children' ? `${API_BASE}/api/family/photos/children` : `${API_BASE}/api/family/photos/${type}`;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -234,7 +262,7 @@ export default function Famille() {
   const deleteChildPhoto = async (index: number) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`/api/family/photos/children/${index}`, {
+      const response = await fetch(`${API_BASE}/api/family/photos/children/${index}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -257,6 +285,68 @@ export default function Famille() {
       alert('Erreur lors de la suppression de la photo');
     }
   };
+
+  // ── Galerie albums ────────────────────────────────────────────────────────
+  const loadGalleryAlbums = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE}/api/family/gallery`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGalleryAlbums(data.albums || { rencontre: [], bapteme: [], mariage: [], deces: [] });
+      }
+    } catch (error) {
+      console.error('Erreur chargement galerie:', error);
+    }
+  };
+
+  const uploadToAlbum = async (album: AlbumKey, file: File) => {
+    try {
+      setUploadingAlbum(album);
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('media', file);
+      const response = await fetch(`${API_BASE}/api/family/gallery/${album}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGalleryAlbums(data.albums);
+      }
+    } catch (error) {
+      console.error('Erreur upload galerie:', error);
+    } finally {
+      setUploadingAlbum(null);
+    }
+  };
+
+  const deleteFromAlbum = async (album: AlbumKey, index: number) => {
+    try {
+      setDeletingGalleryIdx(index);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE}/api/family/gallery/${album}/${index}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGalleryAlbums(data.albums);
+        setLightboxIndex(null);
+        setViewerMedia(null);
+      }
+    } catch (error) {
+      console.error('Erreur suppression galerie:', error);
+    } finally {
+      setDeletingGalleryIdx(null);
+    }
+  };
+
+  const isVideoUrl = (url: string) => /\.(mp4|webm|ogg)(\?|$)/i.test(url) || url.includes('video');
+  // ─────────────────────────────────────────────────────────────────────────
 
   const loadFamilyMembers = async () => {
     try {
@@ -645,7 +735,7 @@ export default function Famille() {
               <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center shadow-lg p-2 border border-gray-200 overflow-hidden">
                 {familyPhotos.familyPhoto ? (
                   <img 
-                    src={familyPhotos.familyPhoto} 
+                    src={getImageUrl(familyPhotos.familyPhoto) ?? ''} 
                     alt="Photo de famille" 
                     className="w-full h-full object-cover rounded-lg"
                     onError={(e) => {
@@ -701,12 +791,12 @@ export default function Famille() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Photo de famille */}
-            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
+            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Photo de Famille</h3>
               <div className="relative w-full h-48 bg-white rounded-lg overflow-hidden mb-3 border border-gray-200">
                 {familyPhotos.familyPhoto ? (
                   <img 
-                    src={familyPhotos.familyPhoto} 
+                    src={getImageUrl(familyPhotos.familyPhoto) ?? ''} 
                     alt="Photo de famille" 
                     className="w-full h-full object-cover"
                   />
@@ -737,12 +827,12 @@ export default function Famille() {
             </div>
 
             {/* Photo de l'homme */}
-            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
+            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Mon Homme</h3>
               <div className="relative w-full h-48 bg-white rounded-lg overflow-hidden mb-3 border border-gray-200">
                 {familyPhotos.manPhoto ? (
                   <img 
-                    src={familyPhotos.manPhoto} 
+                    src={getImageUrl(familyPhotos.manPhoto) ?? ''} 
                     alt="Photo de l'homme" 
                     className="w-full h-full object-cover"
                   />
@@ -773,12 +863,12 @@ export default function Famille() {
             </div>
 
             {/* Photo de la femme */}
-            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
+            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Ma Femme</h3>
               <div className="relative w-full h-48 bg-white rounded-lg overflow-hidden mb-3 border border-gray-200">
                 {familyPhotos.wifePhoto ? (
                   <img 
-                    src={familyPhotos.wifePhoto} 
+                    src={getImageUrl(familyPhotos.wifePhoto) ?? ''} 
                     alt="Photo de la femme" 
                     className="w-full h-full object-cover"
                   />
@@ -809,15 +899,15 @@ export default function Famille() {
             </div>
 
             {/* Section Enfants */}
-            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
+            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Mes Enfants</h3>
               <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
-                {familyPhotos.childrenPhotos.length > 0 ? (
-                  familyPhotos.childrenPhotos.map((child, index) => (
+                {(familyPhotos.childrenPhotos?.length ?? 0) > 0 ? (
+                  (familyPhotos.childrenPhotos ?? []).map((child, index) => (
                     <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border border-gray-200">
                       <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
                         <img 
-                          src={child.photoUrl} 
+                          src={getImageUrl(child.photoUrl) ?? ''} 
                           alt={child.name} 
                           className="w-full h-full object-cover"
                         />
@@ -1460,115 +1550,279 @@ export default function Famille() {
         </div>
       )}
 
-      {/* Modal Galerie famille */}
+      {/* Modal Galerie famille — design professionnel */}
       {showFamilyGallery && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] flex flex-col">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">🖼️ Galerie de la famille</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Photos et vidéos partagées par les membres de la famille.
-            </p>
-
-            {!canPublishGallery && (
-              <div className="mb-3 text-xs sm:text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2">
-                La publication est réservée aux membres de la famille âgés de 18 ans ou plus. Vous pouvez seulement
-                consulter la galerie.
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Vignette photo de famille */}
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Photo de Famille</h4>
-                  <div className="relative w-full h-40 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
-                    {familyPhotos.familyPhoto ? (
-                      <img
-                        src={familyPhotos.familyPhoto}
-                        alt="Photo de famille"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-3xl text-gray-400">👨‍👩‍👧‍👦</span>
-                    )}
-                  </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
+          <div className="bg-slate-50 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl shadow-xl border border-slate-200">
+            {/* En-tête */}
+            <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 text-slate-600">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </div>
-
-                {/* Vignette homme */}
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Mon Homme</h4>
-                  <div className="relative w-full h-40 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
-                    {familyPhotos.manPhoto ? (
-                      <img
-                        src={familyPhotos.manPhoto}
-                        alt="Photo de l'homme"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-3xl text-gray-400">👨</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Vignette femme */}
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Ma Femme</h4>
-                  <div className="relative w-full h-40 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
-                    {familyPhotos.wifePhoto ? (
-                      <img
-                        src={familyPhotos.wifePhoto}
-                        alt="Photo de la femme"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-3xl text-gray-400">👩</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Vignettes enfants */}
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 md:col-span-2 lg:col-span-3">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2 text-center">Mes Enfants</h4>
-                  <div className="flex flex-wrap gap-3 justify-center max-h-40 overflow-y-auto">
-                    {familyPhotos.childrenPhotos.length > 0 ? (
-                      familyPhotos.childrenPhotos.map((child, index) => (
-                        <div
-                          key={index}
-                          className="w-24 h-24 rounded overflow-hidden border border-gray-200 flex flex-col items-center justify-center bg-white"
-                        >
-                          <img
-                            src={child.photoUrl}
-                            alt={child.name}
-                            className="w-full h-16 object-cover"
-                          />
-                          <span className="text-[10px] text-gray-700 px-1 truncate w-full text-center">
-                            {child.name}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-gray-400">Aucune photo d'enfant pour le moment.</p>
-                    )}
-                  </div>
+                <div>
+                  <h3 className="text-lg font-semibold tracking-tight text-slate-900">Galerie de la famille</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Photos et souvenirs partagés</p>
                 </div>
               </div>
-            </div>
-
-            {canPublishGallery && (
-              <p className="mt-3 text-xs text-gray-500">
-                Pour ajouter de nouvelles photos ou vidéos, utilisez la section « Photos de Famille » en bas de la page.
-              </p>
-            )}
-
-            <div className="mt-4 flex justify-end space-x-3">
               <button
-                onClick={() => setShowFamilyGallery(false)}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+                onClick={() => { setShowFamilyGallery(false); setGallerySection('photos'); setViewerMedia(null); }}
+                className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                aria-label="Fermer"
               >
-                Fermer
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
+
+            {!canPublishGallery && (
+              <div className="mx-6 mt-4 flex items-center gap-3 rounded-xl bg-slate-100 border border-slate-200 px-4 py-3 text-sm text-slate-700">
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <span>La publication est réservée aux membres de 18 ans ou plus. Vous pouvez consulter la galerie.</span>
+              </div>
+            )}
+
+            {/* Onglets */}
+            <div className="flex gap-1 px-6 pt-4 pb-0 bg-white border-b border-slate-200">
+              <button
+                onClick={() => setGallerySection('photos')}
+                className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                  gallerySection === 'photos'
+                    ? 'bg-slate-50 text-slate-900 border border-slate-200 border-b-0 -mb-px'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
+                }`}
+              >
+                Photos de famille
+              </button>
+              <button
+                onClick={() => { setGallerySection('albums'); if (!activeAlbum) setActiveAlbum('rencontre'); }}
+                className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                  gallerySection === 'albums'
+                    ? 'bg-slate-50 text-slate-900 border border-slate-200 border-b-0 -mb-px'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
+                }`}
+              >
+                Albums
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50">
+              {gallerySection === 'photos' && (
+                <div className="p-6">
+                  <p className="text-sm text-slate-600 mb-5">Photos partagées par les chefs de famille.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {[
+                      { key: 'family', label: 'Photo de famille', photo: familyPhotos.familyPhoto, icon: '👨‍👩‍👧‍👦' },
+                      { key: 'man', label: 'Mon Homme', photo: familyPhotos.manPhoto, icon: '👨' },
+                      { key: 'wife', label: 'Ma Femme', photo: familyPhotos.wifePhoto, icon: '👩' },
+                    ].map(({ key, label, photo, icon }) => (
+                      <div key={key} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500 px-4 pt-3 pb-2">{label}</p>
+                        <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center">
+                          {photo ? (
+                            <img src={getImageUrl(photo) ?? ''} alt={label} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-4xl text-slate-300 select-none">{icon}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <p className="text-xs font-medium uppercase tracking-wider text-slate-500 px-4 pt-3 pb-2">Mes Enfants</p>
+                    <div className="p-4 flex flex-wrap gap-4">
+                      {(familyPhotos.childrenPhotos?.length ?? 0) > 0 ? (
+                        (familyPhotos.childrenPhotos ?? []).map((child, index) => (
+                          <div key={index} className="w-24 text-center">
+                            <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 mb-1.5">
+                              <img src={getImageUrl(child.photoUrl) ?? ''} alt={child.name} className="w-full h-full object-cover" />
+                            </div>
+                            <span className="text-xs font-medium text-slate-700 truncate block w-full">{child.name}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-400 py-2">Aucune photo d'enfant pour le moment.</p>
+                      )}
+                    </div>
+                  </div>
+                  {canPublishGallery && (
+                    <p className="mt-4 text-xs text-slate-500">Pour ajouter des photos, utilisez la section « Photos de Famille » en bas de la page.</p>
+                  )}
+                </div>
+              )}
+
+              {gallerySection === 'albums' && (
+                <div className="flex flex-col sm:flex-row h-full min-h-[360px]">
+                  {/* Sidebar albums */}
+                  <div className="sm:w-56 flex-shrink-0 bg-white border-b sm:border-b-0 sm:border-r border-slate-200">
+                    <div className="flex sm:flex-col gap-0.5 p-3 overflow-x-auto sm:overflow-x-visible">
+                      {ALBUMS_CONFIG.map((cfg) => {
+                        const items = galleryAlbums[cfg.key] || [];
+                        const count = items.length;
+                        const thumb = items[0];
+                        const isActive = activeAlbum === cfg.key;
+                        return (
+                          <button
+                            key={cfg.key}
+                            onClick={() => setActiveAlbum(cfg.key)}
+                            className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left transition-colors ${
+                              isActive
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                : 'hover:bg-slate-50 border border-transparent'
+                            }`}
+                          >
+                            <div className="w-11 h-11 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 ring-1 ring-slate-200/50">
+                              {thumb ? (
+                                thumb.type === 'video' || isVideoUrl(thumb.url) ? (
+                                  <video src={getImageUrl(thumb.url) || ''} className="w-full h-full object-cover" muted />
+                                ) : (
+                                  <img src={getImageUrl(thumb.url) || ''} alt="" className="w-full h-full object-cover" />
+                                )
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xl text-slate-400">{cfg.emoji}</div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm font-semibold truncate ${isActive ? 'text-indigo-800' : 'text-slate-800'}`}>{cfg.label}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{count === 0 ? 'Vide' : `${count} élément${count > 1 ? 's' : ''}`}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {/* Contenu album */}
+                  <div className="flex-1 p-6 min-h-0 bg-slate-50">
+                    {activeAlbum && (
+                      <>
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-base font-semibold text-slate-900">
+                            {ALBUMS_CONFIG.find((c) => c.key === activeAlbum)?.label}
+                          </h4>
+                          {canPublishGallery && (
+                            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 transition-colors">
+                              {uploadingAlbum === activeAlbum ? (
+                                <>
+                                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Envoi en cours…
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                  Ajouter
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*,video/*"
+                                multiple
+                                className="hidden"
+                                disabled={!!uploadingAlbum}
+                                onChange={async (e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  for (const f of files) await uploadToAlbum(activeAlbum, f);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                        {(galleryAlbums[activeAlbum]?.length || 0) === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-slate-200 bg-white">
+                            <span className="text-5xl mb-3 text-slate-300">{ALBUMS_CONFIG.find((c) => c.key === activeAlbum)?.emoji}</span>
+                            <p className="text-sm font-medium text-slate-600">Aucune photo ni vidéo</p>
+                            {canPublishGallery && <p className="text-xs text-slate-500 mt-1">Cliquez sur « Ajouter » pour commencer</p>}
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                            {(galleryAlbums[activeAlbum] || []).map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="relative group aspect-square rounded-xl overflow-hidden bg-slate-200 shadow-sm ring-1 ring-slate-200/50 hover:ring-slate-300 transition-all"
+                              >
+                                {item.type === 'video' || isVideoUrl(item.url) ? (
+                                  <video
+                                    src={getImageUrl(item.url) || ''}
+                                    className="w-full h-full object-cover cursor-pointer"
+                                    muted
+                                    onClick={() => setViewerMedia(item)}
+                                  />
+                                ) : (
+                                  <img
+                                    src={getImageUrl(item.url) || ''}
+                                    alt=""
+                                    className="w-full h-full object-cover cursor-pointer"
+                                    onClick={() => setViewerMedia(item)}
+                                  />
+                                )}
+                                {(item.type === 'video' || isVideoUrl(item.url)) && (
+                                  <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-medium px-2 py-1 rounded-md flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+                                    Vidéo
+                                  </span>
+                                )}
+                                {canPublishGallery && (
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); deleteFromAlbum(activeAlbum, idx); }}
+                                      disabled={deletingGalleryIdx === idx}
+                                      className="w-8 h-8 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center text-slate-700 shadow-sm"
+                                      aria-label="Supprimer"
+                                    >
+                                      {deletingGalleryIdx === idx ? (
+                                        <span className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Visionneuse plein écran */}
+      {viewerMedia && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/95 p-4"
+          onClick={() => setViewerMedia(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+            onClick={() => setViewerMedia(null)}
+            aria-label="Fermer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          {viewerMedia.type === 'video' || isVideoUrl(viewerMedia.url) ? (
+            <video
+              src={getImageUrl(viewerMedia.url) || ''}
+              controls
+              autoPlay
+              className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <img
+              src={getImageUrl(viewerMedia.url) || ''}
+              alt=""
+              className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
       )}
 

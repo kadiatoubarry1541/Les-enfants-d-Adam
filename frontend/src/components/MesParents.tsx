@@ -225,108 +225,73 @@ export function MesParents({ userData }: { userData: UserData }) {
 
       {/* Tableau de notes des parents / homme */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-        <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-          ⭐ Notes de {isForPartner ? 'ma femme' : 'mes parents'}
+        <h3 className="text-2xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <span className="text-slate-500" aria-hidden>☆</span>
+          Notes de {isForPartner ? 'ma femme' : 'mes parents'}
         </h3>
-        <div className="overflow-x-auto">
-          {isForPartner ? (
-            /* Tableau pour Ma Femme (une seule ligne) */
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 border-b-2 border-slate-200">
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Année</th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-slate-200 hover:bg-slate-50 transition-colors duration-150">
-                  <td className="px-4 py-4">
-                    <input
-                      type="number"
-                      value={parentNotes[0]?.annee || 2024}
-                      onChange={(e) => handleYearChange(parentNotes[0]?.id || '1', parseInt(e.target.value))}
-                      className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      min="2020"
-                      max="2030"
-                    />
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <button
-                          key={star}
-                          className={`text-2xl transition-transform duration-150 hover:scale-125 ${
-                            (parentNotes[0]?.note || 0) >= star ? 'opacity-100' : 'opacity-30'
-                          }`}
-                          onClick={() => handleNoteChange(parentNotes[0]?.id || '1', star)}
-                        >
-                          ⭐
-                        </button>
-                      ))}
-                    </div>
+        <div className="overflow-x-auto rounded-xl border-2 border-slate-300 bg-white shadow-sm">
+          <table className="min-w-full text-sm" aria-label="Notes">
+            <thead className="bg-slate-200 text-slate-800 border-b-2 border-slate-300">
+              <tr>
+                {!isForPartner && <th scope="col" className="px-4 py-3 text-left font-semibold">Parents</th>}
+                <th scope="col" className="px-4 py-3 text-left font-semibold">Année</th>
+                <th scope="col" className="px-4 py-3 text-left font-semibold">Note</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {parentNotes.length === 0 ? (
+                <tr>
+                  <td colSpan={isForPartner ? 2 : 3} className="px-4 py-8 text-center text-slate-500 bg-slate-50">
+                    Aucune note. Renseignez une année et une note ci-dessus puis cliquez sur « Ajouter la note ».
                   </td>
                 </tr>
-              </tbody>
-            </table>
-          ) : (
-            /* Tableau pour Mes Parents (papa et maman) */
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 border-b-2 border-slate-200">
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Parents</th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Année</th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {parentNotes.map(note => (
-                  <tr key={note.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors duration-150">
-                    <td className="px-4 py-4">
-                      <span className="font-medium text-slate-800 flex items-center gap-2">
-                        <span className="text-2xl">{note.parent === 'papa' ? '👨' : '👩'}</span>
-                        {note.parent === 'papa' ? 'Papa' : 'Maman'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
+              ) : (
+                parentNotes.map(note => (
+                  <tr key={note.id} className="bg-white hover:bg-slate-50">
+                    {!isForPartner && (
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-slate-800 flex items-center gap-2">
+                          <span className="text-xl">{note.parent === 'papa' ? '👨' : '👩'}</span>
+                          {note.parent === 'papa' ? 'Papa' : 'Maman'}
+                        </span>
+                      </td>
+                    )}
+                    <td className="px-4 py-3">
                       <input
                         type="number"
                         value={note.annee}
                         onChange={(e) => handleYearChange(note.id, parseInt(e.target.value))}
-                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        min="2020"
-                        max="2030"
+                        className="min-w-[140px] w-36 px-3 py-2 border border-slate-300 rounded-xl text-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-400 text-sm"
+                        min={2020}
+                        max={2030}
                       />
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="flex gap-1">
+                    <td className="px-4 py-3">
+                      <div className="flex gap-0.5 items-center">
                         {[1, 2, 3, 4, 5].map(star => (
                           <button
                             key={star}
-                            className={`text-2xl transition-transform duration-150 hover:scale-125 ${
-                              note.note >= star ? 'opacity-100' : 'opacity-30'
-                            }`}
+                            type="button"
+                            className={`text-2xl transition-colors ${note.note >= star ? 'text-amber-400' : 'text-slate-300 hover:text-slate-400'}`}
                             onClick={() => handleNoteChange(note.id, star)}
                           >
-                            ⭐
+                            ★
                           </button>
                         ))}
+                        <span className="ml-1 text-slate-600 text-xs">{note.note}/5</span>
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        
-        <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-          <p className="text-slate-700">
-            <strong className="text-purple-700">Note moyenne:</strong> {
-              parentNotes.length > 0 
-                ? (parentNotes.reduce((sum, note) => sum + note.note, 0) / parentNotes.length).toFixed(1)
-                : '0'
-            }/5 ⭐
-          </p>
+                ))
+              )}
+            </tbody>
+          </table>
+          <div className="px-4 py-2 bg-slate-100 border-t border-slate-200 text-xs font-medium text-slate-600 rounded-b-xl flex flex-wrap items-center justify-between gap-2">
+            <span>Tableau Notes — {parentNotes.length} note{parentNotes.length !== 1 ? 's' : ''}</span>
+            <span className="bg-purple-50 text-purple-800 px-3 py-1 rounded-lg font-semibold">
+              Note moyenne : {parentNotes.length > 0 ? (parentNotes.reduce((sum, note) => sum + note.note, 0) / parentNotes.length).toFixed(1) : '0.0'}/5 ★
+            </span>
+          </div>
         </div>
       </div>
 

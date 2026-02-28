@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import User from '../models/User.js';
 import ParentChildLink from '../models/ParentChildLink.js';
 import ParentChildActivity from '../models/ParentChildActivity.js';
+import ParentChildRating from '../models/ParentChildRating.js';
 import { Op } from 'sequelize';
 
 const router = express.Router();
@@ -521,6 +522,113 @@ router.post('/activity', async (req, res) => {
       success: false,
       message: 'Erreur serveur'
     });
+  }
+});
+
+/**
+ * GET /api/parent-child/ratings/for-child
+ * Notes que les parents ont données à l'enfant (enfant = utilisateur connecté).
+ * L'enfant ne voit que le tableau, pas le bouton ajouter.
+ */
+router.get('/ratings/for-child', async (req, res) => {
+  try {
+    const user = req.user;
+    const list = await ParentChildRating.getForChild(user.numeroH);
+    const parentIds = [...new Set(list.map((r) => r.parentNumeroH))];
+    const parents = await User.findAll({
+      where: { numeroH: parentIds },
+      attributes: ['numeroH', 'prenom', 'nomFamille']
+    });
+    const parentMap = Object.fromEntries(parents.map((p) => [p.numeroH, p]));
+    const ratings = list.map((r) => ({
+      ...r.toJSON(),
+      parentName: parentMap[r.parentNumeroH]
+        ? `${parentMap[r.parentNumeroH].prenom} ${parentMap[r.parentNumeroH].nomFamille}`
+        : r.parentNumeroH
+    }));
+    res.json({ success: true, ratings });
+  } catch (error) {
+    console.error('Erreur récupération notes pour enfant:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/parent-child/ratings?parentNumeroH=...&childNumeroH=...
+ * Notes qu'un parent a données à un enfant (pour la paire). Réservé au parent ou à l'enfant.
+ */
+router.get('/ratings', async (req, res) => {
+  try {
+    const user = req.user;
+    const { parentNumeroH, childNumeroH } = req.query;
+    if (!parentNumeroH || !childNumeroH) {
+      return res.status(400).json({ success: false, message: 'parentNumeroH et childNumeroH requis' });
+    }
+    const link = await ParentChildLink.findOne({
+      where: {
+        parentNumeroH,
+        childNumeroH,
+        status: 'active',
+        isActive: true
+      }
+    });
+    if (!link) {
+      return res.status(403).json({ success: false, message: 'Lien parent-enfant non trouvé ou inactif' });
+    }
+    const isParent = user.numeroH === parentNumeroH;
+    const isChild = user.numeroH === childNumeroH;
+    if (!isParent && !isChild && !isAdmin(user)) {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+    const list = await ParentChildRating.getForPair(parentNumeroH, childNumeroH);
+    res.json({ success: true, ratings: list.map((r) => r.toJSON()) });
+  } catch (error) {
+    console.error('Erreur récupération notes paire:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/parent-child/ratings
+ * Ajouter une note (parent → enfant). Body: { childNumeroH, annee, note }.
+ * Seul le parent de cet enfant peut appeler.
+ */
+router.post('/ratings', async (req, res) => {
+  try {
+    const user = req.user;
+    const { childNumeroH, annee, note } = req.body;
+    if (!childNumeroH || annee == null || note == null) {
+      return res.status(400).json({
+        success: false,
+        message: 'childNumeroH, annee et note sont requis'
+      });
+    }
+    const numNote = Math.min(5, Math.max(1, parseInt(note, 10)));
+    const numAnnee = parseInt(annee, 10) || new Date().getFullYear();
+    const link = await ParentChildLink.findOne({
+      where: {
+        parentNumeroH: user.numeroH,
+        childNumeroH: String(childNumeroH).trim(),
+        status: 'active',
+        isActive: true
+      }
+    });
+    if (!link) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas le parent de cet enfant ou le lien n\'est pas actif'
+      });
+    }
+    const rating = await ParentChildRating.create({
+      parentNumeroH: user.numeroH,
+      childNumeroH: String(childNumeroH).trim(),
+      annee: numAnnee,
+      note: numNote
+    });
+    res.json({ success: true, rating: rating.toJSON() });
+  } catch (error) {
+    console.error('Erreur ajout note parent-enfant:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

@@ -168,15 +168,9 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
     const nameY = y + 50
     const numY = y + 66
 
-    const femalePoints = `${x},${y} ${x + w - 20},${y} ${x + w},${y + h / 2} ${x + w - 20},${y + h} ${x},${y + h} ${x - 20},${y + h / 2}`
-
     return (
       <g>
-        {person.genre === 'FEMME' ? (
-          <polygon points={femalePoints} fill="white" stroke={stroke} strokeWidth={3} />
-        ) : (
-          <rect x={x} y={y} width={w} height={h} rx={10} fill="white" stroke={stroke} strokeWidth={3} />
-        )}
+        <rect x={x} y={y} width={w} height={h} rx={6} fill="white" stroke={stroke} strokeWidth={3} />
 
         {/* Photo circulaire */}
         {person.photo ? (
@@ -358,419 +352,300 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
         </div>
       )}
 
-      {/* Vue arbre généalogique (seule vue, plus de vue liste) */}
+      {/* Vue arbre généalogique */}
       <div className="tree-view-horizontal">
-        <svg className="tree-svg" width="100%" height="700" viewBox="0 0 1200 700">
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#4CAF50" />
-              </marker>
-            </defs>
+        <svg className="tree-svg" width="100%" height="750" viewBox="0 0 1350 750">
 
-            {/* Génération G-1: Grands-parents */}
-            {familyMembers.filter(m => m.generation === 'G-1').length > 0 && (
-              <g className="generation-g-1">
-                {/* Grand-père paternel - HOMME = CARRÉ */}
-                <rect 
-                  x="50" y="50" width="180" height="80"
-                  fill="white" stroke="#A0522D" strokeWidth="3"
-                  onClick={() => setSelectedMember(familyMembers.find(m => m.id === '4') || null)}
-                  style={{ cursor: 'pointer' }}
-                />
-                {/* Photo de profil */}
-                <defs>
-                  <clipPath id="clip-gp-pat">
-                    <circle cx="95" cy="80" r="25" />
-                  </clipPath>
-                </defs>
-                {familyMembers.find(m => m.id === '4')?.photo ? (
-                  <image 
-                    href={familyMembers.find(m => m.id === '4')?.photo} 
-                    x="70" y="55" width="50" height="50"
-                    clipPath="url(#clip-gp-pat)"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                ) : (
-                  <circle cx="95" cy="80" r="25" fill="#A0522D" opacity="0.3" />
-                )}
-                <text x="140" y="75" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Père</text>
-                <text x="180" y="95" textAnchor="middle" fontSize="12" fill="#666">
-                  {familyMembers.find(m => m.id === '4')?.prenom || 'Grand-père'}
-                </text>
-                <text x="180" y="110" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                  {familyMembers.find(m => m.id === '4')?.numeroH || 'GP001'}
-                </text>
-                {familyMembers.find(m => m.id === '4')?.isDeceased && (
-                  <text x="215" y="70" fontSize="20">🕊️</text>
-                )}
+          {/*
+           * ══════════════════════════════════════════════════════════
+           *  RÈGLES DE DESSIN :
+           *  • Toutes les boîtes : rect 160×70, rx=6 — taille identique
+           *  • Lignes uniquement horizontales ou verticales
+           *  • Aucune ligne ne pénètre une boîte
+           *  • Espacement minimum 40px entre chaque boîte
+           *
+           *  COORDONNÉES (boîte = [x, x+160]×[y, y+70]) :
+           *  G-1  y=40   GGP-pat x=190  GGM-pat x=390  GGP-mat x=630  GGM-mat x=830
+           *  G0   y=190  Pere    x=290                  Mere    x=730
+           *  G1   y=350  Frere   x=310  Soeur   x=510  VOUS    x=710  Conjoint x=910
+           *  G2   y=490  Mari    x=510  Fille   x=710  Garçon  x=910  Femme    x=1110
+           *  G3   y=630  P-fille x=610                 P-garçon x=1010
+           * ══════════════════════════════════════════════════════════
+           */}
 
-                {/* Ligne horizontale entre grands-parents paternels */}
-                <line x1="230" y1="90" x2="270" y2="90" stroke="#4CAF50" strokeWidth="2" />
+          {/* ── G-1 : Grands-parents (affiché seulement si présents) ── */}
+          {familyMembers.filter(m => m.generation === 'G-1').length > 0 && (
+            <g className="generation-g-1">
 
-                {/* Grand-mère paternelle - FEMME = HEXAGONE */}
-                <polygon 
-                  points="285,50 435,50 450,90 435,130 285,130 270,90"
-                  fill="white" stroke="#A0522D" strokeWidth="3"
-                  onClick={() => setSelectedMember(familyMembers.find(m => m.id === '5') || null)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <defs>
-                  <clipPath id="clip-gm-pat">
-                    <circle cx="315" cy="80" r="25" />
-                  </clipPath>
-                </defs>
-                {familyMembers.find(m => m.id === '5')?.photo ? (
-                  <image 
-                    href={familyMembers.find(m => m.id === '5')?.photo} 
-                    x="290" y="55" width="50" height="50"
-                    clipPath="url(#clip-gm-pat)"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                ) : (
-                  <circle cx="315" cy="80" r="25" fill="#A0522D" opacity="0.3" />
-                )}
-                <text x="360" y="75" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Mère</text>
-                <text x="400" y="95" textAnchor="middle" fontSize="12" fill="#666">
-                  {familyMembers.find(m => m.id === '5')?.prenom || 'Grand-mère'}
-                </text>
-                <text x="400" y="110" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                  {familyMembers.find(m => m.id === '5')?.numeroH || 'GM001'}
-                </text>
+              {/* Grand-père paternel  [x=190..350, y=40..110, cx=270, cy=75] */}
+              <rect x="190" y="40" width="160" height="70" rx="6"
+                fill="white" stroke="#A0522D" strokeWidth="3"
+                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '4') || null)}
+                style={{ cursor: 'pointer' }} />
+              <circle cx="218" cy="75" r="20" fill="#A0522D" opacity="0.25" />
+              {familyMembers.find(m => m.id === '4')?.photo && (
+                <image href={familyMembers.find(m => m.id === '4')?.photo}
+                  x="198" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                  clipPath="url(#c-gpp)" />
+              )}
+              <defs><clipPath id="c-gpp"><circle cx="218" cy="75" r="20"/></clipPath></defs>
+              <text x="246" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Père</text>
+              <text x="246" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '4')?.prenom || 'Grand-père'}</text>
+              <text x="246" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '4')?.numeroH || ''}</text>
 
-                {/* Grands-parents maternels - HOMME = CARRÉ */}
-                <rect 
-                  x="700" y="50" width="180" height="80"
-                  fill="white" stroke="#A0522D" strokeWidth="3"
-                  onClick={() => setSelectedMember(familyMembers.find(m => m.id === '8') || null)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <defs>
-                  <clipPath id="clip-gp-mat">
-                    <circle cx="745" cy="80" r="25" />
-                  </clipPath>
-                </defs>
-                {familyMembers.find(m => m.id === '8')?.photo ? (
-                  <image 
-                    href={familyMembers.find(m => m.id === '8')?.photo} 
-                    x="720" y="55" width="50" height="50"
-                    clipPath="url(#clip-gp-mat)"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                ) : (
-                  <circle cx="745" cy="80" r="25" fill="#A0522D" opacity="0.3" />
-                )}
-                <text x="790" y="75" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Père</text>
-                <text x="830" y="95" textAnchor="middle" fontSize="12" fill="#666">
-                  {familyMembers.find(m => m.id === '8')?.prenom || 'Grand-père'}
-                </text>
-                <text x="830" y="110" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                  {familyMembers.find(m => m.id === '8')?.numeroH || 'GP002'}
-                </text>
+              {/* Connecteur horizontal couple paternel — dans le gap x=350..390 */}
+              <line x1="350" y1="75" x2="390" y2="75" stroke="#A0522D" strokeWidth="2"/>
 
-                <line x1="880" y1="90" x2="920" y2="90" stroke="#4CAF50" strokeWidth="2" />
+              {/* Grand-mère paternelle  [x=390..550] */}
+              <rect x="390" y="40" width="160" height="70" rx="6"
+                fill="white" stroke="#A0522D" strokeWidth="3"
+                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '5') || null)}
+                style={{ cursor: 'pointer' }} />
+              <circle cx="418" cy="75" r="20" fill="#A0522D" opacity="0.25" />
+              {familyMembers.find(m => m.id === '5')?.photo && (
+                <image href={familyMembers.find(m => m.id === '5')?.photo}
+                  x="398" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                  clipPath="url(#c-gmp)" />
+              )}
+              <defs><clipPath id="c-gmp"><circle cx="418" cy="75" r="20"/></clipPath></defs>
+              <text x="446" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Mère</text>
+              <text x="446" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '5')?.prenom || 'Grand-mère'}</text>
+              <text x="446" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '5')?.numeroH || ''}</text>
 
-                {/* Grand-mère maternelle - FEMME = HEXAGONE */}
-                <polygon 
-                  points="935,50 1085,50 1100,90 1085,130 935,130 920,90"
-                  fill="white" stroke="#A0522D" strokeWidth="3"
-                  onClick={() => setSelectedMember(familyMembers.find(m => m.id === '9') || null)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <defs>
-                  <clipPath id="clip-gm-mat">
-                    <circle cx="965" cy="80" r="25" />
-                  </clipPath>
-                </defs>
-                {familyMembers.find(m => m.id === '9')?.photo ? (
-                  <image 
-                    href={familyMembers.find(m => m.id === '9')?.photo} 
-                    x="940" y="55" width="50" height="50"
-                    clipPath="url(#clip-gm-mat)"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                ) : (
-                  <circle cx="965" cy="80" r="25" fill="#A0522D" opacity="0.3" />
-                )}
-                <text x="1010" y="75" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Mère</text>
-                <text x="1050" y="95" textAnchor="middle" fontSize="12" fill="#666">
-                  {familyMembers.find(m => m.id === '9')?.prenom || 'Grand-mère'}
-                </text>
-                <text x="1050" y="110" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                  {familyMembers.find(m => m.id === '9')?.numeroH || 'GM002'}
-                </text>
+              {/* Vertical couple paternel → Père G0
+                  x=370 est dans le gap 350..390, y=75..190 ne croise aucune boîte */}
+              <line x1="370" y1="75" x2="370" y2="190" stroke="#A0522D" strokeWidth="2"/>
 
-                {/* Lignes en coude vers les parents : partent du milieu du couple G-1 et rejoignent le centre du parent G0 */}
-                {/* Grands-parents paternels (milieu x=250) → Père (centre x=320) */}
-                <polyline points="250,90 250,165 320,165 320,200" fill="none" stroke="#4CAF50" strokeWidth="2" />
-                {/* Grands-parents maternels (milieu x=900) → Mère (centre x=580) */}
-                <polyline points="900,90 900,165 580,165 580,200" fill="none" stroke="#4CAF50" strokeWidth="2" />
-              </g>
+              {/* Grand-père maternel  [x=630..790] */}
+              <rect x="630" y="40" width="160" height="70" rx="6"
+                fill="white" stroke="#A0522D" strokeWidth="3"
+                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '8') || null)}
+                style={{ cursor: 'pointer' }} />
+              <circle cx="658" cy="75" r="20" fill="#A0522D" opacity="0.25" />
+              {familyMembers.find(m => m.id === '8')?.photo && (
+                <image href={familyMembers.find(m => m.id === '8')?.photo}
+                  x="638" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                  clipPath="url(#c-gpm)" />
+              )}
+              <defs><clipPath id="c-gpm"><circle cx="658" cy="75" r="20"/></clipPath></defs>
+              <text x="686" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Père</text>
+              <text x="686" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '8')?.prenom || 'Grand-père'}</text>
+              <text x="686" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '8')?.numeroH || ''}</text>
+
+              {/* Connecteur horizontal couple maternel — dans le gap x=790..830 */}
+              <line x1="790" y1="75" x2="830" y2="75" stroke="#A0522D" strokeWidth="2"/>
+
+              {/* Grand-mère maternelle  [x=830..990] */}
+              <rect x="830" y="40" width="160" height="70" rx="6"
+                fill="white" stroke="#A0522D" strokeWidth="3"
+                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '9') || null)}
+                style={{ cursor: 'pointer' }} />
+              <circle cx="858" cy="75" r="20" fill="#A0522D" opacity="0.25" />
+              {familyMembers.find(m => m.id === '9')?.photo && (
+                <image href={familyMembers.find(m => m.id === '9')?.photo}
+                  x="838" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                  clipPath="url(#c-gmm)" />
+              )}
+              <defs><clipPath id="c-gmm"><circle cx="858" cy="75" r="20"/></clipPath></defs>
+              <text x="886" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Mère</text>
+              <text x="886" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '9')?.prenom || 'Grand-mère'}</text>
+              <text x="886" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '9')?.numeroH || ''}</text>
+
+              {/* Vertical couple maternel → Mère G0
+                  x=810 dans le gap 790..830 */}
+              <line x1="810" y1="75" x2="810" y2="190" stroke="#A0522D" strokeWidth="2"/>
+            </g>
+          )}
+
+          {/* ── G0 : Parents ── */}
+          <g className="generation-g0">
+
+            {/* Père  [x=290..450, cy=225] */}
+            <rect x="290" y="190" width="160" height="70" rx="6"
+              fill="white" stroke="#CD853F" strokeWidth="3"
+              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '2') || null)}
+              style={{ cursor: 'pointer' }} />
+            <circle cx="318" cy="225" r="20" fill="#CD853F" opacity="0.25" />
+            {familyMembers.find(m => m.id === '2')?.photo && (
+              <image href={familyMembers.find(m => m.id === '2')?.photo}
+                x="298" y="205" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                clipPath="url(#c-pere)" />
             )}
+            <defs><clipPath id="c-pere"><circle cx="318" cy="225" r="20"/></clipPath></defs>
+            <text x="346" y="216" fontSize="11" fontWeight="bold" fill="#2c5530">Mari / Père</text>
+            <text x="346" y="230" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '2')?.prenom || userData.prenomPere || 'Père'}</text>
+            <text x="346" y="244" fontSize="10" fill="#CD853F" fontWeight="bold">{familyMembers.find(m => m.id === '2')?.numeroH || userData.numeroHPere || ''}</text>
 
-            {/* Génération G0: Parents */}
-            <g className="generation-g0">
-              {/* Père - HOMME = CARRÉ */}
-              <rect 
-                x="230" y="200" width="180" height="80"
-                fill="white" stroke="#CD853F" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '2') || null)}
-                style={{ cursor: 'pointer' }}
-              />
-              <defs>
-                <clipPath id="clip-pere">
-                  <circle cx="275" cy="230" r="25" />
-                </clipPath>
-              </defs>
-              {familyMembers.find(m => m.id === '2')?.photo ? (
-                <image 
-                  href={familyMembers.find(m => m.id === '2')?.photo} 
-                  x="250" y="205" width="50" height="50"
-                  clipPath="url(#clip-pere)"
-                  preserveAspectRatio="xMidYMid slice"
-                />
-              ) : (
-                <circle cx="275" cy="230" r="25" fill="#CD853F" opacity="0.3" />
-              )}
-              <text x="320" y="225" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Mari/Père</text>
-              <text x="355" y="245" textAnchor="middle" fontSize="12" fill="#666">
-                {familyMembers.find(m => m.id === '2')?.prenom || userData.prenomPere}
-              </text>
-              <text x="355" y="260" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                {familyMembers.find(m => m.id === '2')?.numeroH || userData.numeroHPere}
-              </text>
+            {/* Connecteur horizontal Père ↔ Mère — dans le gap x=450..730
+                Vertical de descente part du milieu (x=590) — x=590 hors de toute boîte G0 */}
+            <line x1="450" y1="225" x2="730" y2="225" stroke="#CD853F" strokeWidth="2"/>
+            <text x="590" y="217" textAnchor="middle" fontSize="11" fill="#FF9800" fontWeight="bold">Conjoints</text>
 
-              {/* Ligne horizontale entre parents (du bord du père au bord de la mère) */}
-              <line x1="410" y1="240" x2="505" y2="240" stroke="#4CAF50" strokeWidth="2" />
-              <text x="458" y="230" textAnchor="middle" fontSize="11" fill="#FF9800" fontWeight="bold">Conjoints</text>
+            {/* Mère  [x=730..890, cy=225] */}
+            <rect x="730" y="190" width="160" height="70" rx="6"
+              fill="white" stroke="#CD853F" strokeWidth="3"
+              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '3') || null)}
+              style={{ cursor: 'pointer' }} />
+            <circle cx="758" cy="225" r="20" fill="#CD853F" opacity="0.25" />
+            {familyMembers.find(m => m.id === '3')?.photo && (
+              <image href={familyMembers.find(m => m.id === '3')?.photo}
+                x="738" y="205" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                clipPath="url(#c-mere)" />
+            )}
+            <defs><clipPath id="c-mere"><circle cx="758" cy="225" r="20"/></clipPath></defs>
+            <text x="786" y="216" fontSize="11" fontWeight="bold" fill="#2c5530">Femme / Mère</text>
+            <text x="786" y="230" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '3')?.prenom || userData.prenomMere || 'Mère'}</text>
+            <text x="786" y="244" fontSize="10" fill="#CD853F" fontWeight="bold">{familyMembers.find(m => m.id === '3')?.numeroH || userData.numeroHMere || ''}</text>
 
-              {/* Mère - FEMME = HEXAGONE */}
-              <polygon 
-                points="505,200 655,200 670,240 655,280 505,280 490,240"
-                fill="white" stroke="#CD853F" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '3') || null)}
-                style={{ cursor: 'pointer' }}
-              />
-              <defs>
-                <clipPath id="clip-mere">
-                  <circle cx="535" cy="230" r="25" />
-                </clipPath>
-              </defs>
-              {familyMembers.find(m => m.id === '3')?.photo ? (
-                <image 
-                  href={familyMembers.find(m => m.id === '3')?.photo} 
-                  x="510" y="205" width="50" height="50"
-                  clipPath="url(#clip-mere)"
-                  preserveAspectRatio="xMidYMid slice"
-                />
-              ) : (
-                <circle cx="535" cy="230" r="25" fill="#CD853F" opacity="0.3" />
-              )}
-              <text x="580" y="225" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Femme/Mère</text>
-              <text x="615" y="245" textAnchor="middle" fontSize="12" fill="#666">
-                {familyMembers.find(m => m.id === '3')?.prenom || userData.prenomMere}
-              </text>
-              <text x="615" y="260" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                {familyMembers.find(m => m.id === '3')?.numeroH || userData.numeroHMere}
-              </text>
+            {/* Vertical G0 → barre G1  (x=590 dans le gap père..mère, y=225→310) */}
+            <line x1="590" y1="225" x2="590" y2="310" stroke="#CD853F" strokeWidth="2"/>
+          </g>
 
-              {/* Ligne verticale descendante reliant la barre Conjoints à la génération des enfants */}
-              <line x1="458" y1="240" x2="458" y2="320" stroke="#4CAF50" strokeWidth="2" />
-            </g>
+          {/* ── Barre horizontale G1 (y=310) + branches vers chaque enfant ──
+               Barre de x=390 à x=790 ; branches descendent vers les boîtes y=350
+               Aucune boîte n'est à y=310 (G0 finit à y=260, G1 commence à y=350) */}
+          <line x1="390" y1="310" x2="790" y2="310" stroke="#4CAF50" strokeWidth="2"/>
+          <line x1="390" y1="310" x2="390" y2="350" stroke="#4CAF50" strokeWidth="2"/>
+          <line x1="590" y1="310" x2="590" y2="350" stroke="#4CAF50" strokeWidth="2"/>
+          <line x1="790" y1="310" x2="790" y2="350" stroke="#4CAF50" strokeWidth="2"/>
 
-            {/* Génération G1: Vous et fratrie */}
-            <g className="generation-g1">
-              {/* Ligne horizontale pour connecter les enfants (passe exactement sous chaque branche verticale) */}
-              <line x1="190" y1="320" x2="610" y2="320" stroke="#4CAF50" strokeWidth="2" />
+          {/* ── G1 : Fratrie + VOUS + Conjoint(e) ── */}
+          <g className="generation-g1">
 
-              {/* Frère - HOMME = CARRÉ */}
-              <rect 
-                x="100" y="350" width="180" height="80"
-                fill="white" stroke="#667eea" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '6') || null)}
-                style={{ cursor: 'pointer' }}
-              />
-              <defs>
-                <clipPath id="clip-frere">
-                  <circle cx="145" cy="380" r="25" />
-                </clipPath>
-              </defs>
-              {familyMembers.find(m => m.id === '6')?.photo ? (
-                <image 
-                  href={familyMembers.find(m => m.id === '6')?.photo} 
-                  x="120" y="355" width="50" height="50"
-                  clipPath="url(#clip-frere)"
-                  preserveAspectRatio="xMidYMid slice"
-                />
-              ) : (
-                <circle cx="145" cy="380" r="25" fill="#667eea" opacity="0.3" />
-              )}
-              <text x="190" y="375" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Frère</text>
-              <text x="225" y="395" textAnchor="middle" fontSize="12" fill="#666">
-                {familyMembers.find(m => m.id === '6')?.prenom || 'Frère'}
-              </text>
-              <text x="225" y="410" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                {familyMembers.find(m => m.id === '6')?.numeroH || 'F001'}
-              </text>
-              <line x1="190" y1="320" x2="190" y2="350" stroke="#4CAF50" strokeWidth="2" />
+            {/* Frère  [x=310..470, cx=390] */}
+            <rect x="310" y="350" width="160" height="70" rx="6"
+              fill="white" stroke="#667eea" strokeWidth="3"
+              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '6') || null)}
+              style={{ cursor: 'pointer' }} />
+            <circle cx="338" cy="385" r="20" fill="#667eea" opacity="0.25" />
+            {familyMembers.find(m => m.id === '6')?.photo && (
+              <image href={familyMembers.find(m => m.id === '6')?.photo}
+                x="318" y="365" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                clipPath="url(#c-frere)" />
+            )}
+            <defs><clipPath id="c-frere"><circle cx="338" cy="385" r="20"/></clipPath></defs>
+            <text x="366" y="377" fontSize="11" fontWeight="bold" fill="#2c5530">Frère</text>
+            <text x="366" y="391" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '6')?.prenom || 'Frère'}</text>
+            <text x="366" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{familyMembers.find(m => m.id === '6')?.numeroH || ''}</text>
 
-              {/* Sœur - FEMME = HEXAGONE */}
-              <polygon 
-                points="325,350 475,350 490,390 475,430 325,430 310,390"
-                fill="white" stroke="#667eea" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '7') || null)}
-                style={{ cursor: 'pointer' }}
-              />
-              <defs>
-                <clipPath id="clip-soeur">
-                  <circle cx="355" cy="380" r="25" />
-                </clipPath>
-              </defs>
-              {familyMembers.find(m => m.id === '7')?.photo ? (
-                <image 
-                  href={familyMembers.find(m => m.id === '7')?.photo} 
-                  x="330" y="355" width="50" height="50"
-                  clipPath="url(#clip-soeur)"
-                  preserveAspectRatio="xMidYMid slice"
-                />
-              ) : (
-                <circle cx="355" cy="380" r="25" fill="#667eea" opacity="0.3" />
-              )}
-              <text x="400" y="375" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#2c5530">Fille/Sœur</text>
-              <text x="435" y="395" textAnchor="middle" fontSize="12" fill="#666">
-                {familyMembers.find(m => m.id === '7')?.prenom || 'Sœur'}
-              </text>
-              <text x="435" y="410" textAnchor="middle" fontSize="10" fill="#4CAF50" fontWeight="bold">
-                {familyMembers.find(m => m.id === '7')?.numeroH || 'S001'}
-              </text>
-              <line x1="400" y1="320" x2="400" y2="350" stroke="#4CAF50" strokeWidth="2" />
+            {/* Sœur  [x=510..670, cx=590] */}
+            <rect x="510" y="350" width="160" height="70" rx="6"
+              fill="white" stroke="#667eea" strokeWidth="3"
+              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '7') || null)}
+              style={{ cursor: 'pointer' }} />
+            <circle cx="538" cy="385" r="20" fill="#667eea" opacity="0.25" />
+            {familyMembers.find(m => m.id === '7')?.photo && (
+              <image href={familyMembers.find(m => m.id === '7')?.photo}
+                x="518" y="365" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                clipPath="url(#c-soeur)" />
+            )}
+            <defs><clipPath id="c-soeur"><circle cx="538" cy="385" r="20"/></clipPath></defs>
+            <text x="566" y="377" fontSize="11" fontWeight="bold" fill="#2c5530">Sœur</text>
+            <text x="566" y="391" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '7')?.prenom || 'Sœur'}</text>
+            <text x="566" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{familyMembers.find(m => m.id === '7')?.numeroH || ''}</text>
 
-              {/* Vous - selon votre genre */}
-              {userData.genre === 'HOMME' ? (
-                <rect 
-                  x="520" y="350" width="180" height="80"
-                  fill="white" stroke="#667eea" strokeWidth="3" 
-                  className="current-user"
-                  onClick={() => setSelectedMember(familyMembers.find(m => m.id === '1') || null)}
-                  style={{ cursor: 'pointer' }}
-                />
-              ) : (
-                <polygon 
-                  points="535,350 685,350 700,390 685,430 535,430 520,390"
+            {/* VOUS  [x=710..870, cx=790] */}
+            <rect x="710" y="350" width="160" height="70" rx="6"
+              fill="white" stroke="#667eea" strokeWidth="4"
+              className="current-user"
+              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '1') || null)}
+              style={{ cursor: 'pointer' }} />
+            <circle cx="738" cy="385" r="20" fill="#667eea" opacity="0.4" />
+            {userData.photo && (
+              <image href={userData.photo}
+                x="718" y="365" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                clipPath="url(#c-vous)" />
+            )}
+            <defs><clipPath id="c-vous"><circle cx="738" cy="385" r="20"/></clipPath></defs>
+            <text x="766" y="377" fontSize="11" fontWeight="bold" fill="#667eea">VOUS</text>
+            <text x="766" y="391" fontSize="11" fill="#555">{userData.prenom}</text>
+            <text x="766" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{userData.numeroH}</text>
+            {/* Indicateur orange */}
+            <circle cx="862" cy="360" r="5" fill="#FF9800"/>
+
+            {/* Conjoint(e) et descente vers G2 */}
+            {Boolean(userData.conjointNumeroH && userData.conjointPrenom) ? (
+              <>
+                {/* Connecteur VOUS ↔ Conjoint — dans le gap x=870..910 */}
+                <line x1="870" y1="385" x2="910" y2="385" stroke="#4CAF50" strokeWidth="2"/>
+                <text x="890" y="377" textAnchor="middle" fontSize="10" fill="#FF9800" fontWeight="bold">♥</text>
+
+                {/* Conjoint(e)  [x=910..1070, cx=990] */}
+                <rect x="910" y="350" width="160" height="70" rx="6"
                   fill="white" stroke="#667eea" strokeWidth="3"
-                  className="current-user"
-                  onClick={() => setSelectedMember(familyMembers.find(m => m.id === '1') || null)}
-                  style={{ cursor: 'pointer' }}
-                />
-              )}
-              {/* Photo de profil VOUS */}
-              <defs>
-                <clipPath id="clip-vous">
-                  <circle cx="565" cy="380" r="25" />
-                </clipPath>
-              </defs>
-              {userData.photo ? (
-                <image 
-                  href={userData.photo} 
-                  x="540" y="355" width="50" height="50"
-                  clipPath="url(#clip-vous)"
-                  preserveAspectRatio="xMidYMid slice"
-                />
-              ) : (
-                <circle cx="565" cy="380" r="25" fill="#667eea" opacity="0.3" />
-              )}
-              <text x="610" y="375" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#667eea">
-                {userData.genre === 'HOMME' ? 'Garçon/VOUS' : 'Fille/VOUS'}
-              </text>
-              <text x="645" y="395" textAnchor="middle" fontSize="12" fill="#666">
-                {userData.prenom}
-              </text>
-              <text x="645" y="410" textAnchor="middle" fontSize="10" fill="#667eea" fontWeight="bold">
-                {userData.numeroH}
-              </text>
-              <circle cx="695" cy="365" r="5" fill="#FF9800" />
-              <line x1="610" y1="320" x2="610" y2="350" stroke="#4CAF50" strokeWidth="2" />
+                  style={{ cursor: 'pointer' }} />
+                <circle cx="938" cy="385" r="20" fill="#667eea" opacity="0.25" />
+                {userData.conjointPhoto && (
+                  <image href={userData.conjointPhoto}
+                    x="918" y="365" width="40" height="40" preserveAspectRatio="xMidYMid slice"
+                    clipPath="url(#c-conj)" />
+                )}
+                <defs><clipPath id="c-conj"><circle cx="938" cy="385" r="20"/></clipPath></defs>
+                <text x="966" y="377" fontSize="11" fontWeight="bold" fill="#2c5530">
+                  {userData.conjointGenre?.toUpperCase() === 'HOMME' ? 'Époux' : 'Épouse'}
+                </text>
+                <text x="966" y="391" fontSize="11" fill="#555">{userData.conjointPrenom}</text>
+                <text x="966" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{userData.conjointNumeroH}</text>
 
-              {/* Conjoint(e) de VOUS (si partenaire lié confirmé) */}
-              {Boolean(userData.conjointNumeroH && userData.conjointPrenom) && (
-                <>
-                  {renderPersonNode(
-                    {
-                      genre:
-                        (userData.conjointGenre?.toUpperCase() as 'HOMME' | 'FEMME' | 'AUTRE') ||
-                        (userData.genre === 'HOMME' ? 'FEMME' : 'HOMME'),
-                      prenom: userData.conjointPrenom,
-                      nomFamille: userData.conjointNomFamille || userData.nomFamille,
-                      numeroH: userData.conjointNumeroH,
-                      photo: userData.conjointPhoto
-                    },
-                    740,
-                    350,
-                    180,
-                    80,
-                    {
-                      label:
-                      userData.conjointGenre?.toUpperCase() === 'HOMME'
-                        ? 'Mari/Époux'
-                        : 'Femme/Épouse'
-                    }
-                  )}
-                  {/* Barre horizontale "Conjoints" entre VOUS et le/la conjoint(e) */}
-                  <line x1="610" y1="340" x2="830" y2="340" stroke="#4CAF50" strokeWidth="2" />
-                  <text
-                    x="720"
-                    y="330"
-                    textAnchor="middle"
-                    fontSize="11"
-                    fill="#FF9800"
-                    fontWeight="bold"
-                  >
-                    Conjoints
-                  </text>
-                </>
-              )}
+                {/* Vertical du milieu du connecteur (x=890, dans le gap 870..910) vers barre G2
+                    y=385→420 : x=890 dans le gap — aucune boîte traversée
+                    y=420→460 : espace libre entre G1 et G2 */}
+                <line x1="890" y1="385" x2="890" y2="460" stroke="#059669" strokeWidth="2"/>
+              </>
+            ) : (
+              /* Sans conjoint : vertical depuis le bas de la boîte VOUS (y=420)
+                 y=420 = bord inférieur de VOUS — aucune boîte traversée */
+              <line x1="790" y1="420" x2="790" y2="460" stroke="#059669" strokeWidth="2"/>
+            )}
+          </g>
 
-              {/* Ligne descendante pour vos enfants
-                  - Si un conjoint est lié, la ligne part du centre du couple
-                  - Sinon, elle part de VOUS */}
-              {Boolean(userData.conjointNumeroH && userData.conjointPrenom) ? (
-                <line x1="720" y1="430" x2="720" y2="470" stroke="#4CAF50" strokeWidth="2" />
-              ) : (
-                <line x1="610" y1="430" x2="610" y2="470" stroke="#4CAF50" strokeWidth="2" />
-              )}
-            </g>
+          {/* ── Barre horizontale G2 (y=460) + branches ──
+               Barre de x=790 à x=990 ; branches à x=790 et x=990
+               y=460 est entre G1 (finit y=420) et G2 (commence y=490) */}
+          <line x1="790" y1="460" x2="990" y2="460" stroke="#059669" strokeWidth="2"/>
+          <line x1="790" y1="460" x2="790" y2="490" stroke="#059669" strokeWidth="2"/>
+          <line x1="990" y1="460" x2="990" y2="490" stroke="#059669" strokeWidth="2"/>
 
-            {/* Génération G2: Enfants + Conjoints + Petits-enfants (selon schéma) */}
-            <g className="generation-g2">
-              {/* barre horizontale reliant les enfants */}
-              <line x1="500" y1="470" x2="720" y2="470" stroke="#059669" strokeWidth="2" />
+          {/* ── G2 : Enfants + leurs conjoints ── */}
+          <g className="generation-g2">
 
-              {/* Fille */}
-              {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 440, 490, 170, 80, { label: 'Fille' })}
-              <line x1="500" y1="470" x2="500" y2="490" stroke="#059669" strokeWidth="2" />
+            {/* Mari de la Fille  [x=510..670] */}
+            {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: '', numeroH: '' }, 510, 490, 160, 70, { label: 'Mari' })}
 
-              {/* Mari à gauche de la fille : petite liaison visible mais qui ne rentre pas dans les cartes */}
-              {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: '', numeroH: '' }, 290, 500, 110, 60, { label: 'Mari' })}
-              <line x1="400" y1="520" x2="440" y2="520" stroke="#059669" strokeWidth="2" />
+            {/* Connecteur Mari ↔ Fille — dans le gap x=670..710 */}
+            <line x1="670" y1="525" x2="710" y2="525" stroke="#059669" strokeWidth="2"/>
 
-              {/* Petite-fille sous la fille */}
-              <line x1="500" y1="570" x2="500" y2="610" stroke="#059669" strokeWidth="2" />
-              {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 420, 610, 170, 80, { label: 'Fille' })}
+            {/* Fille  [x=710..870, cx=790] */}
+            {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 710, 490, 160, 70, { label: 'Fille' })}
 
-              {/* Garçon */}
-              {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 630, 490, 180, 80, { label: 'Garçon' })}
-              <line x1="720" y1="470" x2="720" y2="490" stroke="#059669" strokeWidth="2" />
+            {/* Vertical couple Mari-Fille → Petite-fille
+                x=690 dans le gap 670..710 ; y=525→560 dans la zone G2 (gap) ; y=560→630 espace libre */}
+            <line x1="690" y1="525" x2="690" y2="630" stroke="#059669" strokeWidth="2"/>
 
-              {/* Femme à droite du garçon : petite liaison visible sans entrer dans les cartes */}
-              {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: '', numeroH: '' }, 830, 500, 170, 80, { label: 'Femme' })}
-              <line x1="810" y1="520" x2="830" y2="520" stroke="#059669" strokeWidth="2" />
+            {/* Garçon  [x=910..1070, cx=990] */}
+            {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 910, 490, 160, 70, { label: 'Garçon' })}
 
-              {/* Petit-garçon sous le garçon */}
-              <line x1="720" y1="570" x2="720" y2="610" stroke="#059669" strokeWidth="2" />
-              {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 630, 610, 180, 80, { label: 'Garçon' })}
-            </g>
+            {/* Connecteur Garçon ↔ Femme — dans le gap x=1070..1110 */}
+            <line x1="1070" y1="525" x2="1110" y2="525" stroke="#059669" strokeWidth="2"/>
 
-          </svg>
-        </div>
+            {/* Femme du Garçon  [x=1110..1270] */}
+            {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: '', numeroH: '' }, 1110, 490, 160, 70, { label: 'Femme' })}
+
+            {/* Vertical couple Garçon-Femme → Petit-garçon
+                x=1090 dans le gap 1070..1110 */}
+            <line x1="1090" y1="525" x2="1090" y2="630" stroke="#059669" strokeWidth="2"/>
+          </g>
+
+          {/* ── G3 : Petits-enfants ── */}
+          <g className="generation-g3">
+            {/* Petite-fille  [x=610..770, cx=690] */}
+            {renderPersonNode({ genre: 'FEMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 610, 630, 160, 70, { label: 'Petite-fille' })}
+            {/* Petit-garçon  [x=1010..1170, cx=1090] */}
+            {renderPersonNode({ genre: 'HOMME', prenom: '', nomFamille: userData.nomFamille, numeroH: '' }, 1010, 630, 160, 70, { label: 'Petit-garçon' })}
+          </g>
+
+        </svg>
+      </div>
 
       {/* Détails du membre sélectionné */}
       {selectedMember && (

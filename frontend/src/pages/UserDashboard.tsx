@@ -164,11 +164,11 @@ export function UserDashboard() {
   return (
     <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen overflow-x-hidden">
       {/* Barre supérieure: Notifications + Déconnexion */}
-      <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 mb-3 sm:mb-4 gap-2">
-        <NotificationBell />
+      <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 pt-4 sm:pt-6 mb-3 sm:mb-4 gap-2">
         <button className="btn secondary min-h-[44px] w-full xs:w-auto max-w-[200px] xs:max-w-none" onClick={() => navigate("/")}>
           Déconnexion
         </button>
+        <NotificationBell />
       </div>
 
       {/* En-tête profil – compact, largeur adaptée au contenu */}
@@ -275,9 +275,9 @@ export function UserDashboard() {
         </div>
       </div>
 
-      {/* Navigation unifiée - TOUTES les pages dans une seule barre */}
+      {/* Navigation unifiée - grille 5x2 sur mobile, ligne sur desktop */}
       <div className="dashboard-tabs px-3 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="flex gap-1 sm:gap-1.5 md:gap-2 justify-start overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+        <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1 sm:gap-1.5 md:gap-2">
           {navItems.map((item) => {
             const isActive = item.type === "tab" && activeTab === item.id;
             const isLink = item.type === "link";
@@ -286,7 +286,7 @@ export function UserDashboard() {
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item)}
-                className={`flex flex-col items-center justify-center gap-0.5 p-2 sm:p-2.5 rounded-lg transition-all duration-200 min-w-[52px] min-h-[52px] sm:min-w-[56px] sm:min-h-[56px] flex-shrink-0 text-center border-none ${
+                className={`flex flex-col items-center justify-center gap-0.5 p-2 sm:p-2.5 rounded-lg transition-all duration-200 w-full min-h-[52px] sm:min-w-[56px] sm:w-auto sm:flex-shrink-0 text-center border-none ${
                   isActive
                     ? "bg-blue-100/50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400"
                     : isLink

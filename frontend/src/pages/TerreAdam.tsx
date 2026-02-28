@@ -497,7 +497,7 @@ export default function TerreAdam() {
                 </nav>
               </div>
 
-              {((userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode) || isAdmin) ? (
+              {((userData?.quartierCode || userData?.lieu1 || userData?.lieuResidence1) || (userData?.continentCode && userData?.paysCode && userData?.regionCode && userData?.prefectureCode && userData?.sousPrefectureCode) || isAdmin) ? (
                 <div className="space-y-4">
                   {/* Page Quartier : une page indépendante par résidence (1, 2 ou 3) */}
                   {(activeLieuTab === 'quartier-1' || activeLieuTab === 'quartier-2' || activeLieuTab === 'quartier-3') && (

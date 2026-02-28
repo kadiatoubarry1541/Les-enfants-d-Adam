@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { MediaUploader } from '../../components/MediaUploader'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002'
 
@@ -61,6 +62,15 @@ export default function Parents() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [newActivityContent, setNewActivityContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [activeSession, setActiveSession] = useState('enfance')
+  const [showMediaUploader, setShowMediaUploader] = useState(false)
+  const [mediaItems, setMediaItems] = useState<Array<{ id: string; type: 'photo' | 'video' | 'audio'; url: string; caption?: string; date: string }>>([])
+  const [notesFromParents, setNotesFromParents] = useState<Array<{ id: string; annee: number; note: number; parentName?: string }>>([])
+  const [formAnnee, setFormAnnee] = useState(() => new Date().getFullYear())
+  const [formNote, setFormNote] = useState(0)
+  const [parentRatings, setParentRatings] = useState<Array<{ id: string; annee: number; note: number }>>([])
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [showActivityMessage, setShowActivityMessage] = useState(false)
 
   const loadUser = () => {
     try {
@@ -184,16 +194,44 @@ export default function Parents() {
     }
   }
 
+  const loadNotesFromParents = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/parent-child/ratings/for-child`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setNotesFromParents((data.ratings || []).map((r: { id: string; annee: number; note: number; parentName?: string }) => ({
+          id: r.id,
+          annee: r.annee,
+          note: r.note,
+          parentName: r.parentName
+        })))
+      }
+    } catch (e) {
+      console.error('Erreur chargement notes des parents:', e)
+    }
+  }
+
   useEffect(() => {
     const u = loadUser()
     if (u?.numeroH) {
       setLoading(false)
       loadMyParents()
       loadPendingInvitations()
+      loadNotesFromParents()
     } else {
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (!selectedParent && parents.length > 0) {
+      setSelectedParent(parents[0])
+    }
+  }, [parents, selectedParent])
 
   useEffect(() => {
     if (selectedParent) {
@@ -202,6 +240,11 @@ export default function Parents() {
       setActivities([])
     }
   }, [selectedParent?.id])
+
+  const handleAddMedia = (mediaData: { type: 'photo' | 'video' | 'audio'; url: string; caption?: string }) => {
+    setMediaItems((prev) => [...prev, { id: Date.now().toString(), ...mediaData, date: new Date().toISOString() }])
+    setShowMediaUploader(false)
+  }
 
   const handleAddActivity = async () => {
     if (!selectedParent || !newActivityContent.trim() || !user) return
@@ -248,6 +291,7 @@ export default function Parents() {
     <div className="max-w-7xl mx-auto px-4 py-6">
       <Link
         to="/famille"
+        state={{ returnToHub: true }}
         className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
       >
         ← Retour à Famille
@@ -260,6 +304,7 @@ export default function Parents() {
             🤝 Inspir
           </Link>
         </div>
+        <p className="mt-3 text-slate-600 text-sm">Partagez vos souvenirs et recevez les notes de vos parents.</p>
       </div>
 
       {pendingInvitations.length > 0 && (
@@ -307,6 +352,7 @@ export default function Parents() {
           </p>
           <Link
             to="/famille"
+            state={{ returnToHub: true }}
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
           >
             Retour à Famille
@@ -358,13 +404,158 @@ export default function Parents() {
 
           <div className="lg:col-span-2">
             {selectedParent ? (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 className="text-xl font-bold text-slate-800 mb-4">
-                  Activités avec {selectedParent.parent ? `${selectedParent.parent.prenom} ${selectedParent.parent.nomFamille}` : selectedParent.parentNumeroH}
-                </h3>
-                <p className="text-slate-600 mb-4">
-                  Ce que vous faites pour votre parent et ce qu'il/elle fait pour vous.
-                </p>
+              <div className="space-y-6">
+                {/* Bannière */}
+                <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg p-6 text-white">
+                  <h3 className="text-2xl font-semibold mb-2">❤️ Nos souvenirs d&apos;ensemble</h3>
+                  <p className="text-purple-100">Moments précieux partagés avec mes parents</p>
+                </div>
+
+                {/* 3 cartes + Note et Message (même style) */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <div className="flex gap-3 mb-3 overflow-x-auto">
+                    {[
+                      { id: 'enfance', title: 'Mon enfance dans vos mains', icon: '👶' },
+                      { id: 'paradis', title: 'Mon paradis dans vos mains', icon: '🌟' },
+                      { id: 'objectif', title: 'Notre objectif pour demain', icon: '🎯' }
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`flex-1 min-w-[180px] px-4 py-3 rounded-lg border-2 transition-all ${
+                          activeSession === s.id ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-300 text-slate-800 hover:bg-slate-50'
+                        }`}
+                        onClick={() => setActiveSession(s.id)}
+                      >
+                        <span className="text-2xl block mb-1">{s.icon}</span>
+                        <span className="font-semibold text-sm block">{s.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Note et Message — même style, après Nos objectifs pour demain */}
+                  <div className="flex gap-3 mb-6 overflow-x-auto">
+                    <button
+                      type="button"
+                      onClick={() => { setNotesOpen((o) => !o); setShowActivityMessage(false); }}
+                      className={`flex-1 min-w-[180px] px-4 py-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                        notesOpen ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-300 text-slate-800 hover:bg-slate-50'
+                      }`}
+                      aria-expanded={notesOpen}
+                    >
+                      <span className="text-slate-500 text-2xl" aria-hidden>☆</span>
+                      <span className="font-semibold text-sm">Note</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowActivityMessage(true); setNotesOpen(false); }}
+                      className={`flex-1 min-w-[180px] px-4 py-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                        showActivityMessage ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-300 text-slate-800 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-2xl">💬</span>
+                      <span className="font-semibold text-sm">Message</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-slate-800">
+                      {activeSession === 'enfance' ? 'Mon enfance dans vos mains' : activeSession === 'paradis' ? 'Mon paradis dans vos mains' : 'Notre objectif pour demain'}
+                    </h4>
+                    <button type="button" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm" onClick={() => setShowMediaUploader(true)}>📷 Ajouter média</button>
+                  </div>
+                  <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                    {mediaItems.length === 0 ? (
+                      <>
+                        <p className="text-slate-600 mb-4">Aucun média partagé dans cette session</p>
+                        <button type="button" className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg" onClick={() => setShowMediaUploader(true)}>🚀 Commencer à partager</button>
+                      </>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {mediaItems.map((m) => (
+                          <div key={m.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                            {m.type === 'photo' && <img src={m.url} alt="" className="w-full h-40 object-cover" />}
+                            {m.type === 'video' && <video src={m.url} controls className="w-full h-40 bg-black" />}
+                            {m.type === 'audio' && <div className="w-full h-24 bg-slate-200 flex items-center justify-center"><span className="text-3xl">🎵</span></div>}
+                            {m.caption && <p className="p-2 text-sm text-slate-600">{m.caption}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contenu Note — affiché quand on clique sur le bouton Note (ligne au-dessus) */}
+                {notesOpen && (
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <span className="text-slate-500" aria-hidden>☆</span>
+                      Notes que mes parents m&apos;ont données
+                    </h3>
+                    <div className="overflow-x-auto rounded-xl border-2 border-slate-300 bg-white shadow-sm">
+                        <table className="min-w-full text-sm" aria-label="Notes">
+                          <thead className="bg-slate-200 text-slate-800 border-b-2 border-slate-300">
+                            <tr>
+                              <th scope="col" className="px-4 py-3 text-left font-semibold">Année</th>
+                              <th scope="col" className="px-4 py-3 text-left font-semibold">Note</th>
+                              <th scope="col" className="px-4 py-3 text-left font-semibold">Donné par</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {notesFromParents.length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="px-4 py-8 text-center text-slate-500 bg-slate-50">
+                                  Aucune note pour l&apos;instant. Vos parents peuvent vous noter depuis leur espace « Mes Enfants ».
+                                </td>
+                              </tr>
+                            ) : (
+                              notesFromParents.map((r) => (
+                                <tr key={r.id} className="bg-white hover:bg-slate-50">
+                                  <td className="px-4 py-3 text-slate-700">{r.annee}</td>
+                                  <td className="px-4 py-3">
+                                    <span className="flex items-center gap-0.5" title={`${r.note}/5`}>
+                                      {[1, 2, 3, 4, 5].map((s) => (
+                                        <span key={s} className={r.note >= s ? 'text-amber-400' : 'text-slate-300'}>★</span>
+                                      ))}
+                                      <span className="ml-1 text-slate-600 text-xs">{r.note}/5</span>
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-600">{r.parentName ?? '—'}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                        <div className="px-4 py-2 bg-slate-100 border-t border-slate-200 text-xs font-medium text-slate-600 rounded-b-xl flex flex-wrap items-center justify-between gap-2">
+                          <span>Tableau Notes — {notesFromParents.length} note{notesFromParents.length !== 1 ? 's' : ''}</span>
+                          {notesFromParents.length > 0 && (
+                            <span className="bg-purple-50 text-purple-800 px-3 py-1 rounded-lg font-semibold">
+                              Note moyenne : {(notesFromParents.reduce((s, r) => s + r.note, 0) / notesFromParents.length).toFixed(1)}/5 ★
+                            </span>
+                          )}
+                        </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Activités : zone Message ouverte au clic sur le bouton Message */}
+                {showActivityMessage && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800">
+                      Activités avec {selectedParent.parent ? `${selectedParent.parent.prenom} ${selectedParent.parent.nomFamille}` : selectedParent.parentNumeroH}
+                    </h3>
+                    <p className="text-slate-600 mt-1 text-sm">
+                      Ce que vous faites pour votre parent et ce qu&apos;il/elle fait pour vous.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowActivityMessage(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-sm"
+                  >
+                    ← Retour
+                  </button>
+                </div>
 
                 <div className="mb-6 flex gap-2">
                   <textarea
@@ -408,10 +599,24 @@ export default function Parents() {
                     ))
                   )}
                 </div>
+                </div>
+                )}
               </div>
             ) : (
               <div className="bg-slate-50 rounded-xl border border-slate-200 p-12 text-center">
                 <p className="text-slate-500">Sélectionnez un parent pour voir les activités partagées.</p>
+              </div>
+            )}
+
+            {showMediaUploader && (
+              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowMediaUploader(false)}>
+                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-between items-center p-4 border-b">
+                    <h3 className="text-xl font-semibold text-slate-800">📷 Ajouter un média</h3>
+                    <button type="button" className="text-slate-500 hover:text-slate-700 text-2xl" onClick={() => setShowMediaUploader(false)}>✕</button>
+                  </div>
+                  <div className="p-4"><MediaUploader onClose={() => setShowMediaUploader(false)} onUpload={handleAddMedia} /></div>
+                </div>
               </div>
             )}
           </div>

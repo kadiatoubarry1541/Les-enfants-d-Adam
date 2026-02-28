@@ -212,8 +212,9 @@ export function MonPartenaire({ userData }: { userData: UserData }) {
       {/* Tableau de notes du partenaire */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-semibold text-slate-800">
-            ⭐ Notes de {isHomme ? 'mon homme' : 'mon homme'}
+          <h3 className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
+            <span className="text-slate-500" aria-hidden>☆</span>
+            Notes de {isHomme ? 'mon homme' : 'ma femme'}
           </h3>
           {isHomme && partnerNotes.length < 5 && (
             <button 
@@ -256,13 +257,13 @@ export function MonPartenaire({ userData }: { userData: UserData }) {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border-2 border-slate-300 bg-white shadow-sm">
           {partnerNotes.length === 0 && !isHomme ? (
-            <div className="text-center py-8 bg-slate-50 rounded-lg">
+            <div className="text-center py-8 bg-slate-50">
               <p className="text-slate-600">Notes de votre homme</p>
             </div>
           ) : partnerNotes.length === 0 ? (
-            <div className="text-center py-8 bg-slate-50 rounded-lg">
+            <div className="text-center py-8 bg-slate-50">
               <p className="text-slate-600 mb-3">Aucun homme ajouté</p>
               <button 
                 className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors duration-200"
@@ -272,55 +273,53 @@ export function MonPartenaire({ userData }: { userData: UserData }) {
               </button>
             </div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 border-b-2 border-slate-200">
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">
-                    {isHomme ? 'Homme' : 'Mon Homme'}
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Année</th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Note</th>
-                  {isHomme && <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Actions</th>}
+            <table className="min-w-full text-sm" aria-label="Notes">
+              <thead className="bg-slate-200 text-slate-800 border-b-2 border-slate-300">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">{isHomme ? 'Homme' : 'Mon Homme'}</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Année</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Note</th>
+                  {isHomme && <th scope="col" className="px-4 py-3 text-left font-semibold">Actions</th>}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-200">
                 {partnerNotes.map(note => (
-                  <tr key={note.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors duration-150">
-                    <td className="px-4 py-4">
+                  <tr key={note.id} className="bg-white hover:bg-slate-50">
+                    <td className="px-4 py-3">
                       <span className="font-medium text-slate-800 flex items-center gap-2">
-                        <span className="text-2xl">{isHomme ? '👩' : '👨'}</span>
+                        <span className="text-xl">{isHomme ? '👩' : '👨'}</span>
                         {note.partnerName}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <input
                         type="number"
                         value={note.annee}
                         onChange={(e) => handleYearChange(note.id, parseInt(e.target.value))}
-                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                        min="2020"
-                        max="2030"
+                        className="min-w-[140px] w-36 px-3 py-2 border border-slate-300 rounded-xl text-slate-800 focus:ring-2 focus:ring-pink-500 focus:border-pink-400 text-sm"
+                        min={2020}
+                        max={2030}
                       />
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="flex gap-1">
+                    <td className="px-4 py-3">
+                      <div className="flex gap-0.5 items-center">
                         {[1, 2, 3, 4, 5].map(star => (
                           <button
                             key={star}
-                            className={`text-2xl transition-transform duration-150 hover:scale-125 ${
-                              note.note >= star ? 'opacity-100' : 'opacity-30'
-                            }`}
+                            type="button"
+                            className={`text-2xl transition-colors ${note.note >= star ? 'text-amber-400' : 'text-slate-300 hover:text-slate-400'}`}
                             onClick={() => handleNoteChange(note.id, star)}
                           >
-                            ⭐
+                            ★
                           </button>
                         ))}
+                        <span className="ml-1 text-slate-600 text-xs">{note.note}/5</span>
                       </div>
                     </td>
                     {isHomme && (
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-3">
                         <button 
-                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg"
                           onClick={() => handleRemovePartner(note.id)}
                         >
                           🗑️ Supprimer
@@ -332,17 +331,15 @@ export function MonPartenaire({ userData }: { userData: UserData }) {
               </tbody>
             </table>
           )}
-        </div>
-        
-        {partnerNotes.length > 0 && (
-          <div className="mt-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
-            <p className="text-slate-700">
-              <strong className="text-pink-700">Note moyenne:</strong> {
-                (partnerNotes.reduce((sum, note) => sum + note.note, 0) / partnerNotes.length).toFixed(1)
-              }/5 ⭐
-            </p>
+          <div className="px-4 py-2 bg-slate-100 border-t border-slate-200 text-xs font-medium text-slate-600 rounded-b-xl flex flex-wrap items-center justify-between gap-2">
+            <span>Tableau Notes — {partnerNotes.length} note{partnerNotes.length !== 1 ? 's' : ''}</span>
+            {partnerNotes.length > 0 && (
+              <span className="bg-purple-50 text-purple-800 px-3 py-1 rounded-lg font-semibold">
+                Note moyenne : {(partnerNotes.reduce((sum, note) => sum + note.note, 0) / partnerNotes.length).toFixed(1)}/5 ★
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Modal pour upload de médias */}

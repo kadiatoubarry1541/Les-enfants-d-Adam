@@ -121,8 +121,8 @@ function App() {
         </div>
       </header>
 
-      {/* Main content - padding adapté mobile */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      {/* Main content - plein écran, chaque page gère son propre container */}
+      <main className="flex-1 w-full overflow-x-hidden">
         <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route path="/" element={<Home />} />

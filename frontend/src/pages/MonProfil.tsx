@@ -4,7 +4,7 @@ import IdentiteModal from "../components/IdentiteModal";
 import EditProfileModal from "../components/EditProfileModal";
 import { AdminPanel } from "../components/AdminPanel";
 import { config } from "../config/api";
-import { getPhotoUrl } from "../utils/auth";
+import { getPhotoUrl, isMasterAdmin } from "../utils/auth";
 
 interface UserLogo {
   id: string;
@@ -89,6 +89,8 @@ export default function MonProfil() {
   };
 
   if (!userData) return null;
+
+  const canSeeAdminPanel = isMasterAdmin(userData);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -197,17 +199,19 @@ export default function MonProfil() {
             >
               ✨ Identité
             </button>
+            {canSeeAdminPanel && (
+              <button
+                onClick={() => setShowAdmin(!showAdmin)}
+                className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-sm sm:text-base"
+              >
+                ⚙️ Admin
+              </button>
+            )}
             <button
-              onClick={() => setShowEditProfile(true)}
-              className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-200 text-sm sm:text-base"
+              onClick={() => navigate('/mes-comptes-pro')}
+              className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-lg transition-colors duration-200 text-sm sm:text-base"
             >
-              ✏️ Modifier
-            </button>
-            <button
-              onClick={() => setShowAdmin(!showAdmin)}
-              className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[140px] px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-sm sm:text-base"
-            >
-              ⚙️ Admin
+              💼 Mes comptes pro
             </button>
             <button
               onClick={() => setShowActions(!showActions)}
@@ -222,7 +226,14 @@ export default function MonProfil() {
         </div>
       </div>
 
-      <IdentiteModal open={open} onClose={() => setOpen(false)} />
+      <IdentiteModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onEditProfile={() => {
+          setOpen(false);
+          setShowEditProfile(true);
+        }}
+      />
 
       <EditProfileModal
         open={showEditProfile}
@@ -236,7 +247,7 @@ export default function MonProfil() {
         }}
       />
 
-      {showAdmin && (
+      {canSeeAdminPanel && showAdmin && (
         <div
           className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mt-8"
           style={{ borderLeftWidth: "4px", borderLeftColor: "#3b82f6" }}
