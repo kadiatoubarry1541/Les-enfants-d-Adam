@@ -1,5 +1,52 @@
 # Déploiement sur Render
 
+## Connexion en ligne qui échoue (« NumeroH ou mot de passe incorrect »)
+
+Si la connexion fonctionne en local mais pas sur https://les-enfants-d-adam.onrender.com, vérifier dans l’ordre :
+
+### 1. Le front appelle bien le backend Render
+
+Le **site statique** (Les-enfants-d-Adam) doit connaître l’URL de l’API. Lors du **build** sur Render, la variable `VITE_API_URL` est intégrée au code.
+
+- Render Dashboard → service **Les-enfants-d-Adam** (Static Site) → **Environment**.
+- Ajouter une variable :
+  - **Key :** `VITE_API_URL`
+  - **Value :** `https://enfants-adam-backend.onrender.com/api`
+- Enregistrer puis **redéployer** le site (Déploiement manuel → Déployer le dernier commit ou « Vider le cache et déployer »).
+
+Sans cette variable, le site appelle `http://localhost:5002` et la connexion échoue en production.
+
+### 2. NumeroH : utiliser le chiffre 0, pas la lettre O
+
+Le NumeroH est sensible à l’orthographe. Exemple pour l’admin :
+
+- Correct : `G0C0P0R0E0F0 0` (chiffre **zéro** partout).
+- Incorrect : `GOCOPOROEOFO 0` (lettre **O**).
+
+En cas de doute, copier-coller le NumeroH depuis l’email ou l’écran d’inscription.
+
+### 3. Utilisateur présent dans la base en ligne (Neon)
+
+Si le compte a été créé **uniquement en local**, il n’existe pas encore dans la base Neon utilisée par Render. Il faut synchroniser :
+
+```bash
+cd backend
+npm run db:sync-render
+```
+
+Cela copie la base locale vers Neon. Ensuite, refaire une tentative de connexion sur le site en ligne.
+
+### 4. Backend Render : admin et CORS
+
+- **Backend** (enfants-adam-backend) → **Environment** :
+  - `ADMIN_PASSWORD` = mot de passe de l’admin (obligatoire pour que le compte admin soit créé).
+  - `ADMIN_NUMERO_H` = `G0C0P0R0E0F0 0` (optionnel, c’est le défaut).
+  - `CORS_ORIGIN` = `https://les-enfants-d-adam.onrender.com` (URL du site statique).
+
+Après toute modification des variables, redéployer le service concerné.
+
+---
+
 ## Connexion admin (obligatoire sur Render)
 
 Pour te connecter en **admin** sur le site déployé (Render), il faut définir ces variables d’environnement dans le **Dashboard Render** → ton service backend → **Environment** :

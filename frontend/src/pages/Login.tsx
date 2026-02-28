@@ -49,6 +49,7 @@ export function Login() {
           setError('Mot de passe incorrect')
         } else {
           setError('NumeroH ou mot de passe incorrect')
+          // Indication utile : sur le site en ligne, vérifier VITE_API_URL sur Render et le format NumeroH (chiffre 0, pas lettre O)
         }
       }
     } catch (error: any) {
@@ -88,7 +89,16 @@ export function Login() {
             </div>
           </div>
         </div>
-        {error && <div className="error">{error}</div>}
+        {error && (
+          <>
+            <div className="error">{error}</div>
+            {error === 'NumeroH ou mot de passe incorrect' && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Astuce : utilisez le chiffre <strong>0</strong>, pas la lettre O, dans le NumeroH (ex. G0C0P0R0E0F0 0).
+              </p>
+            )}
+          </>
+        )}
         <div className="actions">
         <button
           type="button"
