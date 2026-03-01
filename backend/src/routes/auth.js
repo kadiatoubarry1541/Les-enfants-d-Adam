@@ -450,17 +450,21 @@ router.post('/login', [
     console.log('🔍 Tentative de connexion pour:', numeroH);
 
     try {
-      // Essayer d'utiliser la base de données PostgreSQL
-      // Normaliser le NumeroH avant la recherche
-      const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ');
+      // Normaliser : espaces + remplacer lettre O par chiffre 0 (format NumeroH = G0C0P0R0E0F0 0)
+      const normalizedNumeroH = numeroH
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/O/g, '0')
+        .replace(/o/g, '0');
       console.log('🔍 NumeroH normalisé pour recherche:', normalizedNumeroH);
       
       let user = await User.findByNumeroH(normalizedNumeroH);
       
-      // Si pas trouvé avec le normalisé, essayer avec l'original
+      // Si pas trouvé avec le normalisé (O→0), essayer avec l'original
       if (!user && normalizedNumeroH !== numeroH.trim()) {
-        console.log('🔍 Essai avec NumeroH original (non normalisé):', numeroH.trim());
-        user = await User.findByNumeroH(numeroH.trim());
+        const originalTrimmed = numeroH.trim().replace(/\s+/g, ' ');
+        console.log('🔍 Essai avec NumeroH original (sans O→0):', originalTrimmed);
+        user = await User.findByNumeroH(originalTrimmed);
       }
       
       if (!user) {

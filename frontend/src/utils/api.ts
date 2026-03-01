@@ -141,9 +141,18 @@ export const api = {
     }
   },
 
+  // Normalise le NumeroH : espaces et lettre O remplacée par chiffre 0 (évite erreur de saisie)
+  normalizeNumeroH(numeroH: string): string {
+    return numeroH
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/O/g, '0')
+      .replace(/o/g, '0')
+  },
+
   // Connexion utilisateur - Version optimisée et rapide
   async login(numeroH: string, password: string) {
-    const normalizedNumeroH = numeroH.trim().replace(/\s+/g, ' ')
+    const normalizedNumeroH = this.normalizeNumeroH(numeroH)
     
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
