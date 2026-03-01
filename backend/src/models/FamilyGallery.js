@@ -30,7 +30,7 @@ FamilyGallery.init({
     allowNull: false
   },
   url: {
-    type: DataTypes.STRING(512),
+    type: DataTypes.TEXT,
     allowNull: false
   },
   type: {

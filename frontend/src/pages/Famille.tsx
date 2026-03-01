@@ -10,14 +10,14 @@ const getImageUrl = (url: string | null | undefined): string | null => {
 };
 
 type AlbumKey = 'rencontre' | 'bapteme' | 'mariage' | 'deces';
-interface AlbumMedia { url: string; type: 'image' | 'video'; uploadedAt: string; }
+interface AlbumMedia { id?: string; url: string; type: 'image' | 'video'; uploadedAt: string; uploaderName?: string; uploaderNumeroH?: string; }
 type GalleryAlbums = Record<AlbumKey, AlbumMedia[]>;
 
-const ALBUMS_CONFIG: { key: AlbumKey; label: string; emoji: string; color: string }[] = [
-  { key: 'rencontre', label: 'Rencontre',  emoji: '💑', color: 'from-rose-400 to-pink-600' },
-  { key: 'bapteme',  label: 'Baptême',    emoji: '👶', color: 'from-sky-400 to-blue-600' },
-  { key: 'mariage',  label: 'Mariage',    emoji: '💍', color: 'from-amber-400 to-yellow-600' },
-  { key: 'deces',    label: 'Deuil',      emoji: '🕊️', color: 'from-slate-400 to-gray-600' },
+const ALBUMS_CONFIG: { key: AlbumKey; label: string; emoji: string; bg: string; light: string; text: string; border: string }[] = [
+  { key: 'rencontre', label: 'Rencontre', emoji: '💑', bg: 'bg-indigo-600', light: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+  { key: 'bapteme',  label: 'Baptême',   emoji: '👶', bg: 'bg-sky-500',    light: 'bg-sky-50',    text: 'text-sky-700',    border: 'border-sky-200'    },
+  { key: 'mariage',  label: 'Mariage',   emoji: '💍', bg: 'bg-amber-500',  light: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200'  },
+  { key: 'deces',    label: 'Deuil',     emoji: '🕊️', bg: 'bg-slate-500',  light: 'bg-slate-50',  text: 'text-slate-700',  border: 'border-slate-200'  },
 ];
 
 interface UserData {
@@ -286,16 +286,30 @@ export default function Famille() {
     }
   };
 
-  // ── Galerie albums ────────────────────────────────────────────────────────
+  // ── Galerie partagée (visible par toute la famille) ──────────────────────
   const loadGalleryAlbums = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE}/api/family/gallery`, {
+      const response = await fetch(`${API_BASE}/api/family/shared-gallery`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        setGalleryAlbums(data.albums || { rencontre: [], bapteme: [], mariage: [], deces: [] });
+        const albums: GalleryAlbums = { rencontre: [], bapteme: [], mariage: [], deces: [] };
+        for (const item of (data.items || [])) {
+          const key = item.album as AlbumKey;
+          if (albums[key]) {
+            albums[key].push({
+              id: item.id,
+              url: item.url,
+              type: item.type,
+              uploadedAt: item.created_at || item.createdAt,
+              uploaderName: item.uploaderName,
+              uploaderNumeroH: item.uploaderNumeroH
+            });
+          }
+        }
+        setGalleryAlbums(albums);
       }
     } catch (error) {
       console.error('Erreur chargement galerie:', error);
@@ -308,14 +322,13 @@ export default function Famille() {
       const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append('media', file);
-      const response = await fetch(`${API_BASE}/api/family/gallery/${album}`, {
+      const response = await fetch(`${API_BASE}/api/family/shared-gallery/${album}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
       if (response.ok) {
-        const data = await response.json();
-        setGalleryAlbums(data.albums);
+        await loadGalleryAlbums();
       }
     } catch (error) {
       console.error('Erreur upload galerie:', error);
@@ -324,20 +337,19 @@ export default function Famille() {
     }
   };
 
-  const deleteFromAlbum = async (album: AlbumKey, index: number) => {
+  const deleteFromAlbum = async (album: AlbumKey, idx: number) => {
     try {
-      setDeletingGalleryIdx(index);
+      const item = galleryAlbums[album]?.[idx];
+      if (!item?.id) return;
+      setDeletingGalleryIdx(idx);
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE}/api/family/gallery/${album}/${index}`, {
+      await fetch(`${API_BASE}/api/family/shared-gallery/${item.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setGalleryAlbums(data.albums);
-        setLightboxIndex(null);
-        setViewerMedia(null);
-      }
+      await loadGalleryAlbums();
+      setLightboxIndex(null);
+      setViewerMedia(null);
     } catch (error) {
       console.error('Erreur suppression galerie:', error);
     } finally {
@@ -345,7 +357,7 @@ export default function Famille() {
     }
   };
 
-  const isVideoUrl = (url: string) => /\.(mp4|webm|ogg)(\?|$)/i.test(url) || url.includes('video');
+  const isVideoUrl = (url: string) => /\.(mp4|webm|ogg)(\?|$)/i.test(url) || url.includes('video/');
   // ─────────────────────────────────────────────────────────────────────────
 
   const loadFamilyMembers = async () => {
@@ -1603,7 +1615,7 @@ export default function Famille() {
                     : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
                 }`}
               >
-                Albums
+                Albums famille
               </button>
             </div>
 
@@ -1618,7 +1630,7 @@ export default function Famille() {
                       { key: 'wife', label: 'Ma Femme', photo: familyPhotos.wifePhoto, icon: '👩' },
                     ].map(({ key, label, photo, icon }) => (
                       <div key={key} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500 px-4 pt-3 pb-2">{label}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-4 pt-3 pb-2">{label}</p>
                         <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center">
                           {photo ? (
                             <img src={getImageUrl(photo) ?? ''} alt={label} className="w-full h-full object-cover" />
@@ -1630,7 +1642,7 @@ export default function Famille() {
                     ))}
                   </div>
                   <div className="mt-5 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <p className="text-xs font-medium uppercase tracking-wider text-slate-500 px-4 pt-3 pb-2">Mes Enfants</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-4 pt-3 pb-2">Enfants</p>
                     <div className="p-4 flex flex-wrap gap-4">
                       {(familyPhotos.childrenPhotos?.length ?? 0) > 0 ? (
                         (familyPhotos.childrenPhotos ?? []).map((child, index) => (
@@ -1638,7 +1650,7 @@ export default function Famille() {
                             <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 mb-1.5">
                               <img src={getImageUrl(child.photoUrl) ?? ''} alt={child.name} className="w-full h-full object-cover" />
                             </div>
-                            <span className="text-xs font-medium text-slate-700 truncate block w-full">{child.name}</span>
+                            <span className="text-xs font-semibold text-slate-700 truncate block w-full">{child.name}</span>
                           </div>
                         ))
                       ) : (
@@ -1653,10 +1665,14 @@ export default function Famille() {
               )}
 
               {gallerySection === 'albums' && (
-                <div className="flex flex-col sm:flex-row h-full min-h-[360px]">
+                <div className="flex flex-col sm:flex-row h-full min-h-[400px]">
                   {/* Sidebar albums */}
-                  <div className="sm:w-56 flex-shrink-0 bg-white border-b sm:border-b-0 sm:border-r border-slate-200">
-                    <div className="flex sm:flex-col gap-0.5 p-3 overflow-x-auto sm:overflow-x-visible">
+                  <div className="sm:w-60 flex-shrink-0 bg-white border-b sm:border-b-0 sm:border-r border-slate-200">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Albums</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Visible par toute la famille</p>
+                    </div>
+                    <div className="flex sm:flex-col overflow-x-auto sm:overflow-x-visible p-2 gap-1">
                       {ALBUMS_CONFIG.map((cfg) => {
                         const items = galleryAlbums[cfg.key] || [];
                         const count = items.length;
@@ -1666,125 +1682,146 @@ export default function Famille() {
                           <button
                             key={cfg.key}
                             onClick={() => setActiveAlbum(cfg.key)}
-                            className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left transition-colors ${
+                            className={`flex items-center gap-3 min-w-[170px] sm:min-w-0 w-full px-3 py-2.5 rounded-xl text-left transition-all ${
                               isActive
-                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                ? `${cfg.light} ${cfg.border} border`
                                 : 'hover:bg-slate-50 border border-transparent'
                             }`}
                           >
-                            <div className="w-11 h-11 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 ring-1 ring-slate-200/50">
+                            <div className={`w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 ${isActive ? cfg.bg : 'bg-slate-100'} flex items-center justify-center`}>
                               {thumb ? (
-                                thumb.type === 'video' || isVideoUrl(thumb.url) ? (
+                                thumb.type === 'video' ? (
                                   <video src={getImageUrl(thumb.url) || ''} className="w-full h-full object-cover" muted />
                                 ) : (
                                   <img src={getImageUrl(thumb.url) || ''} alt="" className="w-full h-full object-cover" />
                                 )
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-xl text-slate-400">{cfg.emoji}</div>
+                                <span className={`text-2xl ${isActive ? '' : 'opacity-60'}`}>{cfg.emoji}</span>
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className={`text-sm font-semibold truncate ${isActive ? 'text-indigo-800' : 'text-slate-800'}`}>{cfg.label}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">{count === 0 ? 'Vide' : `${count} élément${count > 1 ? 's' : ''}`}</p>
+                              <p className={`text-sm font-semibold truncate ${isActive ? cfg.text : 'text-slate-800'}`}>{cfg.label}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">{count === 0 ? 'Vide' : `${count} photo${count > 1 ? 's' : ''}`}</p>
                             </div>
+                            {isActive && <div className={`w-1.5 h-8 rounded-full ${cfg.bg} flex-shrink-0`} />}
                           </button>
                         );
                       })}
                     </div>
                   </div>
+
                   {/* Contenu album */}
-                  <div className="flex-1 p-6 min-h-0 bg-slate-50">
-                    {activeAlbum && (
-                      <>
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-base font-semibold text-slate-900">
-                            {ALBUMS_CONFIG.find((c) => c.key === activeAlbum)?.label}
-                          </h4>
-                          {canPublishGallery && (
-                            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 transition-colors">
-                              {uploadingAlbum === activeAlbum ? (
-                                <>
-                                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                  Envoi en cours…
-                                </>
-                              ) : (
-                                <>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                  Ajouter
-                                </>
-                              )}
-                              <input
-                                type="file"
-                                accept="image/*,video/*"
-                                multiple
-                                className="hidden"
-                                disabled={!!uploadingAlbum}
-                                onChange={async (e) => {
-                                  const files = Array.from(e.target.files || []);
-                                  for (const f of files) await uploadToAlbum(activeAlbum, f);
-                                  e.target.value = '';
-                                }}
-                              />
-                            </label>
-                          )}
-                        </div>
-                        {(galleryAlbums[activeAlbum]?.length || 0) === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-slate-200 bg-white">
-                            <span className="text-5xl mb-3 text-slate-300">{ALBUMS_CONFIG.find((c) => c.key === activeAlbum)?.emoji}</span>
-                            <p className="text-sm font-medium text-slate-600">Aucune photo ni vidéo</p>
-                            {canPublishGallery && <p className="text-xs text-slate-500 mt-1">Cliquez sur « Ajouter » pour commencer</p>}
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                            {(galleryAlbums[activeAlbum] || []).map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="relative group aspect-square rounded-xl overflow-hidden bg-slate-200 shadow-sm ring-1 ring-slate-200/50 hover:ring-slate-300 transition-all"
-                              >
-                                {item.type === 'video' || isVideoUrl(item.url) ? (
-                                  <video
-                                    src={getImageUrl(item.url) || ''}
-                                    className="w-full h-full object-cover cursor-pointer"
-                                    muted
-                                    onClick={() => setViewerMedia(item)}
-                                  />
-                                ) : (
-                                  <img
-                                    src={getImageUrl(item.url) || ''}
-                                    alt=""
-                                    className="w-full h-full object-cover cursor-pointer"
-                                    onClick={() => setViewerMedia(item)}
-                                  />
-                                )}
-                                {(item.type === 'video' || isVideoUrl(item.url)) && (
-                                  <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-medium px-2 py-1 rounded-md flex items-center gap-1">
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
-                                    Vidéo
-                                  </span>
-                                )}
-                                {canPublishGallery && (
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); deleteFromAlbum(activeAlbum, idx); }}
-                                      disabled={deletingGalleryIdx === idx}
-                                      className="w-8 h-8 rounded-lg bg-white/90 hover:bg-white flex items-center justify-center text-slate-700 shadow-sm"
-                                      aria-label="Supprimer"
-                                    >
-                                      {deletingGalleryIdx === idx ? (
-                                        <span className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
-                                      ) : (
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                      )}
-                                    </button>
-                                  </div>
-                                )}
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {activeAlbum && (() => {
+                      const cfg = ALBUMS_CONFIG.find((c) => c.key === activeAlbum)!;
+                      const items = galleryAlbums[activeAlbum] || [];
+                      return (
+                        <>
+                          {/* En-tête album avec couleur */}
+                          <div className={`${cfg.bg} px-5 py-4 flex items-center justify-between flex-shrink-0`}>
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{cfg.emoji}</span>
+                              <div>
+                                <h4 className="text-base font-bold text-white">{cfg.label}</h4>
+                                <p className="text-xs text-white/70">
+                                  {items.length === 0 ? 'Aucun contenu' : `${items.length} élément${items.length > 1 ? 's' : ''}`}
+                                </p>
                               </div>
-                            ))}
+                            </div>
+                            {canPublishGallery && (
+                              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-white/20 hover:bg-white/30 text-white transition-colors border border-white/30">
+                                {uploadingAlbum === activeAlbum ? (
+                                  <>
+                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Envoi…
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                    Ajouter
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*,video/*"
+                                  multiple
+                                  className="hidden"
+                                  disabled={!!uploadingAlbum}
+                                  onChange={async (e) => {
+                                    const files = Array.from(e.target.files || []);
+                                    for (const f of files) await uploadToAlbum(activeAlbum, f);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                            )}
                           </div>
-                        )}
-                      </>
-                    )}
+
+                          {/* Grille photos */}
+                          <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+                            {items.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-16 rounded-2xl border-2 border-dashed border-slate-200 bg-white">
+                                <span className="text-6xl mb-4 opacity-20">{cfg.emoji}</span>
+                                <p className="text-sm font-semibold text-slate-600">Cet album est vide</p>
+                                {canPublishGallery
+                                  ? <p className="text-xs text-slate-400 mt-1">Cliquez sur « Ajouter » pour partager un souvenir</p>
+                                  : <p className="text-xs text-slate-400 mt-1">Aucun contenu partagé pour le moment</p>}
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                {items.map((item, idx) => (
+                                  <div
+                                    key={item.id || idx}
+                                    className="relative group aspect-square rounded-xl overflow-hidden bg-slate-200 shadow-sm ring-1 ring-slate-200/50 hover:ring-2 hover:ring-indigo-300 transition-all cursor-pointer"
+                                    onClick={() => setViewerMedia(item)}
+                                  >
+                                    {item.type === 'video' ? (
+                                      <video src={getImageUrl(item.url) || ''} className="w-full h-full object-cover" muted />
+                                    ) : (
+                                      <img src={getImageUrl(item.url) || ''} alt="" className="w-full h-full object-cover" />
+                                    )}
+
+                                    {/* Badge vidéo */}
+                                    {item.type === 'video' && (
+                                      <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1 pointer-events-none">
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+                                        Vidéo
+                                      </span>
+                                    )}
+
+                                    {/* Nom de l'auteur */}
+                                    {item.uploaderName && (
+                                      <span className="absolute top-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-lg truncate max-w-[75%] pointer-events-none">
+                                        {item.uploaderName}
+                                      </span>
+                                    )}
+
+                                    {/* Bouton supprimer (propriétaire uniquement) */}
+                                    {canPublishGallery && item.uploaderNumeroH === userData?.numeroH && (
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); deleteFromAlbum(activeAlbum, idx); }}
+                                          disabled={deletingGalleryIdx === idx}
+                                          className="w-8 h-8 rounded-lg bg-red-500 hover:bg-red-600 flex items-center justify-center text-white shadow transition-colors"
+                                          aria-label="Supprimer"
+                                        >
+                                          {deletingGalleryIdx === idx ? (
+                                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                          ) : (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                          )}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
