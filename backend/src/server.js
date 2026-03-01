@@ -291,19 +291,6 @@ app.get('/api/files/:filename', (req, res) => {
   });
 });
 
-// En production : servir le frontend (build React) depuis le même serveur = un seul service Render
-if (process.env.NODE_ENV === 'production') {
-  const frontendDist = path.join(__dirname, '../../frontend/dist');
-  if (fs.existsSync(frontendDist)) {
-    app.use(express.static(frontendDist));
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api')) return next();
-      res.sendFile(path.join(frontendDist, 'index.html'));
-    });
-    console.log('📂 Frontend servi depuis', frontendDist);
-  }
-}
-
 // Middleware pour gérer les erreurs d'upload (multer) - DOIT être APRÈS les routes
 app.use(handleUploadError);
 
