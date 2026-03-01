@@ -1,10 +1,10 @@
 services:
-  # ── Un seul service : Backend API + Frontend React ─────────────────────────
+  # ── Backend API (Node.js) ──────────────────────────────────────────────────
   - type: web
     name: enfants-adam-backend
     env: node
     plan: free
-    buildCommand: cd frontend && npm install && npm run build && cd ../backend && npm install
+    buildCommand: cd backend && npm install
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
@@ -12,23 +12,35 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        sync: false   # À définir dans le dashboard Render
+        sync: false
       - key: JWT_SECRET
-        sync: false   # À définir dans le dashboard Render
+        sync: false
       - key: BCRYPT_ROUNDS
         value: "12"
       - key: JWT_EXPIRE
         value: 7d
       - key: ADMIN_PASSWORD
-        sync: false   # À définir dans le dashboard Render
+        sync: false
       - key: ADMIN_NUMERO_H
         value: "G0C0P0R0E0F0 0"
       - key: CORS_ORIGIN
-        value: https://enfants-adam-backend.onrender.com
-      - key: VITE_API_URL
-        value: https://enfants-adam-backend.onrender.com
+        value: https://les-enfants-d-adam.onrender.com
       - key: DISABLE_IA_AUTO_START
         value: "true"
       - key: MAX_FILE_SIZE
         value: "10485760"
     healthCheckPath: /api/health
+
+  # ── Frontend (React/Vite — site statique) ──────────────────────────────────
+  - type: web
+    name: les-enfants-d-adam
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://enfants-adam-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
