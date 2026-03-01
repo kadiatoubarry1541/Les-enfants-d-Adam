@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 
@@ -290,6 +291,19 @@ app.get('/api/files/:filename', (req, res) => {
   });
 });
 
+// En production : servir le frontend (build React) depuis le même serveur = un seul service Render
+if (process.env.NODE_ENV === 'production') {
+  const frontendDist = path.join(__dirname, '../../frontend/dist');
+  if (fs.existsSync(frontendDist)) {
+    app.use(express.static(frontendDist));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(frontendDist, 'index.html'));
+    });
+    console.log('📂 Frontend servi depuis', frontendDist);
+  }
+}
+
 // Middleware pour gérer les erreurs d'upload (multer) - DOIT être APRÈS les routes
 app.use(handleUploadError);
 
@@ -304,13 +318,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Gestion des routes non trouvées
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route non trouvée'
+// En production : servir le frontend React (build Vite)
+if (process.env.NODE_ENV === 'production') {
+  const frontendDist = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
-});
+} else {
+  app.use('*', (req, res) => {
+    res.status(404).json({ success: false, message: 'Route non trouvée' });
+  });
+}
 
 // Démarrage du serveur : fait dans connectDB().then() plus haut (serveur ne démarre que si la base est connectée)
 
