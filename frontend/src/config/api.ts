@@ -1,8 +1,6 @@
 // Configuration de l'application
 export const config = {
-  API_BASE_URL: (import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
-    ? (import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') + '/api')
-    : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:5002') + '/api'),
+  API_BASE_URL: (import.meta.env.MODE === 'production' ? '' : 'http://localhost:5002') + '/api',
   APP_NAME: "VivasAr",
   APP_VERSION: "1.0.0",
   FRONTEND_URL: "http://localhost:5173",
