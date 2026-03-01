@@ -34,7 +34,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: false,
   },
   define: {
     __DEV__: JSON.stringify(true),
