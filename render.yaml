@@ -24,9 +24,9 @@ services:
       - key: ADMIN_NUMERO_H
         value: "G0C0P0R0E0F0 0"
       - key: CORS_ORIGIN
-        value: https://enfants-adam-backend.onrender.com
+        sync: false
       - key: VITE_API_URL
-        value: https://enfants-adam-backend.onrender.com
+        sync: false
       - key: DISABLE_IA_AUTO_START
         value: "true"
       - key: MAX_FILE_SIZE
