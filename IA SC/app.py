@@ -25,7 +25,21 @@ CORS(app)
 # Configuration de l'API
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/IAscience')
+# Utiliser la BASE PRINCIPALE (même que le backend) — tables ia_sc_* après migration
+if os.getenv('DATABASE_URL'):
+    DATABASE_URL = os.getenv('DATABASE_URL')
+else:
+    _db_host = os.getenv('DB_HOST', 'localhost')
+    _db_port = os.getenv('DB_PORT', '5432')
+    _db_name = os.getenv('DB_NAME', 'enfants_adam_eve')
+    _db_user = os.getenv('DB_USER', 'postgres')
+    _db_pass = os.getenv('DB_PASSWORD', '')
+    _ssl = '?sslmode=require' if 'neon.tech' in _db_host else ''
+    DATABASE_URL = f'postgresql://{_db_user}:{_db_pass}@{_db_host}:{_db_port}/{_db_name}{_ssl}'
+# Tables IA dans la base principale (préfixe ia_sc_)
+TABLE_SESSIONS = os.getenv('IA_TABLE_SESSIONS', 'ia_sc_sessions')
+TABLE_MESSAGES = os.getenv('IA_TABLE_MESSAGES', 'ia_sc_messages')
+TABLE_CONVERSATIONS = os.getenv('IA_TABLE_CONVERSATIONS', 'ia_sc_conversations')
 DIANGOU_API_URL = os.getenv('DIANGOU_API_URL', 'http://localhost:5002/api')
 
 def get_response_from_diangou(message: str):
@@ -3012,23 +3026,23 @@ def chat():
             try:
                 cur = conn.cursor()
                 
-                # Créer ou mettre à jour la session
-                cur.execute("""
-                    INSERT INTO sessions (session_id, last_activity)
+                # Créer ou mettre à jour la session (tables ia_sc_* dans la base principale)
+                cur.execute(f"""
+                    INSERT INTO {TABLE_SESSIONS} (session_id, last_activity)
                     VALUES (%s, CURRENT_TIMESTAMP)
                     ON CONFLICT (session_id) 
                     DO UPDATE SET last_activity = CURRENT_TIMESTAMP
                 """, (session_id,))
                 
                 # Sauvegarder le message et la réponse
-                cur.execute("""
-                    INSERT INTO messages (session_id, user_message, bot_response)
+                cur.execute(f"""
+                    INSERT INTO {TABLE_MESSAGES} (session_id, user_message, bot_response)
                     VALUES (%s, %s, %s)
                 """, (session_id, message, response))
                 
                 # Sauvegarder aussi dans la table conversations (pour historique simple)
-                cur.execute("""
-                    INSERT INTO conversations (user_message, bot_response)
+                cur.execute(f"""
+                    INSERT INTO {TABLE_CONVERSATIONS} (user_message, bot_response)
                     VALUES (%s, %s)
                 """, (message, response))
                 
@@ -3067,9 +3081,9 @@ def get_history(session_id):
             return jsonify({'error': 'Erreur de connexion à la base de données'}), 500
         
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
+        cur.execute(f"""
             SELECT user_message, bot_response, created_at
-            FROM messages
+            FROM {TABLE_MESSAGES}
             WHERE session_id = %s
             ORDER BY created_at ASC
         """, (session_id,))
@@ -3105,7 +3119,7 @@ if __name__ == '__main__':
         conn.close()
     else:
         print("ℹ️  Base de données non connectée - L'IA fonctionne sans historique")
-        print("   Créez la base IAscience avec database.sql pour sauvegarder les conversations")
+        print("   Utilisez la base principale (DATABASE_URL ou DB_* dans .env) et lancez: npm run migrate-ia-db (depuis backend/)")
     
     print("\n🚀 Serveur IA sur http://127.0.0.1:5000 - Prêt à recevoir des questions !\n")
     app.run(debug=True, host='127.0.0.1', port=5000, threaded=True)

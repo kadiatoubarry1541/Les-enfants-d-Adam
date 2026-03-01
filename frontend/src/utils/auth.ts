@@ -130,7 +130,9 @@ export function getPhotoUrl(photo?: string | null): string | null {
   if (photo.startsWith("/uploads/")) return photo;
   if (photo.startsWith("uploads/")) return "/" + photo;
   // Autre chemin relatif - construire l'URL complète
-  const baseUrl = (import.meta.env.VITE_API_URL || "http://localhost:5002/api").replace("/api", "");
+  const baseUrl = (import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
+    ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
+    : import.meta.env.MODE === 'production' ? '' : 'http://localhost:5002');
   return `${baseUrl}${photo.startsWith("/") ? photo : "/" + photo}`;
 }
 

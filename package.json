@@ -5,7 +5,8 @@
   "scripts": {
     "start": "cd backend && npm run start",
     "dev": "cd frontend && npm run dev",
-    "start:both": "concurrently \"npm:dev\" \"npm:start\""
+    "start:both": "concurrently \"npm:dev\" \"npm:start\"",
+    "build:render": "cd frontend && npm ci && npm run build && cd ../backend && npm ci"
   },
   "dependencies": {
     "concurrently": "^8.2.0",

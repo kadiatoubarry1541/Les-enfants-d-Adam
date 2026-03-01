@@ -1,5 +1,8 @@
-// API pour communiquer avec le backend
-const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL ?? 'http://localhost:5002/api'
+// API pour communiquer avec le backend (même origine en prod quand tout est sur un seul service Render)
+const _viteUrl = (import.meta as any)?.env?.VITE_API_URL
+const API_BASE_URL = (_viteUrl !== undefined && _viteUrl !== '')
+  ? (_viteUrl.replace(/\/api\/?$/, '') + '/api')
+  : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:5002') + '/api'
 
 export interface User {
   numeroH: string

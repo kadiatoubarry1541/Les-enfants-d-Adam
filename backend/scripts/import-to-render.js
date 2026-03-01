@@ -14,10 +14,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendDir = path.join(__dirname, '..');
 dotenv.config({ path: path.join(backendDir, 'config.env') });
 
-const databaseUrl = process.env.RENDER_DATABASE_URL || process.env.DATABASE_URL;
+const databaseUrl = process.env.RENDER_DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 if (!databaseUrl) {
-  console.error('❌ Définissez RENDER_DATABASE_URL ou DATABASE_URL (URL de la base Render)');
-  console.error('   Exemple: RENDER_DATABASE_URL="postgresql://user:pass@host/db?sslmode=require"');
+  console.error('❌ Définissez RENDER_DATABASE_URL, NEON_DATABASE_URL ou DATABASE_URL (URL de la base en ligne, ex. Neon)');
+  console.error('   Exemple: RENDER_DATABASE_URL="postgresql://user:pass@ep-xxx.neon.tech/dbname?sslmode=require"');
   process.exit(1);
 }
 
