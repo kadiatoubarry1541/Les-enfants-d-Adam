@@ -12,7 +12,9 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: enfants-adam-db
+          property: connectionString
       - key: JWT_SECRET
         sync: false
       - key: BCRYPT_ROUNDS
@@ -32,3 +34,10 @@ services:
       - key: MAX_FILE_SIZE
         value: "10485760"
     healthCheckPath: /api/health
+
+# ── BASE DE DONNÉES PostgreSQL sur Render ────────────────────────────────────
+databases:
+  - name: enfants-adam-db
+    plan: free
+    databaseName: enfants_adam_eve
+    user: enfants_adam_user
