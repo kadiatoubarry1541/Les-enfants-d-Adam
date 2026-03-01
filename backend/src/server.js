@@ -304,13 +304,23 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Gestion des routes non trouvées
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route non trouvée'
+// En production : servir le frontend React (build Vite)
+if (process.env.NODE_ENV === 'production') {
+  const frontendDist = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendDist));
+  // React Router : toutes les routes non-API renvoient index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
-});
+} else {
+  // En développement : 404 pour les routes inconnues
+  app.use('*', (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Route non trouvée'
+    });
+  });
+}
 
 // Démarrage du serveur : fait dans connectDB().then() plus haut (serveur ne démarre que si la base est connectée)
 
