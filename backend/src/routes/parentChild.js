@@ -4,10 +4,36 @@ import User from '../models/User.js';
 import ParentChildLink from '../models/ParentChildLink.js';
 import ParentChildActivity from '../models/ParentChildActivity.js';
 import ParentChildRating from '../models/ParentChildRating.js';
-import { Op } from 'sequelize';
+import { sequelize } from '../config/database.js';
 
 const router = express.Router();
 router.use(authenticate);
+
+// Crée la table parent_child_activities si elle n'existe pas (dev ET production)
+async function ensureParentChildActivityTable() {
+  try {
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "parent_child_activities" (
+        "id"               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+        "parent_numero_h"  VARCHAR(255) NOT NULL,
+        "child_numero_h"   VARCHAR(255) NOT NULL,
+        "from_numero_h"    VARCHAR(255) NOT NULL,
+        "to_numero_h"      VARCHAR(255) NOT NULL,
+        "type"             VARCHAR(50)  DEFAULT 'message',
+        "content"          TEXT,
+        "media_url"        TEXT,
+        "is_active"        BOOLEAN      DEFAULT true,
+        "created_at"       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        "updated_at"       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+    `);
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_pca_pair ON "parent_child_activities" ("parent_numero_h", "child_numero_h");`).catch(() => {});
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_pca_from ON "parent_child_activities" ("from_numero_h");`).catch(() => {});
+    await sequelize.query(`ALTER TABLE "parent_child_activities" ALTER COLUMN "media_url" TYPE TEXT;`).catch(() => {});
+  } catch (err) {
+    console.warn('⚠️ ensureParentChildActivityTable:', err.message);
+  }
+}
 
 /** Admin : aucune condition, tout voir et tout gérer. */
 const isAdmin = (user) => !!(user && (user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0' || user.bypassRestrictions));
@@ -457,6 +483,7 @@ router.get('/activities', async (req, res) => {
  */
 router.post('/activity', async (req, res) => {
   try {
+    await ensureParentChildActivityTable();
     const user = req.user;
     const { parentNumeroH, childNumeroH, toNumeroH, type, content, mediaUrl } = req.body;
 

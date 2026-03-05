@@ -4,9 +4,36 @@ import User from '../models/User.js';
 import CoupleLink from '../models/CoupleLink.js';
 import CoupleActivity from '../models/CoupleActivity.js';
 import PartnerRating from '../models/PartnerRating.js';
+import { sequelize } from '../config/database.js';
 
 const router = express.Router();
 router.use(authenticate);
+
+// Crée la table couple_activities si elle n'existe pas (dev ET production)
+async function ensureCoupleActivityTable() {
+  try {
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "couple_activities" (
+        "id"             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+        "numero_h1"      VARCHAR(255) NOT NULL,
+        "numero_h2"      VARCHAR(255) NOT NULL,
+        "from_numero_h"  VARCHAR(255) NOT NULL,
+        "to_numero_h"    VARCHAR(255) NOT NULL,
+        "type"           VARCHAR(50)  DEFAULT 'message',
+        "content"        TEXT,
+        "media_url"      TEXT,
+        "is_active"      BOOLEAN      DEFAULT true,
+        "created_at"     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        "updated_at"     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+    `);
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_ca_pair ON "couple_activities" ("numero_h1", "numero_h2");`).catch(() => {});
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_ca_from ON "couple_activities" ("from_numero_h");`).catch(() => {});
+    await sequelize.query(`ALTER TABLE "couple_activities" ALTER COLUMN "media_url" TYPE TEXT;`).catch(() => {});
+  } catch (err) {
+    console.warn('⚠️ ensureCoupleActivityTable:', err.message);
+  }
+}
 
 /** Admin : aucune condition, tout voir et tout gérer. */
 const isAdmin = (user) => !!(user && (user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0' || user.bypassRestrictions));
@@ -417,6 +444,7 @@ router.get('/activities', async (req, res) => {
  */
 router.post('/activity', async (req, res) => {
   try {
+    await ensureCoupleActivityTable();
     const user = req.user;
     const { type, content, mediaUrl } = req.body;
 

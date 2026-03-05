@@ -75,7 +75,8 @@ ParentChildActivity.init({
     field: 'content'
   },
   mediaUrl: {
-    type: DataTypes.STRING,
+    // Utilisé pour stocker des data URLs (base64) potentiellement longues
+    type: DataTypes.TEXT,
     allowNull: true,
     field: 'media_url'
   },

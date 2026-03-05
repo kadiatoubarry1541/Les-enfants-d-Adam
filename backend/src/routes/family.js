@@ -49,16 +49,32 @@ async function ensureFamilyPhotoColumns() {
   }
 }
 
-// S'assurer que la colonne url de family_gallery est de type TEXT
-async function ensureGalleryUrlText() {
+// Crée la table family_gallery si elle n'existe pas (dev ET production)
+// et s'assure que la colonne url est de type TEXT pour les base64
+async function ensureGalleryTable() {
   try {
-    const q = sequelize.getQueryInterface();
-    const desc = await q.describeTable('family_gallery');
-    if (desc.url && desc.url.type && desc.url.type.toLowerCase().includes('varchar')) {
-      await sequelize.query(`ALTER TABLE "family_gallery" ALTER COLUMN "url" TYPE TEXT;`);
-    }
+    // 1. Créer la table si elle n'existe pas (sans transaction — compatible PostgreSQL)
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "family_gallery" (
+        "id"                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+        "family_name"         VARCHAR(255) NOT NULL,
+        "uploader_numero_h"   VARCHAR(255) NOT NULL,
+        "uploader_name"       VARCHAR(255) NOT NULL DEFAULT 'Membre',
+        "album"               VARCHAR(50)  NOT NULL,
+        "url"                 TEXT         NOT NULL,
+        "type"                VARCHAR(20)  DEFAULT 'image',
+        "created_at"          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        "updated_at"          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+    `);
+    // 2. Index pour les recherches fréquentes
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_fg_family_name ON "family_gallery" ("family_name");`).catch(() => {});
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_fg_uploader    ON "family_gallery" ("uploader_numero_h");`).catch(() => {});
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_fg_album       ON "family_gallery" ("album");`).catch(() => {});
+    // 3. Garantir que url est TEXT (migration si ancienne colonne varchar)
+    await sequelize.query(`ALTER TABLE "family_gallery" ALTER COLUMN "url" TYPE TEXT;`).catch(() => {});
   } catch (err) {
-    console.warn('⚠️ ensureGalleryUrlText:', err.message);
+    console.warn('⚠️ ensureGalleryTable:', err.message);
   }
 }
 
@@ -255,7 +271,7 @@ router.delete('/gallery/:album/:index', async (req, res) => {
 // GET /api/family/shared-gallery
 router.get('/shared-gallery', async (req, res) => {
   try {
-    await ensureGalleryUrlText();
+    await ensureGalleryTable();
     const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
     const familyName = userData?.nomFamille;
     if (!familyName) return res.json({ success: true, items: [] });
@@ -272,7 +288,7 @@ router.get('/shared-gallery', async (req, res) => {
 // POST /api/family/shared-gallery/:album → base64 stocké en DB
 router.post('/shared-gallery/:album', upload.single('media'), async (req, res) => {
   try {
-    await ensureGalleryUrlText();
+    await ensureGalleryTable();
     const { album } = req.params;
     if (!VALID_ALBUMS.includes(album)) return res.status(400).json({ success: false, message: 'Album invalide' });
     if (!req.file) return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });

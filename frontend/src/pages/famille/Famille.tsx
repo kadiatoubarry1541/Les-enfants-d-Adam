@@ -15,25 +15,6 @@ interface UserData {
   isAdmin?: boolean
 }
 
-/** Calcule l'âge exact en années à partir d'une date de naissance */
-function calcAge(dateStr?: string): number {
-  if (!dateStr) return 99
-  const birth = new Date(dateStr)
-  if (isNaN(birth.getTime())) return 99
-  const now = new Date()
-  let age = now.getFullYear() - birth.getFullYear()
-  const m = now.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
-  return age
-}
-
-/** Retourne la date exacte du 18e anniversaire */
-function get18thBirthday(dateStr?: string): Date | null {
-  if (!dateStr) return null
-  const birth = new Date(dateStr)
-  if (isNaN(birth.getTime())) return null
-  return new Date(birth.getFullYear() + 18, birth.getMonth(), birth.getDate())
-}
 
 export default function Famille() {
   const [user, setUser] = useState<UserData | null>(null)
@@ -90,28 +71,7 @@ export default function Famille() {
   // Vérifier si l'utilisateur est admin (aucune condition, tout voir)
   const userIsAdmin = isAdmin(effectiveUser)
 
-  // Calcul âge et conditions d'accès aux pages partenaire
-  const dateNaissance = user?.dateNaissance || user?.date_naissance
-  const age = calcAge(dateNaissance)
-  const birthday18 = get18thBirthday(dateNaissance)
-  const isUnder18 = age < 18
   const genre = effectiveUser.genre
-  const canSeePartnerSections = !isUnder18 || userIsAdmin
-
-  // Ouverture automatique de la bonne page partenaire quand l'utilisateur atteint 18 ans
-  // (vérifie toutes les minutes si la session est ouverte)
-  useEffect(() => {
-    if (!isUnder18 || !user?.numeroH) return
-    const interval = setInterval(() => {
-      const dn = user.dateNaissance || user.date_naissance
-      if (calcAge(dn) >= 18) {
-        clearInterval(interval)
-        if (user.genre === 'HOMME') navigate('/famille/femmes')
-        else if (user.genre === 'FEMME') navigate('/famille/mari')
-      }
-    }, 60_000)
-    return () => clearInterval(interval)
-  }, [isUnder18, user, navigate])
 
   // Si on est sur une sous-page, afficher l'Outlet
   const isOnSubPage = location.pathname !== '/famille'
@@ -181,8 +141,8 @@ export default function Famille() {
           </div>
         </Link>
 
-        {/* Mon Homme — visible pour les femmes / autres majeurs, ou toujours pour les admins */}
-        {canSeePartnerSections && (userIsAdmin || genre !== 'HOMME') && (
+        {/* Mon Homme — visible pour les femmes et autres */}
+        {(userIsAdmin || genre !== 'HOMME') && (
           <Link to="mari" className="group bg-white rounded-md shadow-sm hover:shadow border border-gray-200 hover:border-blue-500 py-2 px-2 transition-all duration-200 hover:-translate-y-0.5">
             <div className="text-center">
               <div className="text-2xl sm:text-3xl mb-0.5">🤵</div>
@@ -191,8 +151,8 @@ export default function Famille() {
           </Link>
         )}
 
-        {/* Ma Femme — visible pour les hommes / autres majeurs, ou toujours pour les admins */}
-        {canSeePartnerSections && (userIsAdmin || genre !== 'FEMME') && (
+        {/* Ma Femme — visible pour les hommes et autres */}
+        {(userIsAdmin || genre !== 'FEMME') && (
           <Link to="femmes" className="group bg-white rounded-md shadow-sm hover:shadow border border-gray-200 hover:border-pink-500 py-2 px-2 transition-all duration-200 hover:-translate-y-0.5">
             <div className="text-center">
               <div className="text-2xl sm:text-3xl mb-0.5">👰</div>
@@ -201,36 +161,6 @@ export default function Famille() {
           </Link>
         )}
 
-        {/* Message pour les moins de 18 ans (sauf admin général qui voit tout) */}
-        {isUnder18 && !userIsAdmin && (
-          <div className="col-span-2 sm:col-span-3 lg:col-span-6 mt-1">
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-              <span className="text-xl flex-shrink-0">🔒</span>
-              <div>
-                <p className="text-xs sm:text-sm font-semibold text-amber-800">
-                  Section partenaire non disponible avant 18 ans
-                </p>
-                {birthday18 && (
-                  <p className="text-xs text-amber-600 mt-0.5">
-                    Accès automatique le{' '}
-                    <strong>
-                      {birthday18.toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </strong>{' '}
-                    — page{' '}
-                    <strong>
-                      {genre === 'HOMME' ? 'Ma Femme' : genre === 'FEMME' ? 'Mon Homme' : 'Ma Femme / Mon Homme'}
-                    </strong>{' '}
-                    s'ouvrira automatiquement.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         <Link to="enfants" className="group bg-white rounded-md shadow-sm hover:shadow border border-gray-200 hover:border-purple-500 py-2 px-2 transition-all duration-200 hover:-translate-y-0.5">
           <div className="text-center">

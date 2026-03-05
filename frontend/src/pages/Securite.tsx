@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
 import ProSection from '../components/ProSection';
+import WorldMap from '../components/WorldMap';
 import './Securite.css';
 
 interface UserData {
@@ -46,6 +47,9 @@ export default function Securite() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [selectedMapPosition, setSelectedMapPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationCheckResult, setLocationCheckResult] = useState<{ safetyLevel?: string; recommendations?: string[] } | null>(null);
+  const [locationCheckLoading, setLocationCheckLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -69,6 +73,7 @@ export default function Securite() {
       setUserData(user);
       const country = (user.pays || user.nationalite || 'Guinée').trim() || 'Guinée';
       setUserCountry(country);
+      setSelectedCountry(country); // pays par défaut = celui de l'utilisateur
     } catch {
       navigate("/login");
     }
@@ -211,7 +216,10 @@ export default function Securite() {
     'agents': (a) => (a.agency || '').includes('Sécurité Privée')
   };
 
+  const currentCountry = (selectedCountry || userCountry || '').toLowerCase();
+
   const filteredAgents = agents.filter(agent => {
+    const matchesCountry = !currentCountry || (agent.country || '').toLowerCase() === currentCountry;
     const matchesTab = activeTab === 'agents'
       ? (agencyFilter.agents as (a: SecurityAgent) => boolean)(agent)
       : agent.agency === agencyFilter[activeTab];
@@ -222,7 +230,7 @@ export default function Securite() {
       (agent.phone || '').includes(searchTerm);
     const matchesRegion = !selectedRegion || agent.region === selectedRegion;
     const matchesCity = !selectedCity || agent.city === selectedCity;
-    return matchesTab && matchesSearch && matchesRegion && matchesCity;
+    return matchesCountry && matchesTab && matchesSearch && matchesRegion && matchesCity;
   });
 
   const regions = Array.from(new Set(agents.map(a => a.region).filter(Boolean))).sort();
@@ -230,6 +238,37 @@ export default function Securite() {
 
   const handleCall = (phone: string) => {
     window.location.href = `tel:${phone}`;
+  };
+
+  const handleVerifyLocationSecurity = async () => {
+    if (!selectedMapPosition || !userData?.numeroH) return;
+    setLocationCheckLoading(true);
+    setLocationCheckResult(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5002/api/security/location-checks', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user: userData.numeroH,
+          userName: [userData.prenom, userData.nomFamille].filter(Boolean).join(' ') || 'Membre',
+          destination: `Position (${selectedMapPosition.lat.toFixed(5)}, ${selectedMapPosition.lng.toFixed(5)})`,
+          coordinates: { lat: selectedMapPosition.lat, lng: selectedMapPosition.lng },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLocationCheckResult({
+          safetyLevel: data.safetyLevel,
+          recommendations: data.recommendations || [],
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      setLocationCheckResult({ safetyLevel: 'error', recommendations: ['Erreur de connexion. Réessayez.'] });
+    } finally {
+      setLocationCheckLoading(false);
+    }
   };
 
   if (loading && agents.length === 0) {
@@ -267,13 +306,63 @@ export default function Securite() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Carte mondiale et géolocalisation */}
+        <div className="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            🗺️ Carte mondiale & géolocalisation
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            Du monde entier jusqu’aux quartiers et rues : zoomez avec la molette ou les boutons +/− pour voir tous les détails. Cliquez sur « Ma position » pour vous localiser, ou sur la carte pour choisir un lieu et vérifier la sécurité.
+          </p>
+          <WorldMap
+            showMyPositionButton={true}
+            onLocationSelect={(lat, lng) => {
+              setSelectedMapPosition({ lat, lng });
+              setLocationCheckResult(null);
+            }}
+          />
+          {selectedMapPosition && (
+            <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                Position sélectionnée : {selectedMapPosition.lat.toFixed(5)}, {selectedMapPosition.lng.toFixed(5)}
+              </p>
+              <button
+                type="button"
+                onClick={handleVerifyLocationSecurity}
+                disabled={locationCheckLoading}
+                className="px-4 py-2 rounded-lg font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
+              >
+                {locationCheckLoading ? 'Vérification…' : '🛡️ Vérifier'}
+              </button>
+              {locationCheckResult && (
+                <div className="mt-3 p-2 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                    Niveau : {locationCheckResult.safetyLevel === 'safe' && '✅ Sûr'}
+                    {locationCheckResult.safetyLevel === 'moderate' && '⚠️ Modéré'}
+                    {locationCheckResult.safetyLevel === 'risky' && '⚠️ Risqué'}
+                    {locationCheckResult.safetyLevel === 'dangerous' && '🔴 Dangereux'}
+                    {locationCheckResult.safetyLevel === 'error' && '❌ Erreur'}
+                  </p>
+                  {locationCheckResult.recommendations?.length ? (
+                    <ul className="text-sm text-gray-600 dark:text-gray-400 mt-1 list-disc list-inside">
+                      {locationCheckResult.recommendations.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Choix du pays – chaque pays a sa propre sécurité */}
         <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             🌍 Pays
           </label>
           <select
-            value={selectedCountry}
+            value={selectedCountry || userCountry}
             onChange={(e) => {
               setSelectedCountry(e.target.value);
               setSelectedRegion('');
@@ -291,7 +380,7 @@ export default function Securite() {
           </p>
         </div>
 
-        {!selectedCountry ? (
+        {!(selectedCountry || userCountry) ? (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6 text-center text-amber-800 dark:text-amber-200">
             <p className="font-medium">Choisissez un pays ci-dessus pour afficher les agents de sécurité.</p>
           </div>

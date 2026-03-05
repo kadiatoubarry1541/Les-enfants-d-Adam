@@ -8,7 +8,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 
-import connectDB from '../config/database.js';
+import connectDB, { sequelize } from '../config/database.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import badgeRoutes from './routes/badges.js';
@@ -143,8 +143,92 @@ async function ensureAdmin() {
   }
 }
 
+// Crée toutes les tables supplémentaires (galerie, activités couple/parent-enfant)
+// en production sur Render où sequelize.sync({ alter }) n'est pas exécuté
+async function initAllTables() {
+  const tables = [
+    {
+      name: 'family_gallery',
+      sql: `
+        CREATE TABLE IF NOT EXISTS "family_gallery" (
+          "id"                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+          "family_name"         VARCHAR(255) NOT NULL,
+          "uploader_numero_h"   VARCHAR(255) NOT NULL,
+          "uploader_name"       VARCHAR(255) NOT NULL DEFAULT 'Membre',
+          "album"               VARCHAR(50)  NOT NULL,
+          "url"                 TEXT         NOT NULL,
+          "type"                VARCHAR(20)  DEFAULT 'image',
+          "created_at"          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+          "updated_at"          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+        );`,
+      indexes: [
+        `CREATE INDEX IF NOT EXISTS idx_fg_family_name ON "family_gallery" ("family_name");`,
+        `CREATE INDEX IF NOT EXISTS idx_fg_uploader    ON "family_gallery" ("uploader_numero_h");`,
+        `CREATE INDEX IF NOT EXISTS idx_fg_album       ON "family_gallery" ("album");`
+      ],
+      alters: [`ALTER TABLE "family_gallery" ALTER COLUMN "url" TYPE TEXT;`]
+    },
+    {
+      name: 'couple_activities',
+      sql: `
+        CREATE TABLE IF NOT EXISTS "couple_activities" (
+          "id"             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+          "numero_h1"      VARCHAR(255) NOT NULL,
+          "numero_h2"      VARCHAR(255) NOT NULL,
+          "from_numero_h"  VARCHAR(255) NOT NULL,
+          "to_numero_h"    VARCHAR(255) NOT NULL,
+          "type"           VARCHAR(50)  DEFAULT 'message',
+          "content"        TEXT,
+          "media_url"      TEXT,
+          "is_active"      BOOLEAN      DEFAULT true,
+          "created_at"     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+          "updated_at"     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+        );`,
+      indexes: [
+        `CREATE INDEX IF NOT EXISTS idx_ca_pair ON "couple_activities" ("numero_h1", "numero_h2");`,
+        `CREATE INDEX IF NOT EXISTS idx_ca_from ON "couple_activities" ("from_numero_h");`
+      ],
+      alters: [`ALTER TABLE "couple_activities" ALTER COLUMN "media_url" TYPE TEXT;`]
+    },
+    {
+      name: 'parent_child_activities',
+      sql: `
+        CREATE TABLE IF NOT EXISTS "parent_child_activities" (
+          "id"               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+          "parent_numero_h"  VARCHAR(255) NOT NULL,
+          "child_numero_h"   VARCHAR(255) NOT NULL,
+          "from_numero_h"    VARCHAR(255) NOT NULL,
+          "to_numero_h"      VARCHAR(255) NOT NULL,
+          "type"             VARCHAR(50)  DEFAULT 'message',
+          "content"          TEXT,
+          "media_url"        TEXT,
+          "is_active"        BOOLEAN      DEFAULT true,
+          "created_at"       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+          "updated_at"       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+        );`,
+      indexes: [
+        `CREATE INDEX IF NOT EXISTS idx_pca_pair ON "parent_child_activities" ("parent_numero_h", "child_numero_h");`,
+        `CREATE INDEX IF NOT EXISTS idx_pca_from ON "parent_child_activities" ("from_numero_h");`
+      ],
+      alters: [`ALTER TABLE "parent_child_activities" ALTER COLUMN "media_url" TYPE TEXT;`]
+    }
+  ];
+
+  for (const table of tables) {
+    try {
+      await sequelize.query(table.sql);
+      for (const idx of table.indexes) await sequelize.query(idx).catch(() => {});
+      for (const alt of table.alters) await sequelize.query(alt).catch(() => {});
+      console.log(`✅ Table prête : ${table.name}`);
+    } catch (err) {
+      console.warn(`⚠️ initAllTables [${table.name}]:`, err.message);
+    }
+  }
+}
+
 // Connexion à la base puis démarrage du serveur (le serveur ne démarre que si la base est OK)
 connectDB()
+  .then(() => initAllTables())
   .then(() => ensureAdmin())
   .then(() => {
     // Middleware de sécurité (déjà déclarés plus bas) — on démarre l'écoute ici

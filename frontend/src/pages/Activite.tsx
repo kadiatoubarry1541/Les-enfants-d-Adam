@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { config } from '../config/api';
 import ProSection from '../components/ProSection';
 
@@ -571,44 +571,6 @@ export default function Activite() {
             {/* Interface de publication - Affichée directement sans header */}
             {selectedGroup && (
               <div className="mt-4 space-y-4">
-                {/* Blocs Opportunités et Outils de travail */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div
-                    onClick={() => setFeedFilter('opportunite')}
-                    className={`bg-white rounded-xl shadow-sm border-2 p-4 cursor-pointer transition-all ${
-                      feedFilter === 'opportunite' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">🌟</span>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">Opportunités</h3>
-                        <p className="text-sm text-gray-600">Offres, partenariats, appels à projets pour développer votre activité</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {activityMessages.filter((m: any) => (m.category || 'information') === 'opportunite').length} partage(s)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    onClick={() => setFeedFilter('outil')}
-                    className={`bg-white rounded-xl shadow-sm border-2 p-4 cursor-pointer transition-all ${
-                      feedFilter === 'outil' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">🛠️</span>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">Outils de travail</h3>
-                        <p className="text-sm text-gray-600">Ressources, logiciels, liens utiles pour votre métier</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {activityMessages.filter((m: any) => (m.category || 'information') === 'outil').length} partage(s)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Filtre du fil */}
                 <div className="flex gap-2 flex-wrap">
                   <button
@@ -618,7 +580,7 @@ export default function Activite() {
                       feedFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    Tout le fil
+                    💬 Messages
                   </button>
                   <button
                     type="button"
@@ -644,13 +606,146 @@ export default function Activite() {
                 {/* Zone de messages */}
                 <div className="flex-1 overflow-y-auto bg-gray-100 p-4" style={{ minHeight: '300px', maxHeight: 'calc(70vh - 200px)' }}>
                   {(() => {
-                    const filtered = feedFilter === 'all' ? activityMessages : activityMessages.filter((m: any) => (m.category || 'information') === feedFilter);
-                    return filtered.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">
-                      <p>{feedFilter === 'all' ? 'Aucun message pour le moment.' : feedFilter === 'opportunite' ? 'Aucune opportunité partagée. Soyez le premier !' : 'Aucun outil partagé. Proposez une ressource !'}</p>
-                </div>
-                  ) : (
-                    filtered.map((msg: any) => {
+                    const filtered = feedFilter === 'all'
+                      ? activityMessages
+                      : activityMessages.filter((m: any) => (m.category || 'information') === feedFilter);
+
+                    // Cas spécial : onglet Outils de travail → afficher les outils spéciaux en haut
+                    if (feedFilter === 'outil') {
+                      return (
+                        <>
+                          <div className="mb-4 flex justify-center">
+                            <Link
+                              to="/info-wallou"
+                              className="flex items-center gap-4 bg-gradient-to-r from-blue-700 to-slate-800 rounded-xl p-4 shadow-md border border-blue-500 hover:brightness-110 transition-all group max-w-xl w-full"
+                            >
+                              <span className="text-4xl group-hover:scale-110 transition-transform">📋</span>
+                              <div className="flex-1">
+                                <h3 className="font-bold text-white text-base">Info‑Wallou</h3>
+                                <p className="text-sm text-blue-200">
+                                  Créez des carreaux d'information avec photo, vidéo et audio
+                                </p>
+                                <p className="text-xs text-blue-300 mt-1">
+                                  Mariage · Baptême · Réunion · Santé · Décès
+                                </p>
+                              </div>
+                              <span className="text-white text-xl opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+                                →
+                              </span>
+                            </Link>
+                          </div>
+
+                          <div className="mb-4 flex justify-center">
+                            <Link
+                              to="/professeur-ia"
+                              className="flex items-center gap-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 shadow-md border border-cyan-400 hover:brightness-110 transition-all group max-w-xl w-full"
+                            >
+                              <span className="text-4xl group-hover:scale-110 transition-transform">🤖</span>
+                              <div className="flex-1">
+                                <h3 className="font-bold text-white text-base">Assistant IA Français & Mathématiques</h3>
+                                <p className="text-sm text-cyan-100">
+                                  Posez vos questions en français et en math, l’IA vous aide pas à pas.
+                                </p>
+                              </div>
+                              <span className="text-white text-xl opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+                                →
+                              </span>
+                            </Link>
+                          </div>
+
+                          {filtered.length === 0 ? (
+                            <div className="text-center text-gray-500 py-8">
+                              <p>Aucun outil partagé. Proposez une ressource !</p>
+                            </div>
+                          ) : (
+                            filtered.map((msg: any) => {
+                              const isMyMessage = msg.numeroH === userData?.numeroH;
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`mb-4 flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                                >
+                                  <div
+                                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                                      isMyMessage
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-white text-gray-900'
+                                    }`}
+                                  >
+                                    {!isMyMessage && (
+                                      <p className="text-xs font-semibold mb-1 opacity-75">
+                                        {msg.authorName || msg.numeroH}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-sm">
+                                        {getCategoryLogo(msg.category || 'information')}
+                                      </span>
+                                      <span
+                                        className={`text-xs font-medium ${
+                                          isMyMessage ? 'text-green-100' : 'text-gray-600'
+                                        }`}
+                                      >
+                                        {getCategoryName(msg.category || 'information')}
+                                      </span>
+                                    </div>
+                                    {msg.messageType === 'text' && msg.content && (
+                                      <p className="text-sm">{msg.content}</p>
+                                    )}
+                                    {msg.messageType === 'image' && msg.mediaUrl && (
+                                      <img
+                                        src={`${API_BASE_URL.replace('/api', '')}${msg.mediaUrl}`}
+                                        alt="Image"
+                                        className="max-w-full h-auto rounded-lg mb-1"
+                                      />
+                                    )}
+                                    {msg.messageType === 'video' && msg.mediaUrl && (
+                                      <video
+                                        src={`${API_BASE_URL.replace('/api', '')}${msg.mediaUrl}`}
+                                        controls
+                                        className="max-w-full h-auto rounded-lg mb-1"
+                                      />
+                                    )}
+                                    {msg.messageType === 'audio' && msg.mediaUrl && (
+                                      <audio
+                                        src={`${API_BASE_URL.replace('/api', '')}${msg.mediaUrl}`}
+                                        controls
+                                        className="w-full mb-1"
+                                      />
+                                    )}
+                                    <p
+                                      className={`text-xs mt-1 ${
+                                        isMyMessage ? 'text-green-100' : 'text-gray-500'
+                                      }`}
+                                    >
+                                      {new Date(msg.createdAt).toLocaleTimeString('fr-FR', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </>
+                      );
+                    }
+
+                    // Cas normal : Messages / Opportunités
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center text-gray-500 py-8">
+                          <p>
+                            {feedFilter === 'all'
+                              ? 'Aucun message pour le moment.'
+                              : 'Aucune opportunité partagée. Soyez le premier !'}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((msg: any) => {
                       const isMyMessage = msg.numeroH === userData?.numeroH;
                       return (
                         <div
@@ -665,15 +760,22 @@ export default function Activite() {
                             }`}
                           >
                             {!isMyMessage && (
-                              <p className="text-xs font-semibold mb-1 opacity-75">{msg.authorName || msg.numeroH}</p>
+                              <p className="text-xs font-semibold mb-1 opacity-75">
+                                {msg.authorName || msg.numeroH}
+                              </p>
                             )}
-                            {/* Logo et nom de la catégorie */}
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm">{getCategoryLogo(msg.category || 'information')}</span>
-                              <span className={`text-xs font-medium ${isMyMessage ? 'text-green-100' : 'text-gray-600'}`}>
+                              <span className="text-sm">
+                                {getCategoryLogo(msg.category || 'information')}
+                              </span>
+                              <span
+                                className={`text-xs font-medium ${
+                                  isMyMessage ? 'text-green-100' : 'text-gray-600'
+                                }`}
+                              >
                                 {getCategoryName(msg.category || 'information')}
-                        </span>
-                      </div>
+                              </span>
+                            </div>
                             {msg.messageType === 'text' && msg.content && (
                               <p className="text-sm">{msg.content}</p>
                             )}
@@ -690,7 +792,7 @@ export default function Activite() {
                                 controls
                                 className="max-w-full h-auto rounded-lg mb-1"
                               />
-                          )}
+                            )}
                             {msg.messageType === 'audio' && msg.mediaUrl && (
                               <audio
                                 src={`${API_BASE_URL.replace('/api', '')}${msg.mediaUrl}`}
@@ -698,14 +800,20 @@ export default function Activite() {
                                 className="w-full mb-1"
                               />
                             )}
-                            <p className={`text-xs mt-1 ${isMyMessage ? 'text-green-100' : 'text-gray-500'}`}>
-                              {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            <p
+                              className={`text-xs mt-1 ${
+                                isMyMessage ? 'text-green-100' : 'text-gray-500'
+                              }`}
+                            >
+                              {new Date(msg.createdAt).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </p>
-                        </div>
+                          </div>
                         </div>
                       );
-                    })
-                  );
+                    });
                   })()}
                   <div ref={messagesEndRefActivity} />
                       </div>

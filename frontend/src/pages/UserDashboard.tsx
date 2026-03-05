@@ -120,8 +120,8 @@ export function UserDashboard() {
   // Navigation unifiée : liens + onglets dans une seule barre
   const navItems: NavItem[] = [
     // Liens (naviguent vers des pages séparées)
-    { id: "famille", label: "Famille", icon: "👨‍👩‍👧‍👦", type: "link", path: "/famille" },
-    { id: "sante", label: "Santé", icon: "🏥", type: "link", path: "/sante" },
+  { id: "famille", label: "Famille", icon: "👨‍👩‍👧‍👦", type: "link", path: "/famille" },
+  { id: "sante", label: "Santé", icon: "🏥", type: "link", path: "/sante" },
     { id: "securite", label: "Sécurité", icon: "🛡️", type: "link", path: "/securite" },
     { id: "solidarite", label: "Solidarité", icon: "🤝", type: "link", path: "/solidarite" },
     // Onglets (affichent le contenu en dessous)
@@ -164,17 +164,22 @@ export function UserDashboard() {
   return (
     <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen overflow-x-hidden">
       {/* Barre supérieure: Notifications + Déconnexion */}
-      <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 pt-4 sm:pt-6 mb-3 sm:mb-4 gap-2">
-        <button className="btn secondary min-h-[44px] w-full xs:w-auto max-w-[200px] xs:max-w-none" onClick={() => navigate("/")}>
-          Déconnexion
-        </button>
+      <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 pt-3 sm:pt-4 mb-3 sm:mb-4 gap-2">
         <NotificationBell />
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors shadow-sm border-none cursor-pointer"
+        >
+          <span>↩</span>
+          <span className="hidden xs:inline">Déconnexion</span>
+          <span className="xs:hidden">Quitter</span>
+        </button>
       </div>
 
-      {/* En-tête profil – compact, largeur adaptée au contenu */}
+      {/* En-tête profil – pleine largeur sur mobile, compact sur desktop */}
       <div className="dashboard-header px-3 xs:px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex justify-start">
-          <div className="profile-card w-fit max-w-full bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 px-4 py-3 flex flex-row items-center gap-4 flex-wrap">
+        <div className="max-w-7xl mx-auto">
+          <div className="profile-card w-full sm:w-fit max-w-full bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 px-4 py-3 flex flex-row items-center gap-4 flex-wrap">
             <div className="user-avatar relative flex-shrink-0">
               {(() => {
                 const rawPhoto =
@@ -275,9 +280,19 @@ export function UserDashboard() {
         </div>
       </div>
 
-      {/* Navigation unifiée - grille 5x2 sur mobile, ligne sur desktop */}
-      <div className="dashboard-tabs px-3 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1 sm:gap-1.5 md:gap-2">
+      {/* ─── Navigation principale ───────────────────────────────────────────
+          📱 Téléphone  (< 640px)  : liste verticale 1 colonne, chaque item = ligne horizontale (icône + texte)
+          📟 Tablette   (640-1023) : grille 2 colonnes, chaque item = icône + texte empilés
+          🖥️  Desktop    (≥ 1024px) : 1 seule ligne horizontale, items répartis sur toute la largeur
+      ─────────────────────────────────────────────────────────────────── */}
+      <div className="dashboard-tabs px-3 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-3">
+
+        {/* Conteneur adaptatif selon l'appareil */}
+        <div className="
+          flex flex-col gap-1.5
+          sm:grid sm:grid-cols-2 sm:gap-2
+          lg:flex lg:flex-row lg:flex-nowrap lg:justify-between lg:gap-2
+        ">
           {navItems.map((item) => {
             const isActive = item.type === "tab" && activeTab === item.id;
             const isLink = item.type === "link";
@@ -286,27 +301,38 @@ export function UserDashboard() {
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item)}
-                className={`flex flex-col items-center justify-center gap-0.5 p-2 sm:p-2.5 rounded-lg transition-all duration-200 w-full min-h-[52px] sm:min-w-[56px] sm:w-auto sm:flex-shrink-0 text-center border-none ${
-                  isActive
-                    ? "bg-blue-100/50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400"
+                className={`
+                  border-none cursor-pointer transition-all duration-200 rounded-xl w-full
+                  flex flex-row items-center gap-4 px-4 py-3 min-h-[56px]
+                  sm:flex-col sm:items-center sm:justify-center sm:gap-1.5 sm:px-3 sm:py-4 sm:min-h-[88px]
+                  lg:flex-col lg:gap-1 lg:px-2 lg:py-3 lg:min-h-[64px] lg:flex-1
+                  ${isActive
+                    ? "bg-blue-100 dark:bg-blue-900/50 ring-1 ring-blue-300 dark:ring-blue-700"
                     : isLink
-                    ? "bg-emerald-50/50 dark:bg-emerald-900/20 hover:bg-emerald-100/50 dark:hover:bg-emerald-800/30"
-                    : "hover:bg-gray-100/50 dark:hover:bg-gray-700/30 bg-transparent"
-                }`}
+                    ? "bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 shadow-sm"
+                    : "bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/60 shadow-sm sm:bg-white sm:dark:bg-gray-800 sm:hover:bg-gray-50 sm:dark:hover:bg-gray-700 lg:bg-transparent lg:shadow-none lg:hover:bg-gray-100/60 lg:dark:bg-transparent lg:dark:hover:bg-gray-700/30"
+                  }
+                `}
               >
+                {/* Icône */}
                 {item.useSvg && item.SvgIcon ? (
                   <item.SvgIcon
-                    className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mb-0.5 transition-transform duration-200 hover:scale-110 ${
-                      isActive
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-gray-700 dark:text-gray-300"
+                    className={`flex-shrink-0 w-7 h-7 sm:w-6 sm:h-6 lg:w-6 lg:h-6 ${
+                      isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"
                     }`}
-                    size={18}
+                    size={28}
                   />
                 ) : (
-                  <span className="text-base sm:text-lg md:text-xl mb-0.5 transition-transform duration-200 hover:scale-110">{item.icon}</span>
+                  <span className="flex-shrink-0 text-3xl sm:text-2xl lg:text-2xl leading-none">{item.icon}</span>
                 )}
-                <span className="text-[8px] sm:text-[9px] md:text-[10px] font-medium leading-tight text-gray-700 dark:text-gray-300 px-0.5 break-words text-center">
+
+                {/* Texte */}
+                <span className={`
+                  font-medium leading-tight
+                  text-sm sm:text-[11px] lg:text-xs
+                  text-left sm:text-center
+                  ${isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-800 dark:text-gray-200"}
+                `}>
                   {item.label}
                 </span>
               </button>

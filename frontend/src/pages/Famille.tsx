@@ -286,30 +286,23 @@ export default function Famille() {
     }
   };
 
-  // ── Galerie partagée (visible par toute la famille) ──────────────────────
+  // ── Galerie albums ────────────────────────────────────────────────────────
   const loadGalleryAlbums = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE}/api/family/shared-gallery`, {
+      const response = await fetch(`${API_BASE}/api/family/gallery`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        const albums: GalleryAlbums = { rencontre: [], bapteme: [], mariage: [], deces: [] };
-        for (const item of (data.items || [])) {
-          const key = item.album as AlbumKey;
-          if (albums[key]) {
-            albums[key].push({
-              id: item.id,
-              url: item.url,
-              type: item.type,
-              uploadedAt: item.created_at || item.createdAt,
-              uploaderName: item.uploaderName,
-              uploaderNumeroH: item.uploaderNumeroH
-            });
-          }
-        }
-        setGalleryAlbums(albums);
+        // L'API retourne { success, albums: { rencontre:[], bapteme:[], mariage:[], deces:[] } }
+        const raw = data.albums || {};
+        setGalleryAlbums({
+          rencontre: raw.rencontre || [],
+          bapteme:   raw.bapteme   || [],
+          mariage:   raw.mariage   || [],
+          deces:     raw.deces     || [],
+        });
       }
     } catch (error) {
       console.error('Erreur chargement galerie:', error);
@@ -322,13 +315,20 @@ export default function Famille() {
       const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append('media', file);
-      const response = await fetch(`${API_BASE}/api/family/shared-gallery/${album}`, {
+      const response = await fetch(`${API_BASE}/api/family/gallery/${album}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
       if (response.ok) {
-        await loadGalleryAlbums();
+        const data = await response.json();
+        const raw = data.albums || {};
+        setGalleryAlbums({
+          rencontre: raw.rencontre || [],
+          bapteme:   raw.bapteme   || [],
+          mariage:   raw.mariage   || [],
+          deces:     raw.deces     || [],
+        });
       }
     } catch (error) {
       console.error('Erreur upload galerie:', error);
@@ -339,17 +339,23 @@ export default function Famille() {
 
   const deleteFromAlbum = async (album: AlbumKey, idx: number) => {
     try {
-      const item = galleryAlbums[album]?.[idx];
-      if (!item?.id) return;
       setDeletingGalleryIdx(idx);
       const token = localStorage.getItem("token");
-      await fetch(`${API_BASE}/api/family/shared-gallery/${item.id}`, {
+      const response = await fetch(`${API_BASE}/api/family/gallery/${album}/${idx}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      await loadGalleryAlbums();
-      setLightboxIndex(null);
-      setViewerMedia(null);
+      if (response.ok) {
+        const data = await response.json();
+        const raw = data.albums || {};
+        setGalleryAlbums({
+          rencontre: raw.rencontre || [],
+          bapteme:   raw.bapteme   || [],
+          mariage:   raw.mariage   || [],
+          deces:     raw.deces     || [],
+        });
+        setViewerMedia(null);
+      }
     } catch (error) {
       console.error('Erreur suppression galerie:', error);
     } finally {
@@ -789,181 +795,79 @@ export default function Famille() {
         </div>
       </div>
 
-      {/* Section Photos de Famille */}
-      <div className="bg-white border-b py-8">
+      {/* Galerie familiale — 4 albums */}
+      <div className="bg-gradient-to-b from-white to-slate-50 border-b py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">📸 Photos de Famille</h2>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Galerie familiale</h2>
+              <p className="text-sm text-gray-500 mt-1">Souvenirs et moments importants</p>
+            </div>
             {!canPublishGallery && (
-              <p className="text-xs sm:text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-1">
-                La publication est réservée aux membres de la famille âgés de 18 ans ou plus. Vous pouvez seulement regarder la galerie.
+              <p className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 max-w-xs text-right">
+                Publication réservée aux +18 ans
               </p>
             )}
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Photo de famille */}
-            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Photo de Famille</h3>
-              <div className="relative w-full h-48 bg-white rounded-lg overflow-hidden mb-3 border border-gray-200">
-                {familyPhotos.familyPhoto ? (
-                  <img 
-                    src={getImageUrl(familyPhotos.familyPhoto) ?? ''} 
-                    alt="Photo de famille" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <span className="text-4xl">👨‍👩‍👧‍👦</span>
-                  </div>
-                )}
-              </div>
-              {canPublishGallery && (
-                <label className="block w-full">
-                  <input
-                    type="file"
-                    accept="image/*,video/*,audio/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) uploadPhoto('family', file);
-                    }}
-                    disabled={uploading === 'family'}
-                  />
-                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                    {uploading === 'family' ? '⏳ Upload...' : '📷 Ajouter'}
-                  </span>
-                </label>
-              )}
-            </div>
 
-            {/* Photo de l'homme */}
-            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Mon Homme</h3>
-              <div className="relative w-full h-48 bg-white rounded-lg overflow-hidden mb-3 border border-gray-200">
-                {familyPhotos.manPhoto ? (
-                  <img 
-                    src={getImageUrl(familyPhotos.manPhoto) ?? ''} 
-                    alt="Photo de l'homme" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <span className="text-4xl">👨</span>
-                  </div>
-                )}
-              </div>
-              {canPublishGallery && (
-                <label className="block w-full">
-                  <input
-                    type="file"
-                    accept="image/*,video/*,audio/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) uploadPhoto('man', file);
-                    }}
-                    disabled={uploading === 'man'}
-                  />
-                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                    {uploading === 'man' ? '⏳ Upload...' : '📷 Ajouter'}
-                  </span>
-                </label>
-              )}
-            </div>
-
-            {/* Photo de la femme */}
-            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Ma Femme</h3>
-              <div className="relative w-full h-48 bg-white rounded-lg overflow-hidden mb-3 border border-gray-200">
-                {familyPhotos.wifePhoto ? (
-                  <img 
-                    src={getImageUrl(familyPhotos.wifePhoto) ?? ''} 
-                    alt="Photo de la femme" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <span className="text-4xl">👩</span>
-                  </div>
-                )}
-              </div>
-              {canPublishGallery && (
-                <label className="block w-full">
-                  <input
-                    type="file"
-                    accept="image/*,video/*,audio/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) uploadPhoto('wife', file);
-                    }}
-                    disabled={uploading === 'wife'}
-                  />
-                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                    {uploading === 'wife' ? '⏳ Upload...' : '📷 Ajouter'}
-                  </span>
-                </label>
-              )}
-            </div>
-
-            {/* Section Enfants */}
-            <div className="bg-white rounded-lg p-4 border-2 border-dashed border-gray-300">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Mes Enfants</h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
-                {(familyPhotos.childrenPhotos?.length ?? 0) > 0 ? (
-                  (familyPhotos.childrenPhotos ?? []).map((child, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border border-gray-200">
-                      <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
-                        <img 
-                          src={getImageUrl(child.photoUrl) ?? ''} 
-                          alt={child.name} 
-                          className="w-full h-full object-cover"
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {ALBUMS_CONFIG.map((cfg) => {
+              const items = galleryAlbums[cfg.key] || [];
+              const count = items.length;
+              const thumb = items[0];
+              return (
+                <button
+                  key={cfg.key}
+                  onClick={() => {
+                    setActiveAlbum(cfg.key);
+                    setGallerySection('albums');
+                    setShowFamilyGallery(true);
+                  }}
+                  className="group relative bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left"
+                >
+                  {/* Couverture */}
+                  <div className="aspect-[4/3] relative overflow-hidden">
+                    {thumb ? (
+                      thumb.type === 'video' ? (
+                        <video
+                          src={getImageUrl(thumb.url) || ''}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          muted
                         />
+                      ) : (
+                        <img
+                          src={getImageUrl(thumb.url) || ''}
+                          alt={cfg.label}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )
+                    ) : (
+                      <div className={`w-full h-full ${cfg.bg} flex items-center justify-center`}>
+                        <span className="text-5xl opacity-80">{cfg.emoji}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-700 truncate">{child.name}</p>
-                      </div>
-                      <button
-                        onClick={() => deleteChildPhoto(index)}
-                        className="text-red-600 hover:text-red-700 text-xs"
-                        title="Supprimer"
-                      >
-                        ✕
-                      </button>
+                    )}
+                    {/* Overlay gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                    {/* Compteur */}
+                    <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-2 py-1 rounded-lg">
+                      {count} élément{count !== 1 ? 's' : ''}
                     </div>
-                  ))
-                ) : (
-                  <div className="w-full h-12 flex items-center justify-center text-gray-400 text-xs">
-                    Aucun enfant
                   </div>
-                )}
-              </div>
-              {canPublishGallery && (
-                <label className="block w-full">
-                  <input
-                    type="file"
-                    accept="image/*,video/*,audio/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const childName = prompt('Nom de l\'enfant (optionnel):') || 'Enfant';
-                        uploadPhoto('children', file, childName);
-                      }
-                    }}
-                    disabled={uploading === 'children'}
-                  />
-                  <span className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded-lg transition-colors cursor-pointer text-sm">
-                    {uploading === 'children' ? '⏳ Upload...' : '📷 Ajouter'}
-                  </span>
-                </label>
-              )}
-            </div>
+
+                  {/* Label */}
+                  <div className="px-4 py-3 flex items-center gap-2">
+                    <span className="text-xl">{cfg.emoji}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{cfg.label}</p>
+                      <p className="text-xs text-slate-400">{count === 0 ? 'Vide' : `${count} photo${count > 1 ? 's' : ''}`}</p>
+                    </div>
+                    <svg className="ml-auto w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

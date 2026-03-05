@@ -62,6 +62,16 @@ interface UserInfo {
   isPublic: boolean;
 }
 
+interface MesAmoursStory {
+  id: number;
+  numeroH: string;
+  authorName: string;
+  content: string;
+  photos: string[];
+  videos: string[];
+  publishedAt: string;
+}
+
 export default function MesAmours() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'info'>('friends');
@@ -93,6 +103,12 @@ export default function MesAmours() {
     isPublic: true
   });
 
+  // Stories Mes Amours (type Facebook/WhatsApp)
+  const [stories, setStories] = useState<MesAmoursStory[]>([]);
+  const [storyFile, setStoryFile] = useState<File | null>(null);
+  const [storyMessage, setStoryMessage] = useState('');
+  const [uploadingStory, setUploadingStory] = useState(false);
+
   useEffect(() => {
     const session = localStorage.getItem("session_user");
     if (!session) {
@@ -119,7 +135,8 @@ export default function MesAmours() {
       await Promise.all([
         loadFriends(),
         loadFriendRequests(),
-        loadUserInfo()
+        loadUserInfo(),
+        loadStories()
       ]);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
@@ -191,6 +208,76 @@ export default function MesAmours() {
     } catch (error) {
       console.error('Erreur lors du chargement des informations:', error);
       setUserInfo(getDefaultUserInfo());
+    }
+  };
+
+  const loadStories = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setStories([]);
+        return;
+      }
+      const response = await fetch(`${API_BASE}/api/user-stories/mes-amours/feed`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStories(data.stories || []);
+      } else {
+        setStories([]);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des stories Mes Amours:', error);
+      setStories([]);
+    }
+  };
+
+  const handleStoryFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setStoryFile(file);
+  };
+
+  const submitStory = async () => {
+    if (!storyFile) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token || !userData?.numeroH) {
+        alert("Vous devez être connecté pour publier une story.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', storyFile);
+      if (storyMessage.trim()) {
+        formData.append('content', storyMessage.trim());
+      }
+
+      setUploadingStory(true);
+      const response = await fetch(`${API_BASE}/api/user-stories/mes-amours/story`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      } as any);
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setStoryFile(null);
+        setStoryMessage('');
+        await loadStories();
+      } else {
+        alert(data?.message || 'Erreur lors de la publication de la story');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la publication de la story:', error);
+      alert('Erreur de connexion au serveur');
+    } finally {
+      setUploadingStory(false);
     }
   };
 
@@ -417,7 +504,7 @@ export default function MesAmours() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Chargement de vos amours...</p>
         </div>
       </div>
@@ -451,7 +538,7 @@ export default function MesAmours() {
             <div className="flex space-x-4">
               <button
                 onClick={handleAddFriend}
-                className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
                 ➕ Ajouter un ami
               </button>
@@ -474,7 +561,7 @@ export default function MesAmours() {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
-                    ? 'border-pink-500 text-pink-600'
+                    ? 'border-emerald-500 text-emerald-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -555,7 +642,7 @@ export default function MesAmours() {
                         <h4 className="font-medium text-gray-900 mb-2">Intérêts communs:</h4>
                         <div className="flex flex-wrap gap-1">
                           {friend.commonInterests.map((interest, index) => (
-                            <span key={index} className="bg-pink-100 text-pink-800 px-2 py-1 rounded text-xs">
+                            <span key={index} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">
                               {interest}
                             </span>
                           ))}
@@ -566,7 +653,7 @@ export default function MesAmours() {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleViewFriendInfo(friend)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg transition-colors"
                       >
                         Voir infos
                       </button>
@@ -629,101 +716,82 @@ export default function MesAmours() {
 
         {activeTab === 'info' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">ℹ️ Mes Informations</h2>
-                <button
-                  onClick={handleEditInfo}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  ✏️ Modifier
-                </button>
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">📢 Story Mes Amours (24h)</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleStoryFileChange}
+                    className="block w-full text-xs sm:text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    disabled={!storyFile || uploadingStory}
+                    onClick={submitStory}
+                    className="inline-flex items-center justify-center px-3 sm:px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-medium shadow-sm transition-colors"
+                  >
+                    {uploadingStory ? 'Publication...' : '📤 Publier'}
+                  </button>
+                </div>
               </div>
+              <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                Choisis <strong>une photo</strong> ou <strong>une courte vidéo</strong> et publie ta story. Elle sera
+                visible par toi et tes amis pendant <strong>24 heures</strong>.
+              </p>
 
-              {userInfo && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                      <p className="text-gray-900">{userInfo.bio || 'Non renseigné'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Localisation</label>
-                      <p className="text-gray-900">{userInfo.location || 'Non renseigné'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
-                      <p className="text-gray-900">{userInfo.occupation || 'Non renseigné'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Éducation</label>
-                      <p className="text-gray-900">{userInfo.education || 'Non renseigné'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date de naissance</label>
-                      <p className="text-gray-900">{userInfo.birthDate || 'Non renseigné'}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Statut marital</label>
-                      <p className="text-gray-900">{userInfo.maritalStatus || 'Non renseigné'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nombre d'enfants</label>
-                      <p className="text-gray-900">{userInfo.children || 0}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Hobbies</label>
-                      <div className="flex flex-wrap gap-1">
-                        {userInfo.hobbies && userInfo.hobbies.length > 0 ? (
-                          userInfo.hobbies.map((hobby, index) => (
-                            <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                              {hobby}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-gray-500">Non renseigné</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Intérêts</label>
-                      <div className="flex flex-wrap gap-1">
-                        {userInfo.interests && userInfo.interests.length > 0 ? (
-                          userInfo.interests.map((interest, index) => (
-                            <span key={index} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                              {interest}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-gray-500">Non renseigné</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Langues</label>
-                      <div className="flex flex-wrap gap-1">
-                        {userInfo.languages && userInfo.languages.length > 0 ? (
-                          userInfo.languages.map((language, index) => (
-                            <span key={index} className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                              {language}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-gray-500">Non renseigné</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Visibilité</label>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        userInfo.isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {userInfo.isPublic ? 'Public' : 'Privé'}
-                      </span>
-                    </div>
+              {stories.length === 0 ? (
+                <div className="border border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-400 text-sm">
+                  Aucune story active pour le moment. Publie ta première story Mes Amours.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800">Stories de toi et de tes amis (24h)</h3>
+                  <div className="flex gap-4 overflow-x-auto pb-2">
+                    {stories.map((story) => {
+                      const mediaUrl =
+                        (story.photos && story.photos[0]) ||
+                        (story.videos && story.videos[0]) ||
+                        '';
+                      const isVideo = mediaUrl?.toLowerCase().match(/\\.mp4$|\\.webm$|\\.ogg$/);
+                      return (
+                        <div
+                          key={story.id}
+                          className="flex-shrink-0 w-32 sm:w-40 rounded-xl bg-gray-50 border border-gray-200 overflow-hidden shadow-sm"
+                        >
+                          <div className="relative w-full h-32 bg-black/5 flex items-center justify-center overflow-hidden">
+                            {mediaUrl ? (
+                              isVideo ? (
+                                <video src={mediaUrl} className="w-full h-full object-cover" muted autoPlay loop />
+                              ) : (
+                                <img src={mediaUrl} alt={story.authorName} className="w-full h-full object-cover" />
+                              )
+                            ) : (
+                              <span className="text-gray-400 text-xs px-2 text-center">
+                                Story sans média
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-2">
+                            <p className="text-xs font-semibold text-gray-900 truncate">
+                              {story.authorName}
+                            </p>
+                            {story.content && (
+                              <p className="text-[11px] text-gray-600 line-clamp-2 mt-0.5">
+                                {story.content}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {new Date(story.publishedAt).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -746,7 +814,7 @@ export default function MesAmours() {
                   type="text"
                   value={addFriendForm.numeroH}
                   onChange={(e) => setAddFriendForm({...addFriendForm, numeroH: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Entrez le NumeroH"
                 />
               </div>
@@ -757,7 +825,7 @@ export default function MesAmours() {
                 <textarea
                   value={addFriendForm.message}
                   onChange={(e) => setAddFriendForm({...addFriendForm, message: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   rows={3}
                   placeholder="Message d'invitation..."
                 />
@@ -772,7 +840,7 @@ export default function MesAmours() {
               </button>
               <button
                 onClick={submitAddFriend}
-                className="flex-1 bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg transition-colors"
               >
                 Envoyer
               </button>
@@ -829,7 +897,7 @@ export default function MesAmours() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Hobbies</label>
                   <div className="flex flex-wrap gap-1">
                     {selectedFriend.hobbies.map((hobby, index) => (
-                      <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                      <span key={index} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">
                         {hobby}
                       </span>
                     ))}
@@ -846,7 +914,7 @@ export default function MesAmours() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Intérêts communs</label>
                 <div className="flex flex-wrap gap-1">
                   {selectedFriend.commonInterests.map((interest, index) => (
-                    <span key={index} className="bg-pink-100 text-pink-800 px-2 py-1 rounded text-xs">
+                    <span key={index} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">
                       {interest}
                     </span>
                   ))}
@@ -879,7 +947,7 @@ export default function MesAmours() {
                 <textarea
                   value={editInfoForm.bio}
                   onChange={(e) => setEditInfoForm({...editInfoForm, bio: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   rows={3}
                 />
               </div>
@@ -889,7 +957,7 @@ export default function MesAmours() {
                   type="text"
                   value={editInfoForm.location}
                   onChange={(e) => setEditInfoForm({...editInfoForm, location: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -898,7 +966,7 @@ export default function MesAmours() {
                   type="text"
                   value={editInfoForm.occupation}
                   onChange={(e) => setEditInfoForm({...editInfoForm, occupation: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -907,7 +975,7 @@ export default function MesAmours() {
                   type="text"
                   value={editInfoForm.education}
                   onChange={(e) => setEditInfoForm({...editInfoForm, education: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -916,7 +984,7 @@ export default function MesAmours() {
                   type="date"
                   value={editInfoForm.birthDate}
                   onChange={(e) => setEditInfoForm({...editInfoForm, birthDate: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -924,7 +992,7 @@ export default function MesAmours() {
                 <select
                   value={editInfoForm.maritalStatus}
                   onChange={(e) => setEditInfoForm({...editInfoForm, maritalStatus: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Sélectionner</option>
                   <option value="Célibataire">Célibataire</option>
@@ -939,7 +1007,7 @@ export default function MesAmours() {
                   type="number"
                   value={editInfoForm.children}
                   onChange={(e) => setEditInfoForm({...editInfoForm, children: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   min="0"
                 />
               </div>
@@ -949,7 +1017,7 @@ export default function MesAmours() {
                   type="text"
                   value={editInfoForm.hobbies}
                   onChange={(e) => setEditInfoForm({...editInfoForm, hobbies: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Musique, Sport, Lecture"
                 />
               </div>
@@ -959,7 +1027,7 @@ export default function MesAmours() {
                   type="text"
                   value={editInfoForm.interests}
                   onChange={(e) => setEditInfoForm({...editInfoForm, interests: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Voyage, Cinéma, Art"
                 />
               </div>
@@ -969,7 +1037,7 @@ export default function MesAmours() {
                   type="text"
                   value={editInfoForm.languages}
                   onChange={(e) => setEditInfoForm({...editInfoForm, languages: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Français, Anglais, Soussou"
                 />
               </div>
@@ -994,7 +1062,7 @@ export default function MesAmours() {
               </button>
               <button
                 onClick={submitEditInfo}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg transition-colors"
               >
                 Sauvegarder
               </button>

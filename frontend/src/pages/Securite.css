@@ -1,5 +1,22 @@
 /* Styles spécifiques pour la page Sécurité */
 
+/* Carte mondiale (Leaflet) */
+.securite-worldmap-block {
+  width: 100%;
+}
+.securite-worldmap-wrapper {
+  width: 100%;
+  min-height: 400px;
+}
+.securite-worldmap {
+  min-height: 400px;
+  z-index: 0;
+}
+.securite-worldmap-wrapper .leaflet-container {
+  min-height: 400px;
+  font-family: inherit;
+}
+
 .securite-container {
   max-width: 1200px;
   margin: 0 auto;

@@ -1,40 +1,19 @@
-import express from 'express';
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { Op } from 'sequelize';
 import { sequelize } from '../../config/database.js';
 import User from '../models/User.js';
 import PublishedStory from '../models/PublishedStory.js';
+import Friend from '../models/Friend.js';
 import { authenticate } from '../middleware/auth.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Configuration multer pour l'upload des médias
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads/user-stories');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `story-${uniqueSuffix}${ext}`);
-  }
-});
-
+// Stockage en mémoire → conversion en base64 et stockage en DB (persistant sur Render)
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB max (pour vidéos de 5 minutes)
+    fileSize: 20 * 1024 * 1024, // 20MB max
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
@@ -42,6 +21,11 @@ const upload = multer({
     }
   }
 });
+
+// Convertit le buffer en data URL base64
+function toDataUrl(file) {
+  return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+}
 
 const router = Router();
 
@@ -105,7 +89,7 @@ router.get('/published', async (req, res) => {
 // @route   GET /api/user-stories/published/stats
 // @desc    Récupérer les statistiques des histoires publiées
 // @access  Public
-router.get('/published/stats', async (req, res) => {
+router.get('/published/stats', async (_req, res) => {
   try {
     const totalStories = await PublishedStory.count({
       where: { isPublished: true }
@@ -336,10 +320,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const { numeroH, sectionId, type } = req.body;
 
     if (!numeroH || !sectionId || !type) {
-      // Supprimer le fichier uploadé si les paramètres sont invalides
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
       return res.status(400).json({
         success: false,
         message: 'NumeroH, sectionId et type sont requis'
@@ -347,12 +327,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     const user = await User.findByNumeroH(numeroH);
-    
+
     if (!user) {
-      // Supprimer le fichier uploadé si l'utilisateur n'existe pas
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
       return res.status(404).json({
         success: false,
         message: 'Utilisateur non trouvé'
@@ -361,9 +337,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     // Vérifier que le type est valide
     if (type !== 'photo' && type !== 'video') {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
       return res.status(400).json({
         success: false,
         message: 'Type invalide. Doit être "photo" ou "video"'
@@ -392,18 +365,14 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       };
     }
 
-    // Ajouter le fichier à la section
-    const fileUrl = `/uploads/user-stories/${req.file.filename}`;
+    // Convertir en base64 et stocker en DB (persistant sur Render)
+    const dataUrl = toDataUrl(req.file);
     if (type === 'photo') {
-      if (!stories[sectionId].photos) {
-        stories[sectionId].photos = [];
-      }
-      stories[sectionId].photos.push(fileUrl);
+      if (!stories[sectionId].photos) stories[sectionId].photos = [];
+      stories[sectionId].photos.push(dataUrl);
     } else {
-      if (!stories[sectionId].videos) {
-        stories[sectionId].videos = [];
-      }
-      stories[sectionId].videos.push(fileUrl);
+      if (!stories[sectionId].videos) stories[sectionId].videos = [];
+      stories[sectionId].videos.push(dataUrl);
     }
 
     // Sauvegarder dans la base de données
@@ -412,19 +381,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.json({
       success: true,
       message: `${type === 'photo' ? 'Photo' : 'Vidéo'} uploadée avec succès`,
-      fileUrl,
+      fileUrl: dataUrl,
       type
     });
   } catch (error) {
     console.error('Erreur lors de l\'upload:', error);
-    // Supprimer le fichier en cas d'erreur
-    if (req.file) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (unlinkError) {
-        console.error('Erreur lors de la suppression du fichier:', unlinkError);
-      }
-    }
     res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de l\'upload'
@@ -532,6 +493,137 @@ router.post('/publish', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de la publication'
+    });
+  }
+});
+
+// ==========================
+// Stories « Mes Amours » (type story 24h pour les amis)
+// ==========================
+
+// Publier une story simple (image ou vidéo + texte court)
+// @route   POST /api/user-stories/mes-amours/story
+// @desc    Publier une story Mes Amours (expirant au bout de 24h)
+// @access  Private
+router.post('/mes-amours/story', upload.single('file'), async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun fichier fourni'
+      });
+    }
+
+    const isImage = req.file.mimetype.startsWith('image/');
+    const isVideo = req.file.mimetype.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Seuls les fichiers image ou vidéo sont autorisés pour les stories'
+      });
+    }
+
+    const content = (req.body.content || '').toString().slice(0, 500);
+    // Convertir en base64 → stockage persistant en DB
+    const dataUrl = toDataUrl(req.file);
+    const now = new Date();
+
+    const storyData = {
+      numeroH: user.numeroH,
+      authorName: `${user.prenom} ${user.nomFamille}`,
+      sectionId: 'mes_amours_story',
+      sectionTitle: 'Mes Amours - Story',
+      content,
+      photos: isImage ? [dataUrl] : [],
+      videos: isVideo ? [dataUrl] : [],
+      generation: user.generation || null,
+      region: user.regionOrigine || null,
+      country: user.pays || null,
+      isPublished: true,
+      publishedAt: now
+    };
+
+    const story = await PublishedStory.create(storyData);
+
+    res.json({
+      success: true,
+      message: 'Story publiée pour vos amis (valable 24h)',
+      story
+    });
+  } catch (error) {
+    console.error('Erreur lors de la publication Mes Amours:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la publication de la story'
+    });
+  }
+});
+
+// Récupérer le flux de stories Mes Amours (amis + soi-même) sur 24h
+// @route   GET /api/user-stories/mes-amours/feed
+// @desc    Récupère les stories Mes Amours des amis (et de soi-même) des dernières 24h
+// @access  Private
+router.get('/mes-amours/feed', async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise'
+      });
+    }
+
+    // Récupérer tous les amis acceptés
+    const friends = await Friend.findAll({
+      where: {
+        status: 'accepted',
+        [Op.or]: [
+          { userNumeroH: user.numeroH },
+          { friendNumeroH: user.numeroH }
+        ]
+      }
+    });
+
+    const numeros = new Set([user.numeroH]);
+    for (const f of friends) {
+      if (f.userNumeroH === user.numeroH) {
+        numeros.add(f.friendNumeroH);
+      } else {
+        numeros.add(f.userNumeroH);
+      }
+    }
+
+    const stories = await PublishedStory.findAll({
+      where: {
+        sectionId: 'mes_amours_story',
+        isPublished: true,
+        numeroH: {
+          [Op.in]: Array.from(numeros)
+        }
+      },
+      order: [['publishedAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      stories
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération du feed Mes Amours:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des stories'
     });
   }
 });

@@ -25,7 +25,7 @@ export function FloatingMessenger() {
         aria-label="Ouvrir la messagerie"
         onClick={() => setOpen(true)}
         className="fixed z-50 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform min-w-[56px] min-h-[56px] w-14 h-14 flex items-center justify-center text-2xl"
-        style={{ bottom: "max(1rem, env(safe-area-inset-bottom, 0px))", right: "max(1rem, env(safe-area-inset-right, 0px))" }}
+        style={{ top: "6rem", right: "max(1rem, env(safe-area-inset-right, 0px))" }}
       >
         💬
       </button>

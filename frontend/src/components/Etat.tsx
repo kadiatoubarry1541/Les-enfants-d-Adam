@@ -31,67 +31,27 @@ export function Etat({ userData }: EtatProps) {
   const [showAddEtat, setShowAddEtat] = useState(false)
 
   useEffect(() => {
-    // Simuler des données d'état pour la démo
+    // Données de démo centrées uniquement sur les problèmes de la famille (santé + familial)
     const mockEtatInfos: EtatInfo[] = [
       {
         id: '1',
-        type: 'civil',
-        title: 'État Civil',
-        description: 'Situation civile actuelle',
-        status: 'bon',
-        date: '2024-01-20',
-        details: 'Célibataire, sans enfants',
-        actions: ['Mariage', 'Divorce', 'Naissance']
-      },
-      {
-        id: '2',
-        type: 'professionnel',
-        title: 'Situation Professionnelle',
-        description: 'État de l\'emploi et carrière',
-        status: 'excellent',
-        date: '2024-01-18',
-        details: 'Employé stable, perspectives d\'évolution',
-        actions: ['Promotion', 'Changement', 'Formation']
-      },
-      {
-        id: '3',
-        type: 'social',
-        title: 'État Social',
-        description: 'Relations sociales et communautaires',
-        status: 'bon',
-        date: '2024-01-15',
-        details: 'Bien intégré dans la communauté',
-        actions: ['Rejoindre organisation', 'Organiser événement']
-      },
-      {
-        id: '4',
         type: 'familial',
         title: 'État Familial',
-        description: 'Relations avec la famille',
+        description: 'Relations avec la famille et situations difficiles',
         status: 'excellent',
         date: '2024-01-12',
-        details: 'Relations harmonieuses avec parents et frères/sœurs',
+        details: 'Relations harmonieuses avec les proches',
         actions: ['Réunion familiale', 'Aide familiale']
       },
       {
-        id: '5',
-        type: 'financier',
-        title: 'État Financier',
-        description: 'Situation économique personnelle',
-        status: 'moyen',
-        date: '2024-01-10',
-        details: 'Revenus stables mais épargne limitée',
-        actions: ['Épargne', 'Investissement', 'Budget']
-      },
-      {
-        id: '6',
+        id: '2',
         type: 'sante',
         title: 'État de Santé',
-        description: 'Condition physique et mentale',
+        description: 'Situation de santé au sein de la famille',
         status: 'bon',
-        date: '2024-01-08',
-        details: 'Santé générale bonne, exercice régulier',
-        actions: ['Consultation', 'Sport', 'Régime']
+        date: '2024-01-20',
+        details: 'Aucun cas grave déclaré actuellement',
+        actions: ['Informer la famille', 'Contacter un médecin', 'Partager une vidéo']
       }
     ]
 

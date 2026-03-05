@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { Banner } from "./components/Banner";
@@ -8,15 +8,16 @@ import { LANG_LABELS } from "./i18n/strings";
 import { FloatingMessenger } from "./components/FloatingMessenger";
 import { getSessionUser } from "./utils/auth";
 
-// Lazy loading de toutes les pages pour améliorer les performances
-const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
-const Inscription = lazy(() => import("./pages/Inscription").then(m => ({ default: m.Inscription })));
-const RegistrationChoice = lazy(() => import("./pages/RegistrationChoice").then(m => ({ default: m.RegistrationChoice })));
+// Pages critiques — chargées immédiatement (pas de lazy) pour une navigation instantanée
+import { Home } from "./pages/Home";
+import { Login } from "./pages/Login";
+import { LoginMembre } from "./pages/LoginMembre";
+import { Account } from "./pages/Account";
+import { RegistrationChoice } from "./pages/RegistrationChoice";
+
+// Pages secondaires — lazy loaded (chargées à la demande)
 const LivingWizard = lazy(() => import("./pages/living/LivingWizard").then(m => ({ default: m.LivingWizard })));
 const DeceasedWizard = lazy(() => import("./pages/deceased/DeceasedWizard").then(m => ({ default: m.DeceasedWizard })));
-const Login = lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
-const LoginMembre = lazy(() => import("./pages/LoginMembre").then(m => ({ default: m.LoginMembre })));
-const Account = lazy(() => import("./pages/Account").then(m => ({ default: m.Account })));
 const Moi = lazy(() => import("./pages/Moi").then(m => ({ default: m.Moi })));
 const MonProfil = lazy(() => import("./pages/MonProfil"));
 const Famille = lazy(() => import("./pages/famille/Famille"));
@@ -28,6 +29,7 @@ const Enfants = lazy(() => import("./pages/famille/Enfants"));
 const MesAmours = lazy(() => import("./pages/famille/MesAmours"));
 const FamilleAdmin = lazy(() => import("./pages/famille/FamilleAdmin"));
 const Inspir = lazy(() => import("./pages/famille/Inspir"));
+const Probleme = lazy(() => import("./pages/Probleme"));
 const Sante = lazy(() => import("./pages/Sante"));
 const Securite = lazy(() => import("./pages/Securite"));
 const Solidarite = lazy(() => import("./pages/Solidarite"));
@@ -51,19 +53,29 @@ const InscriptionPro = lazy(() => import("./pages/InscriptionPro"));
 const ListeProfessionnels = lazy(() => import("./pages/ListeProfessionnels"));
 const MesComptesPro = lazy(() => import("./pages/MesComptesPro"));
 const EspacePro = lazy(() => import("./pages/EspacePro"));
-const PrendreRendezVous = lazy(() => import("./pages/PrendreRendezVous"));
+const PrendreRendezVous = lazy(() => import("./pages/PrendreRendezVous"))
+const GalerieFamily = lazy(() => import("./pages/GalerieFamily"));
+const InfoWallou = lazy(() => import("./pages/InfoWallou"));
 
-// Composant de chargement optimisé
-const LoadingSpinner = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+// Barre de progression fine en haut (plus rapide visuellement qu'un spinner plein écran)
+const LoadingBar = () => (
+  <div className="fixed top-0 left-0 w-full h-1 z-[9999] bg-gray-200">
+    <div className="h-full bg-blue-500 animate-[loading_1s_ease-in-out_infinite]"
+      style={{ animation: 'loadingBar 1.2s ease-in-out infinite', width: '70%' }} />
+    <style>{`@keyframes loadingBar { 0%{width:0%} 70%{width:80%} 100%{width:95%} }`}</style>
   </div>
 );
 
 function App() {
   const { t, lang, setLang } = useI18n();
   const { pathname } = useLocation();
-  
+
+  // Réveille le backend dès que l'app se charge (Render free tier dort si inactif)
+  useEffect(() => {
+    const API = import.meta.env.MODE === 'production' ? '' : 'http://localhost:5002';
+    fetch(`${API}/api/health`).catch(() => {});
+  }, []);
+
   // Optimisation : mémoriser la vérification de session pour éviter les recalculs
   const isLoggedIn = useMemo(() => {
     const user = getSessionUser();
@@ -123,7 +135,7 @@ function App() {
 
       {/* Main content - plein écran, chaque page gère son propre container */}
       <main className="flex-1 w-full overflow-x-hidden">
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense fallback={<LoadingBar />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/inscription" element={<Navigate to="/vivant" replace />} />
@@ -137,6 +149,7 @@ function App() {
           <Route path="/moi/profil" element={<MonProfil />} />
           <Route path="/moi/arbre" element={<Navigate to="/famille/moi/arbre" replace />} />
           <Route path="/moi/arbre/membres" element={<Navigate to="/famille/moi/arbre/membres" replace />} />
+          <Route path="/probleme" element={<Probleme />} />
           <Route path="/sante" element={<Sante />} />
           <Route path="/securite" element={<Securite />} />
           <Route path="/mes-amours" element={<Navigate to="/famille/mes-amours" replace />} />
@@ -189,6 +202,8 @@ function App() {
           <Route path="/mes-comptes-pro" element={<MesComptesPro />} />
           <Route path="/espace-pro/:id" element={<EspacePro />} />
           <Route path="/rendez-vous/:id" element={<PrendreRendezVous />} />
+          <Route path="/galerie-famille" element={<GalerieFamily />} />
+          <Route path="/info-wallou" element={<InfoWallou />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
@@ -203,8 +218,8 @@ function App() {
         </div>
       </footer>
 
-      {/* Messenger global */}
-      {!(isHome || pathname === "/inscription" || pathname === "/login") && <FloatingMessenger />}
+      {/* Messenger uniquement sur la page Mes Amours */}
+      {pathname === "/famille/mes-amours" && <FloatingMessenger />}
       
       {/* Toast Notifications */}
       <Toaster

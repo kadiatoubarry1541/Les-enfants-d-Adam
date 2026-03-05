@@ -242,6 +242,12 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
             >
               📘 Légende
             </button>
+            <button
+              className="view-btn"
+              onClick={() => navigate('/probleme')}
+            >
+              🚨 Mes problèmes (santé, finances…)
+            </button>
           </div>
 
           <div className="filter-controls">
