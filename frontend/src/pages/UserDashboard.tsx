@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { isMasterAdmin, getPhotoUrl } from "../utils/auth";
 import Activite from "./Activite";
 import Education from "./Education";
@@ -7,7 +7,8 @@ import TerreAdam from "./TerreAdam";
 import Histoire from "./Histoire";
 import Science from "./Science";
 import { EchangesProfessionnel } from "../components/EchangesProfessionnel";
-import { ActivityIcon } from "../components/icons/ActivityIcon";
+import { ActivityPageIcon } from "../components/icons/ActivityPageIcon";
+import { SalesIcon } from "../components/icons/SalesIcon";
 import NotificationBell from "../components/NotificationBell";
 import DefaultAvatar from "../assets/default-avatar.svg";
 
@@ -70,11 +71,47 @@ interface NavItem {
   SvgIcon?: React.ComponentType<TabIcon>;
 }
 
+const FAVORITE_STORAGE_KEY = "dashboard_favorite";
+
+function getFavoritePage(numeroH: string): string | null {
+  try {
+    const raw = localStorage.getItem(`${FAVORITE_STORAGE_KEY}_${numeroH}`);
+    return raw || null;
+  } catch {
+    return null;
+  }
+}
+
+function setFavoritePage(numeroH: string, pageId: string) {
+  try {
+    localStorage.setItem(`${FAVORITE_STORAGE_KEY}_${numeroH}`, pageId);
+  } catch (e) {
+    console.warn("Impossible de sauvegarder la page d'accueil", e);
+  }
+}
+
+// Liste des ids pour initialiser l'onglet par défaut depuis la page favorite
+const TAB_IDS = ["terre-adam", "activite", "echanges", "histoire", "science", "education"];
+
+function getInitialTab() {
+  try {
+    const s = localStorage.getItem("session_user");
+    if (!s) return "terre-adam";
+    const u = (JSON.parse(s).userData || JSON.parse(s)) as { numeroH?: string };
+    if (!u?.numeroH) return "terre-adam";
+    const fav = getFavoritePage(u.numeroH);
+    return fav && TAB_IDS.includes(fav) ? fav : "terre-adam";
+  } catch {
+    return "terre-adam";
+  }
+}
+
 export function UserDashboard() {
-  const [activeTab, setActiveTab] = useState("terre-adam");
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userLogos, setUserLogos] = useState<UserLogo[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fonction pour charger les données utilisateur depuis localStorage
   const loadUserData = () => {
@@ -99,6 +136,29 @@ export function UserDashboard() {
     return () => window.removeEventListener("session-updated", handleSessionUpdate);
   }, [navigate]);
 
+  // Appliquer la page d'accueil favorite (après connexion ou à l'ouverture de /compte)
+  useEffect(() => {
+    if (!userData?.numeroH) return;
+    const favoriteId = getFavoritePage(userData.numeroH);
+    if (!favoriteId) return;
+
+    const item = navItems.find((i) => i.id === favoriteId);
+    if (!item) return;
+
+    const fromLogin = (location.state as { fromLogin?: boolean })?.fromLogin === true;
+
+    if (item.type === "link" && item.path && fromLogin) {
+      navigate(item.path, { replace: true, state: {} });
+      return;
+    }
+    if (item.type === "tab") {
+      setActiveTab(item.id);
+    }
+    if (fromLogin) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [userData?.numeroH]);
+
   const loadUserLogos = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -118,17 +178,16 @@ export function UserDashboard() {
   };
 
   // Navigation unifiée : liens + onglets dans une seule barre
+  // Ordre : Famille → Terre Adam → Solidarité → Santé → Activité → Échanges → Temps → Sécurité → Science → Éducation
   const navItems: NavItem[] = [
-    // Liens (naviguent vers des pages séparées)
-  { id: "famille", label: "Famille", icon: "👨‍👩‍👧‍👦", type: "link", path: "/famille" },
-  { id: "sante", label: "Santé", icon: "🏥", type: "link", path: "/sante" },
-    { id: "securite", label: "Sécurité", icon: "🛡️", type: "link", path: "/securite" },
-    { id: "solidarite", label: "Solidarité", icon: "🤝", type: "link", path: "/solidarite" },
-    // Onglets (affichent le contenu en dessous)
+    { id: "famille", label: "Famille", icon: "👨‍👩‍👧‍👦", type: "link", path: "/famille" },
     { id: "terre-adam", label: "Terre ADAM", icon: "🌍", type: "tab" },
-    { id: "activite", label: "Activité", icon: "📊", type: "tab", useSvg: true, SvgIcon: ActivityIcon },
-    { id: "echanges", label: "Échanges", icon: "⚖️", type: "tab" },
+    { id: "solidarite", label: "Solidarité", icon: "🤝", type: "link", path: "/solidarite" },
+    { id: "sante", label: "Santé", icon: "🏥", type: "link", path: "/sante" },
+    { id: "activite", label: "Activité", icon: "📊", type: "tab", useSvg: true, SvgIcon: ActivityPageIcon },
+    { id: "echanges", label: "Échanges", icon: "⚖️", type: "tab", useSvg: true, SvgIcon: SalesIcon },
     { id: "histoire", label: "Temps", icon: "🧭", type: "tab" },
+    { id: "securite", label: "Sécurité", icon: "🛡️", type: "link", path: "/securite" },
     { id: "science", label: "Science", icon: "⚛️", type: "tab" },
     { id: "education", label: "Éducation", icon: "🎓", type: "tab" },
   ];
@@ -163,8 +222,31 @@ export function UserDashboard() {
 
   return (
     <div className="user-dashboard bg-gray-50 dark:bg-gray-900 min-h-screen overflow-x-hidden">
-      {/* Barre supérieure: Notifications + Déconnexion */}
+      {/* Barre supérieure: Favoris, Notifications, Déconnexion */}
       <div className="flex items-center justify-end px-3 xs:px-4 sm:px-6 pt-3 sm:pt-4 mb-3 sm:mb-4 gap-2">
+        {userData && (
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+            <span className="whitespace-nowrap">⭐ Favoris</span>
+            <select
+              value={getFavoritePage(userData.numeroH) || "terre-adam"}
+              onChange={(e) => {
+                const id = e.target.value;
+                setFavoritePage(userData.numeroH, id);
+                if (navItems.find((i) => i.id === id)?.type === "tab") {
+                  setActiveTab(id);
+                }
+              }}
+              className="min-h-[36px] pl-2 pr-6 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              aria-label="Page d'accueil favorite"
+            >
+              {navItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.icon} {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <NotificationBell />
         <button
           onClick={() => navigate("/")}
@@ -258,7 +340,7 @@ export function UserDashboard() {
                   NuméroH: {userData.numeroH}
                 </span>
               </div>
-              <div className="flex gap-2 pt-0.5">
+              <div className="flex flex-wrap gap-2 pt-0.5 items-center">
                 <button
                   onClick={() => navigate("/moi/profil")}
                   className="min-h-[36px] px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors"

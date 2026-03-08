@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getNumeroHForDisplay } from '../utils/auth'
 import { FamilyTreeNode } from './FamilyTreeNode'
 
 interface FamilyMember {
@@ -167,58 +168,70 @@ export function FamilyTree({ userData }: FamilyTreeProps) {
         </div>
       </div>
 
-      {/* Panneau de détails du membre sélectionné */}
-      {selectedMember && (
-        <div className="member-details-panel">
-          <div className="panel-header">
-            <h4>Détails du Membre</h4>
-            <button 
-              className="close-btn"
-              onClick={() => setSelectedMember(null)}
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div className="member-info">
-            <div className="member-photo">
-              {selectedMember.photo ? (
-                <img src={selectedMember.photo} alt="Photo" />
-              ) : (
-                <div className="photo-placeholder">
-                  {selectedMember.prenom.charAt(0)}
-                </div>
-              )}
-              {selectedMember.logo && (
-                <div className="status-logo">
-                  {getLogoIcon(selectedMember.logo)}
-                </div>
-              )}
+      {/* Panneau de détails du membre sélectionné — autres membres : nom, NumeroH et photo uniquement */}
+      {selectedMember && (() => {
+        const isCurrentUser = userData?.numeroH && String(selectedMember.numeroH).trim() === String(userData.numeroH).trim();
+        return (
+          <div className="member-details-panel">
+            <div className="panel-header">
+              <h4>Détails du Membre</h4>
+              <button 
+                className="close-btn"
+                onClick={() => setSelectedMember(null)}
+              >
+                ✕
+              </button>
             </div>
             
-            <div className="member-details">
-              <h5>{selectedMember.prenom} {selectedMember.nomFamille}</h5>
-              <p><strong>NumeroH:</strong> {selectedMember.numeroH}</p>
-              <p><strong>Génération:</strong> {selectedMember.generation}</p>
-              {selectedMember.decet && (
-                <p><strong>Décet:</strong> {selectedMember.decet}</p>
-              )}
-              <p><strong>Date de naissance:</strong> {selectedMember.dateNaissance}</p>
-              {selectedMember.dateDeces && (
-                <p><strong>Date de décès:</strong> {selectedMember.dateDeces}</p>
-              )}
-              <p><strong>Statut:</strong> {selectedMember.isAlive ? 'Vivant' : 'Décédé'}</p>
-              <p><strong>Genre:</strong> {selectedMember.genre}</p>
+            <div className="member-info">
+              <div className="member-photo">
+                {selectedMember.photo ? (
+                  <img src={selectedMember.photo} alt="Photo" />
+                ) : (
+                  <div className="photo-placeholder">
+                    {selectedMember.prenom.charAt(0)}
+                  </div>
+                )}
+                {selectedMember.logo && (
+                  <div className="status-logo">
+                    {getLogoIcon(selectedMember.logo)}
+                  </div>
+                )}
+              </div>
+              
+              <div className="member-details">
+                <h5>{selectedMember.prenom} {selectedMember.nomFamille}</h5>
+                <p><strong>NumeroH:</strong> {getNumeroHForDisplay(selectedMember.numeroH, isCurrentUser)}</p>
+                {!isCurrentUser && (
+                  <p className="text-sm text-gray-500 mt-2">Pour l'identification : nom, NumeroH et photo. Les autres informations sont privées.</p>
+                )}
+                {isCurrentUser && (
+                  <>
+                    <p><strong>Génération:</strong> {selectedMember.generation}</p>
+                    {selectedMember.decet && (
+                      <p><strong>Décet:</strong> {selectedMember.decet}</p>
+                    )}
+                    <p><strong>Date de naissance:</strong> {selectedMember.dateNaissance}</p>
+                    {selectedMember.dateDeces && (
+                      <p><strong>Date de décès:</strong> {selectedMember.dateDeces}</p>
+                    )}
+                    <p><strong>Statut:</strong> {selectedMember.isAlive ? 'Vivant' : 'Décédé'}</p>
+                    <p><strong>Genre:</strong> {selectedMember.genre}</p>
+                  </>
+                )}
+              </div>
             </div>
+            
+            {isCurrentUser && (
+              <div className="member-actions">
+                <button className="btn">Voir la fiche complète</button>
+                <button className="btn secondary">Ajouter un enfant</button>
+                <button className="btn secondary">Modifier les informations</button>
+              </div>
+            )}
           </div>
-          
-          <div className="member-actions">
-            <button className="btn">Voir la fiche complète</button>
-            <button className="btn secondary">Ajouter un enfant</button>
-            <button className="btn secondary">Modifier les informations</button>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Statistiques de l'arbre */}
       <div className="tree-statistics">

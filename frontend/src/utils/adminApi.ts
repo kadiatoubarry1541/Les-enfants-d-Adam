@@ -187,6 +187,41 @@ export const searchUsers = async (filters: {
   return authenticatedFetch(url);
 };
 
+// ——— Admins de secteurs (santé, éducation, échanges) ———
+
+export interface SectorInfo {
+  sector: string;
+  pagePath: string;
+  pageName: string;
+}
+
+/** Secteurs que l'utilisateur gère (admin de page). */
+export const getMySectors = async (): Promise<{ success: boolean; sectors: SectorInfo[] }> => {
+  return authenticatedFetch('/api/page-admins/my-sectors');
+};
+
+/** Liste des admins de page (nécessite admin). */
+export const getPageAdmins = async (): Promise<{ success: boolean; pageAdmins: any[] }> => {
+  return authenticatedFetch('/api/page-admins');
+};
+
+/** Assigner un admin à une page (super-admin pour secteurs santé/éducation/échanges). */
+export const addPageAdmin = async (body: {
+  pagePath: string;
+  pageName: string;
+  adminNumeroH: string;
+}) => {
+  return authenticatedFetch('/api/page-admins', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+};
+
+/** Retirer un admin de page. */
+export const removePageAdmin = async (id: number) => {
+  return authenticatedFetch(`/api/page-admins/${id}`, { method: 'DELETE' });
+};
+
 
 
 

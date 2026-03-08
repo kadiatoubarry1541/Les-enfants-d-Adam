@@ -11,6 +11,7 @@ import { FamilyTree } from '../models/additional.js';
 import ActivityGroup from '../models/ActivityGroup.js';
 import { config } from '../../config.js';
 import upload from '../middleware/upload.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -557,6 +558,102 @@ router.post('/login', [
   }
 });
 
+// Normaliser NumeroH (même logique que login)
+function normalizeNumeroHForAuth(numeroH) {
+  if (!numeroH || typeof numeroH !== 'string') return '';
+  return numeroH
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/O/g, '0')
+    .replace(/o/g, '0');
+}
+
+// @route   POST /api/auth/forgot-password/verify
+// @desc    Vérifier l'identité pour réinitialisation : NumeroH + NumeroH d'un parent + date de naissance
+// @access  Public
+router.post('/forgot-password/verify', [
+  body('numeroH').trim().notEmpty().withMessage('Le NumeroH est requis'),
+  body('parentNumeroH').trim().notEmpty().withMessage('Le NumeroH du parent est requis'),
+  body('dateNaissance').trim().notEmpty().withMessage('La date de naissance est requise')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Données invalides', errors: errors.array() });
+    }
+    const { numeroH, parentNumeroH, dateNaissance } = req.body;
+    const normalizedNumeroH = normalizeNumeroHForAuth(numeroH);
+    const normalizedParent = normalizeNumeroHForAuth(parentNumeroH);
+    const dateStr = String(dateNaissance).trim();
+
+    const user = await User.findByNumeroH(normalizedNumeroH);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Informations incorrectes. Vérifiez votre NumeroH, le NumeroH du parent et votre date de naissance.' });
+    }
+    if (user.type === 'defunt' || user.isDeceased) {
+      return res.status(403).json({ success: false, message: 'Ce compte ne peut pas réinitialiser un mot de passe.' });
+    }
+
+    const pereNorm = user.numeroHPere ? normalizeNumeroHForAuth(user.numeroHPere) : '';
+    const mereNorm = user.numeroHMere ? normalizeNumeroHForAuth(user.numeroHMere) : '';
+    const parentMatch = (pereNorm && pereNorm === normalizedParent) || (mereNorm && mereNorm === normalizedParent);
+    if (!parentMatch) {
+      return res.status(400).json({ success: false, message: 'Informations incorrectes. Vérifiez votre NumeroH, le NumeroH du parent et votre date de naissance.' });
+    }
+
+    const userDate = user.dateNaissance ? (user.dateNaissance instanceof Date ? user.dateNaissance.toISOString().slice(0, 10) : String(user.dateNaissance).slice(0, 10)) : null;
+    if (!userDate || userDate !== dateStr.slice(0, 10)) {
+      return res.status(400).json({ success: false, message: 'Informations incorrectes. Vérifiez votre NumeroH, le NumeroH du parent et votre date de naissance.' });
+    }
+
+    const token = jwt.sign(
+      { numeroH: user.numeroH, purpose: 'forgot_password' },
+      config.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+    res.json({ success: true, token });
+  } catch (err) {
+    console.error('forgot-password/verify:', err);
+    res.status(500).json({ success: false, message: 'Erreur serveur.' });
+  }
+});
+
+// @route   POST /api/auth/forgot-password/reset
+// @desc    Réinitialiser le mot de passe avec le token obtenu après vérification
+// @access  Public
+router.post('/forgot-password/reset', [
+  body('token').notEmpty().withMessage('Token requis'),
+  body('newPassword').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Données invalides', errors: errors.array() });
+    }
+    const { token, newPassword } = req.body;
+    let payload;
+    try {
+      payload = jwt.verify(token, config.JWT_SECRET);
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Lien expiré ou invalide. Recommencez la procédure « Mot de passe oublié ».' });
+    }
+    if (payload.purpose !== 'forgot_password' || !payload.numeroH) {
+      return res.status(400).json({ success: false, message: 'Token invalide.' });
+    }
+
+    const user = await User.findByNumeroH(payload.numeroH);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Compte introuvable.' });
+    }
+    user.password = await bcrypt.hash(newPassword, config.BCRYPT_ROUNDS);
+    await user.save();
+    res.json({ success: true, message: 'Mot de passe modifié. Vous pouvez vous connecter.' });
+  } catch (err) {
+    console.error('forgot-password/reset:', err);
+    res.status(500).json({ success: false, message: 'Erreur serveur.' });
+  }
+});
+
 // @route   GET /api/auth/last-numero
 // @desc    Récupérer le dernier numéro utilisé pour un préfixe donné
 // @access  Public
@@ -671,7 +768,7 @@ router.put('/profile', async (req, res) => {
       'prenom', 'nomFamille', 'email', 'telephone', 'tel1', 'genre',
       'dateNaissance', 'age', 'generation', 'ethnie', 'region', 'pays',
       'nationalite', 'prenomPere', 'nomFamillePere', 'numeroHPere',
-      'prenomMere', 'nomFamilleMere', 'numeroHMere'
+      'prenomMere', 'nomFamilleMere', 'numeroHMere', 'treeVisibility'
     ];
     
     const updates = {};
@@ -766,6 +863,115 @@ router.post('/profile/photo', (req, res) => {
       });
     }
   });
+});
+
+// @route   PUT /api/auth/me/visibility
+// @desc    Définir ce que les autres voient de moi dans l'arbre (name_only | name_photo | name_photo_numeroH)
+// @access  Private
+router.put('/me/visibility', authenticate, async (req, res) => {
+  try {
+    const { treeVisibility } = req.body;
+    const allowed = ['name_only', 'name_photo', 'name_photo_numeroH'];
+    if (!treeVisibility || !allowed.includes(treeVisibility)) {
+      return res.status(400).json({
+        success: false,
+        message: 'treeVisibility requis : name_only, name_photo ou name_photo_numeroH'
+      });
+    }
+    const user = await User.findByNumeroH(req.user.numeroH);
+    if (!user) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+    await user.update({ treeVisibility });
+    const out = { ...user.dataValues };
+    delete out.password;
+    res.json({ success: true, user: out, message: 'Visibilité mise à jour' });
+  } catch (error) {
+    console.error('Erreur mise à jour visibilité:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// @route   GET /api/auth/me/tree-hidden
+// @desc    Liste des numeroH masqués dans mon arbre (je ne les vois plus)
+// @access  Private
+router.get('/me/tree-hidden', authenticate, async (req, res) => {
+  try {
+    const user = await User.findByNumeroH(req.user.numeroH);
+    if (!user) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+    const list = Array.isArray(user.treeHidden) ? user.treeHidden : [];
+    res.json({ success: true, treeHidden: list });
+  } catch (error) {
+    console.error('Erreur GET tree-hidden:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// @route   PUT /api/auth/me/tree-hidden
+// @desc    Mettre à jour la liste des personnes masquées dans mon arbre
+// @access  Private
+router.put('/me/tree-hidden', authenticate, async (req, res) => {
+  try {
+    const { treeHidden } = req.body;
+    const user = await User.findByNumeroH(req.user.numeroH);
+    if (!user) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+    const list = Array.isArray(treeHidden) ? treeHidden.filter(Boolean).map(String) : [];
+    await user.update({ treeHidden: list });
+    res.json({ success: true, treeHidden: list, message: 'Liste mise à jour' });
+  } catch (error) {
+    console.error('Erreur PUT tree-hidden:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// @route   DELETE /api/auth/account
+// @desc    Supprimer son propre compte (mot de passe requis + confirmation)
+// @access  Private
+router.delete('/account', authenticate, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mot de passe requis pour supprimer le compte'
+      });
+    }
+
+    const user = await User.findByNumeroH(req.user.numeroH);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    // Ne pas permettre à l'admin principal de supprimer son compte
+    if (user.numeroH === 'G0C0P0R0E0F0 0') {
+      return res.status(403).json({
+        success: false,
+        message: 'Le compte administrateur principal ne peut pas être supprimé'
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password.trim(), user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Mot de passe incorrect'
+      });
+    }
+
+    await user.destroy();
+
+    res.json({
+      success: true,
+      message: 'Compte supprimé avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur lors de la suppression du compte:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la suppression du compte'
+    });
+  }
 });
 
 export default router;

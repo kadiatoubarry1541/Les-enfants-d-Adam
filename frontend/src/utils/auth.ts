@@ -136,3 +136,20 @@ export function getPhotoUrl(photo?: string | null): string | null {
   return `${baseUrl}${photo.startsWith("/") ? photo : "/" + photo}`;
 }
 
+/**
+ * RÈGLE : Le compteur du NumeroH (chiffre après l'espace) est confidentiel.
+ * On ne montre à personne le compteur d'un autre — uniquement au titulaire du compte.
+ * Pour les autres, on n'affiche que la partie avant l'espace (identification sans le compteur).
+ */
+export function getNumeroHForDisplay(
+  numeroH: string | null | undefined,
+  isOwner: boolean
+): string {
+  if (!numeroH || typeof numeroH !== "string") return "";
+  const trimmed = numeroH.trim();
+  if (!trimmed) return "";
+  if (isOwner) return trimmed;
+  const parts = trimmed.split(/\s+/);
+  return parts[0] ?? trimmed;
+}
+

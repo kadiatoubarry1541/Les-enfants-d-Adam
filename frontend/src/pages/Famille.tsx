@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getNumeroHForDisplay } from '../utils/auth';
 import { calculerAge } from '../utils/calculs';
 
 const API_BASE = (import.meta as any)?.env?.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5002';
@@ -1183,63 +1184,77 @@ export default function Famille() {
               
               {getMembersByRelation(activeTab).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {getMembersByRelation(activeTab).map((member) => (
+                  {getMembersByRelation(activeTab).map((member) => {
+                    const isCurrentUser = userData?.numeroH && String(member.numeroH).trim() === String(userData.numeroH).trim();
+                    return (
                     <div key={member.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-xl mr-3">
-                          {getTabIcon(activeTab)}
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-xl mr-3 overflow-hidden">
+                          {member.profilePicture ? (
+                            <img src={member.profilePicture} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            getTabIcon(activeTab)
+                          )}
                         </div>
-            <div>
+                        <div>
                           <h3 className="font-semibold text-gray-900">
                             {member.prenom} {member.nomFamille}
                           </h3>
-                          <p className="text-sm text-gray-600">{member.numeroH}</p>
+                          <p className="text-sm text-gray-600">{getNumeroHForDisplay(member.numeroH, isCurrentUser)}</p>
                         </div>
                       </div>
 
-                      <div className="space-y-2 mb-4">
-                        {member.phone && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="mr-2">📞</span>
-                            <span>{member.phone}</span>
+                      {isCurrentUser && (
+                        <>
+                          <div className="space-y-2 mb-4">
+                            {member.phone && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <span className="mr-2">📞</span>
+                                <span>{member.phone}</span>
+                              </div>
+                            )}
+                            {member.email && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <span className="mr-2">📧</span>
+                                <span>{member.email}</span>
+                              </div>
+                            )}
+                            {member.address && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <span className="mr-2">📍</span>
+                                <span>{member.address}</span>
+                              </div>
+                            )}
+                            {member.occupation && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <span className="mr-2">💼</span>
+                                <span>{member.occupation}</span>
+                              </div>
+                            )}
+                            {member.birthDate && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <span className="mr-2">🎂</span>
+                                <span>{new Date(member.birthDate).toLocaleDateString()}</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {member.email && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="mr-2">📧</span>
-                            <span>{member.email}</span>
-                          </div>
-                        )}
-                        {member.address && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="mr-2">📍</span>
-                            <span>{member.address}</span>
-                          </div>
-                        )}
-                        {member.occupation && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="mr-2">💼</span>
-                            <span>{member.occupation}</span>
-                          </div>
-                        )}
-                        {member.birthDate && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="mr-2">🎂</span>
-                            <span>{new Date(member.birthDate).toLocaleDateString()}</span>
-                          </div>
-                        )}
-                      </div>
 
-                      <div className="flex space-x-2">
-                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
-                          Contacter
-                        </button>
-                        <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">
-                          Modifier
-                        </button>
-                      </div>
+                          <div className="flex space-x-2">
+                            <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
+                              Contacter
+                            </button>
+                            <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">
+                              Modifier
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      {!isCurrentUser && (
+                        <p className="text-xs text-gray-500">Pour l'identification : nom, NumeroH et photo. Les autres informations sont privées.</p>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
             </div>
               ) : (
                 <div className="text-center py-8">

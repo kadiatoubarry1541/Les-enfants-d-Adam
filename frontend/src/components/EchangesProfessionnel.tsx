@@ -27,6 +27,11 @@ const APERÇU_SECONDAIRE: PreviewProduct[] = [
   { id: '2', title: 'Machine à Coudre Industrielle', price: 1200000, currency: 'FG' },
 ];
 
+const APERÇU_TERTIAIRE: PreviewProduct[] = [
+  { id: '1', title: 'Maison à louer 3 pièces', price: 500000, currency: 'FG' },
+  { id: '2', title: 'Ciment, Fer à béton', price: 85000, currency: 'FG' },
+];
+
 function buildImageUrl(path: string | undefined): string | undefined {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
@@ -51,6 +56,7 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
   const navigate = useNavigate();
   const [previewPrimaire, setPreviewPrimaire] = useState<PreviewProduct[]>(APERÇU_PRIMAIRE);
   const [previewSecondaire, setPreviewSecondaire] = useState<PreviewProduct[]>(APERÇU_SECONDAIRE);
+  const [previewTertiaire, setPreviewTertiaire] = useState<PreviewProduct[]>(APERÇU_TERTIAIRE);
   const [loadingPreview, setLoadingPreview] = useState(true);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
 
@@ -61,9 +67,10 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
         const headers: HeadersInit = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const [resP, resS] = await Promise.all([
+        const [resP, resS, resT] = await Promise.all([
           fetch(`${config.API_BASE_URL}/exchange/primaire/products`, { headers }),
           fetch(`${config.API_BASE_URL}/exchange/secondaire/products`, { headers }),
+          fetch(`${config.API_BASE_URL}/exchange/tertiaire/products`, { headers }),
         ]);
 
         if (resP.ok) {
@@ -87,6 +94,17 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
             imageUrl: buildImageUrl(p.images?.[0]),
           }));
           if (list.length) setPreviewSecondaire(list);
+        }
+        if (resT.ok) {
+          const data = await resT.json();
+          const list = (data.products || []).slice(0, 2).map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            price: Number(p.price),
+            currency: p.currency || 'FG',
+            imageUrl: buildImageUrl(p.images?.[0]),
+          }));
+          if (list.length) setPreviewTertiaire(list);
         }
       } catch {
         // Garder les aperçus par défaut
@@ -115,7 +133,7 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Carte Primaire avec aperçu */}
         <div className="rounded-xl border-2 border-green-200 bg-gradient-to-b from-green-50 to-white dark:from-green-900/20 dark:to-gray-900 overflow-hidden shadow-md hover:shadow-lg transition-shadow">
           <button
@@ -192,6 +210,46 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
             <button
               onClick={() => navigate('/echange/secondaire')}
               className="mt-3 w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              Voir tout →
+            </button>
+          </div>
+        </div>
+
+        {/* Carte Tertiaire : maisons à louer + matériaux de construction */}
+        <div className="rounded-xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white dark:from-amber-900/20 dark:to-gray-900 overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+          <button
+            onClick={() => navigate('/echange/tertiaire')}
+            className="w-full bg-amber-600 hover:bg-amber-700 rounded-t-lg shadow-sm p-4 transition-all cursor-pointer text-white flex flex-col items-center justify-center gap-2"
+          >
+            <span className="text-3xl">🏠</span>
+            <span className="font-semibold">Tertiaire</span>
+            <span className="text-xs opacity-90">Maisons à louer, matériaux de construction</span>
+          </button>
+          <div className="p-4">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Aperçu des annonces</p>
+            {loadingPreview ? (
+              <p className="text-sm text-gray-400">Chargement…</p>
+            ) : (
+              <div className="space-y-3">
+                {previewTertiaire.map((p) => (
+                  <div key={p.id} className="flex gap-3 rounded-lg overflow-hidden bg-white dark:bg-gray-800/50 border border-amber-100 dark:border-amber-800/50">
+                    <div className="w-24 h-24 flex-shrink-0 bg-amber-100 dark:bg-amber-900/30 rounded-l-lg overflow-hidden">
+                      <ApercuImage src={p.imageUrl} alt={p.title} placeholder="🏠" />
+                    </div>
+                    <div className="flex-1 min-w-0 py-2 pr-2 flex flex-col justify-center">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{p.title}</p>
+                      <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        {p.price.toLocaleString()} {p.currency}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => navigate('/echange/tertiaire')}
+              className="mt-3 w-full py-2 text-sm font-medium text-amber-600 hover:text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
             >
               Voir tout →
             </button>

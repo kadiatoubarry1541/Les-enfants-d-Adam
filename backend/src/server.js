@@ -224,6 +224,38 @@ async function initAllTables() {
       console.warn(`⚠️ initAllTables [${table.name}]:`, err.message);
     }
   }
+
+  // Colonne audio sur exchange_products (photo + audio 30s)
+  try {
+    await sequelize.query(`ALTER TABLE "exchange_products" ADD COLUMN IF NOT EXISTS "audio" JSONB DEFAULT '[]';`).catch(() => {});
+  } catch (_) {}
+
+  // Colonnes ajoutées récemment sur users (visibilité arbre généalogique)
+  const userAlters = [
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tree_visibility" VARCHAR(50) DEFAULT 'name_photo_numeroH';`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tree_hidden" JSONB DEFAULT '[]';`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "gallery_albums" TEXT;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "wallet" DECIMAL(10,2) DEFAULT 0.00;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "wallet_currency" VARCHAR(10) DEFAULT 'GNF';`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "user_stories" TEXT DEFAULT '{}';`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "children_photos" TEXT;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "family_photo" TEXT;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "man_photo" TEXT;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "wife_photo" TEXT;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lieu_residence_1" VARCHAR(255);`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lieu_residence_2" VARCHAR(255);`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lieu_residence_3" VARCHAR(255);`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "prefecture" VARCHAR(255);`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sous_prefecture" VARCHAR(255);`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "nb_femmes" INTEGER DEFAULT 0;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "annees_avant_naissance" INTEGER;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "annees_depuis_deces" INTEGER;`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "fingerprint" TEXT;`
+  ];
+  for (const sql of userAlters) {
+    await sequelize.query(sql).catch(() => {});
+  }
+  console.log('✅ Colonnes users vérifiées');
 }
 
 // Connexion à la base puis démarrage du serveur (le serveur ne démarre que si la base est OK)

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminPanel } from "../components/AdminPanel";
 import { getSessionUser, isAdmin, isMasterAdmin } from "../utils/auth";
-import { getStats, getAllUsers, getAllFamilies } from "../utils/adminApi";
+import { getStats, getAllUsers, getAllFamilies, getMySectors, getPageAdmins, addPageAdmin, removePageAdmin, type SectorInfo } from "../utils/adminApi";
+import { config } from "../config/api";
 
 interface ProfessionalAccount {
   id: string;
@@ -96,7 +97,15 @@ export default function AdminDashboard() {
   const [searchFamily, setSearchFamily] = useState("");
   const [searchCouple, setSearchCouple] = useState("");
   const [searchPC, setSearchPC] = useState("");
+  const [mySectors, setMySectors] = useState<SectorInfo[]>([]);
+  const [sectorAdminOnly, setSectorAdminOnly] = useState(false);
+  const [pageAdmins, setPageAdmins] = useState<any[]>([]);
+  const [pageAdminsLoading, setPageAdminsLoading] = useState(false);
+  const [sectorAdminNumeroH, setSectorAdminNumeroH] = useState("");
+  const [sectorAdminSector, setSectorAdminSector] = useState<"/sante" | "/education" | "/echange" | "/securite" | "/journalisme">("/sante");
   const navigate = useNavigate();
+
+  const API_BASE = (config.API_BASE_URL || "").replace(/\/api\/?$/, "") || "http://localhost:5002";
 
   useEffect(() => {
     // Vérifier la session de manière plus robuste
@@ -120,21 +129,33 @@ export default function AdminDashboard() {
       return;
     }
     
-    // Vérifier si c'est un admin
-    if (!isAdmin(user)) {
-      alert("Accès refusé - Privilèges administrateur requis");
-      navigate("/moi");
+    setUserData(user);
+
+    if (isAdmin(user)) {
       setLoading(false);
+      loadStats();
+      loadRecentUsers();
+      loadPendingPros();
       return;
     }
-    
-    setUserData(user);
-    setLoading(false);
-    
-    // Charger les statistiques
-    loadStats();
-    loadRecentUsers();
-    loadPendingPros();
+
+    getMySectors()
+      .then((res) => {
+        if (res.success && res.sectors && res.sectors.length > 0) {
+          setMySectors(res.sectors);
+          setSectorAdminOnly(true);
+          setAdminSection("pros");
+          loadPendingPros();
+        } else {
+          alert("Accès refusé - Privilèges administrateur ou admin de secteur requis");
+          navigate("/moi");
+        }
+      })
+      .catch(() => {
+        alert("Accès refusé - Privilèges administrateur requis");
+        navigate("/moi");
+      })
+      .finally(() => setLoading(false));
   }, [navigate]);
 
   const loadStats = async () => {
@@ -161,7 +182,7 @@ export default function AdminDashboard() {
   const loadPendingPros = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5002/api/professionals/admin/pending", {
+      const res = await fetch(`${API_BASE}/api/professionals/admin/pending`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -223,8 +244,8 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("token");
       const url = filter === "pending"
-        ? "http://localhost:5002/api/professionals/admin/pending"
-        : `http://localhost:5002/api/professionals/admin/all?status=${filter}`;
+        ? `${API_BASE}/api/professionals/admin/pending`
+        : `${API_BASE}/api/professionals/admin/all?status=${filter}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) setAllPros(data.accounts || []);
@@ -236,7 +257,7 @@ export default function AdminDashboard() {
   const handleApprove = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5002/api/professionals/admin/approve/${id}`, {
+      const res = await fetch(`${API_BASE}/api/professionals/admin/approve/${id}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
       });
@@ -244,6 +265,8 @@ export default function AdminDashboard() {
       if (data.success) {
         loadPendingPros();
         loadAllPros(proFilter);
+      } else {
+        alert(data.message || "Erreur");
       }
     } catch (error) {
       console.error('Erreur approbation:', error);
@@ -254,7 +277,7 @@ export default function AdminDashboard() {
     const reason = prompt("Raison du rejet (optionnel):");
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5002/api/professionals/admin/reject/${id}`, {
+      const res = await fetch(`${API_BASE}/api/professionals/admin/reject/${id}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ reason: reason || "" })
@@ -263,9 +286,63 @@ export default function AdminDashboard() {
       if (data.success) {
         loadPendingPros();
         loadAllPros(proFilter);
+      } else {
+        alert(data.message || "Erreur");
       }
     } catch (error) {
       console.error('Erreur rejet:', error);
+    }
+  };
+
+  const loadPageAdmins = async () => {
+    setPageAdminsLoading(true);
+    try {
+      const res = await getPageAdmins();
+      if (res.success && res.pageAdmins) {
+        const sectorPaths = ["/sante", "/education", "/echange", "/securite", "/journalisme"];
+        setPageAdmins(res.pageAdmins.filter((pa: any) =>
+          sectorPaths.includes(pa.pagePath || pa.page_path) && (pa.isActive !== false)
+        ));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPageAdminsLoading(false);
+    }
+  };
+
+  const handleAddSectorAdmin = async () => {
+    if (!sectorAdminNumeroH.trim()) {
+      alert("Indiquez le NumeroH de l'utilisateur.");
+      return;
+    }
+    const names: Record<string, string> = {
+      "/sante": "Santé",
+      "/education": "Éducation",
+      "/echange": "Échanges",
+      "/securite": "Sécurité",
+      "/journalisme": "Journalisme",
+    };
+    try {
+      await addPageAdmin({
+        pagePath: sectorAdminSector,
+        pageName: names[sectorAdminSector] || sectorAdminSector,
+        adminNumeroH: sectorAdminNumeroH.trim(),
+      });
+      setSectorAdminNumeroH("");
+      loadPageAdmins();
+    } catch (e: any) {
+      alert(e?.message || "Erreur lors de l'ajout.");
+    }
+  };
+
+  const handleRemoveSectorAdmin = async (id: number) => {
+    if (!confirm("Retirer cet admin de secteur ?")) return;
+    try {
+      await removePageAdmin(id);
+      loadPageAdmins();
+    } catch (e: any) {
+      alert(e?.message || "Erreur.");
     }
   };
 
@@ -291,7 +368,7 @@ export default function AdminDashboard() {
 
   if (!userData) return null;
 
-  const adminTabs = [
+  const allAdminTabs = [
     { id: "overview", label: "Vue d'ensemble", icon: "📊" },
     { id: "families", label: "Familles", icon: "👨‍👩‍👧‍👦" },
     { id: "couples", label: "Couples", icon: "💑" },
@@ -299,7 +376,11 @@ export default function AdminDashboard() {
     { id: "pros", label: "Professionnels", icon: "📋" },
     { id: "users", label: "Utilisateurs", icon: "👥" },
     { id: "tools", label: "Outils", icon: "🔧" },
+    ...(isMasterAdmin(userData) ? [{ id: "sector-admins", label: "Admins de secteurs", icon: "🏛️" }] : []),
   ];
+  const adminTabs = sectorAdminOnly
+    ? allAdminTabs.filter((t) => t.id === "pros")
+    : allAdminTabs;
 
   const filteredFamilies = families.filter(f =>
     !searchFamily || f.nomFamille.toLowerCase().includes(searchFamily.toLowerCase()) ||
@@ -330,12 +411,14 @@ export default function AdminDashboard() {
       <div className="bg-gradient-to-r from-red-600 to-purple-600 rounded-xl shadow-lg p-6 sm:p-8 mb-6 text-white">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl sm:text-4xl font-bold mb-2">👑 Administration Complète</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold mb-2">
+              {sectorAdminOnly ? "✅ Validation des inscriptions professionnelles" : "👑 Administration Complète"}
+            </h1>
             <p className="text-lg opacity-90">
               {userData.prenom} {userData.nomFamille}
             </p>
             <p className="text-sm opacity-75 mt-1">
-              NuméroH: {userData.numeroH} | Rôle: {userData.role || 'admin'}
+              NuméroH: {userData.numeroH} | {sectorAdminOnly ? `Secteur(s): ${mySectors.map((s) => s.pageName).join(", ")}` : `Rôle: ${userData.role || "admin"}`}
             </p>
           </div>
           <button onClick={() => navigate("/compte")} className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors">
@@ -344,8 +427,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Statistiques en temps réel */}
-      {stats && (
+      {/* Statistiques en temps réel (masquées pour admin secteur uniquement) */}
+      {!sectorAdminOnly && stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
           {[
             { val: stats.totalUsers, label: "Utilisateurs", from: "from-blue-500", to: "to-blue-600" },
@@ -376,6 +459,7 @@ export default function AdminDashboard() {
                 if (tab.id === "couples" && couples.length === 0) loadCouples();
                 if (tab.id === "parent-child" && parentChildLinks.length === 0) loadParentChildLinks();
                 if (tab.id === "pros" && allPros.length === 0) loadAllPros(proFilter);
+                if (tab.id === "sector-admins") loadPageAdmins();
               }}
               className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                 adminSection === tab.id
@@ -752,6 +836,76 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ========== ADMINS DE SECTEURS (super-admin uniquement) ========== */}
+          {adminSection === "sector-admins" && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-800">🏛️ Admins de secteurs</h2>
+              <p className="text-sm text-gray-600">
+                Santé, Éducation, Échanges, Sécurité, Journalisme : ces utilisateurs peuvent uniquement valider ou refuser les inscriptions professionnelles de leur secteur. Seul l'administrateur général peut les ajouter ou les retirer.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <h3 className="font-semibold text-amber-900 mb-2">Ajouter un admin de secteur</h3>
+                <div className="flex flex-wrap gap-3 items-end">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">NumeroH de l'utilisateur</label>
+                    <input
+                      type="text"
+                      value={sectorAdminNumeroH}
+                      onChange={(e) => setSectorAdminNumeroH(e.target.value)}
+                      placeholder="Ex: G1C1P1R1E1F1 1"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm min-w-[180px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Secteur</label>
+                    <select
+                      value={sectorAdminSector}
+                      onChange={(e) => setSectorAdminSector(e.target.value as "/sante" | "/education" | "/echange" | "/securite" | "/journalisme")}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      <option value="/sante">Santé</option>
+                      <option value="/education">Éducation</option>
+                      <option value="/echange">Échanges</option>
+                      <option value="/securite">Sécurité</option>
+                      <option value="/journalisme">Journalisme</option>
+                    </select>
+                  </div>
+                  <button onClick={handleAddSectorAdmin} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium">
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Liste des admins de secteurs</h3>
+                {pageAdminsLoading ? (
+                  <p className="text-sm text-gray-500">Chargement...</p>
+                ) : pageAdmins.length === 0 ? (
+                  <p className="text-sm text-gray-500">Aucun admin de secteur configuré.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {pageAdmins.map((pa: any) => {
+                      const admin = pa.admin || {};
+                      const path = pa.pagePath ?? pa.page_path;
+                      const name = pa.pageName ?? pa.page_name ?? path;
+                      return (
+                        <li key={pa.id} className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div>
+                            <span className="font-medium text-gray-900">{admin.prenom} {admin.nomFamille}</span>
+                            <span className="text-gray-500 text-sm ml-2">({admin.numeroH})</span>
+                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">{name}</span>
+                          </div>
+                          <button onClick={() => handleRemoveSectorAdmin(pa.id)} className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                            Retirer
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
 

@@ -210,5 +210,51 @@ export const api = {
     } catch (error) {
       return false
     }
+  },
+
+  // Mot de passe oublié : vérifier identité (NumeroH + NumeroH parent + date de naissance)
+  async forgotPasswordVerify(numeroH: string, parentNumeroH: string, dateNaissance: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numeroH, parentNumeroH, dateNaissance })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { success: false, message: data.message || 'Vérification impossible.' }
+    }
+    return { success: true, token: data.token }
+  },
+
+  // Mot de passe oublié : définir le nouveau mot de passe (avec token)
+  async forgotPasswordReset(token: string, newPassword: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { success: false, message: data.message || 'Réinitialisation impossible.' }
+    }
+    return { success: true, message: data.message }
+  },
+
+  // Supprimer son propre compte (mot de passe requis)
+  async deleteAccount(password: string) {
+    const token = localStorage.getItem('token')
+    const response = await fetch(`${API_BASE_URL}/auth/account`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ password })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { success: false, message: data.message || 'Erreur lors de la suppression du compte' }
+    }
+    return { success: true, message: data.message }
   }
 }

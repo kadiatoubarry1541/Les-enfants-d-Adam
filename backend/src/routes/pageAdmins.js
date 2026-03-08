@@ -3,6 +3,7 @@ import PageAdmin from '../models/PageAdmin.js';
 import User from '../models/User.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { sequelize } from '../../config/database.js';
+import { SECTOR_PAGE_PATHS } from '../utils/sectorAdmin.js';
 
 // Initialiser le modèle PageAdmin
 PageAdmin.init(sequelize);
@@ -45,8 +46,36 @@ router.get('/page/:pagePath', async (req, res) => {
   }
 });
 
-// Toutes les autres routes nécessitent l'authentification et les privilèges admin
+// Routes protégées par authentification (sans exiger admin)
 router.use(authenticate);
+
+// @route   GET /api/page-admins/my-sectors
+// @desc    Secteurs que l'utilisateur gère (admin de page santé, éducation, échanges)
+// @access  Authentifié
+router.get('/my-sectors', async (req, res) => {
+  try {
+    const rows = await PageAdmin.findAll({
+      where: {
+        adminNumeroH: req.user.numeroH,
+        pagePath: Object.values(SECTOR_PAGE_PATHS),
+        isActive: true
+      },
+      attributes: ['pagePath', 'pageName']
+    });
+    const sectors = (rows || []).map(r => {
+      const path = r.get ? r.get('pagePath') : r.pagePath;
+      const name = r.get ? r.get('pageName') : r.pageName;
+      const sector = Object.entries(SECTOR_PAGE_PATHS).find(([, p]) => p === path)?.[0] || path;
+      return { sector, pagePath: path, pageName: name || path };
+    });
+    res.json({ success: true, sectors });
+  } catch (e) {
+    console.error('Erreur my-sectors:', e);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// Toutes les autres routes nécessitent admin
 router.use(requireAdmin);
 
 // @route   GET /api/page-admins
@@ -109,8 +138,8 @@ router.get('/page/:pagePath', async (req, res) => {
 });
 
 // @route   POST /api/page-admins
-// @desc    Assigner un admin à une page
-// @access  Admin
+// @desc    Assigner un admin à une page. Secteurs santé/éducation/échanges : super-admin uniquement.
+// @access  Admin (super-admin pour /sante, /education, /echange)
 router.post('/', async (req, res) => {
   try {
     const { pagePath, pageName, adminNumeroH } = req.body;
@@ -119,6 +148,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Le pagePath, pageName et adminNumeroH sont requis'
+      });
+    }
+
+    const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
+    const isSectorPage = Object.values(SECTOR_PAGE_PATHS).includes(normalizedPath);
+    if (isSectorPage && req.user.role !== 'super-admin' && req.user.numeroH !== 'G0C0P0R0E0F0 0') {
+      return res.status(403).json({
+        success: false,
+        message: 'Seul l\'administrateur général peut créer ou approuver un admin de secteur (santé, éducation, échanges).'
       });
     }
 
@@ -186,8 +224,8 @@ router.post('/', async (req, res) => {
 });
 
 // @route   DELETE /api/page-admins/:id
-// @desc    Retirer un admin d'une page
-// @access  Admin
+// @desc    Retirer un admin d'une page. Secteurs : super-admin uniquement.
+// @access  Admin (super-admin pour /sante, /education, /echange)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -197,6 +235,16 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Admin de page non trouvé'
+      });
+    }
+
+    const pathKey = 'pagePath';
+    const pagePathValue = pageAdmin.get ? pageAdmin.get(pathKey) : pageAdmin[pathKey];
+    const isSectorPage = pagePathValue && Object.values(SECTOR_PAGE_PATHS).includes(pagePathValue);
+    if (isSectorPage && req.user.role !== 'super-admin' && req.user.numeroH !== 'G0C0P0R0E0F0 0') {
+      return res.status(403).json({
+        success: false,
+        message: 'Seul l\'administrateur général peut retirer un admin de secteur.'
       });
     }
 

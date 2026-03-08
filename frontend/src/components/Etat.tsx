@@ -25,7 +25,7 @@ interface EtatProps {
 }
 
 export function Etat({ userData }: EtatProps) {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('details')
   const [etatInfos, setEtatInfos] = useState<EtatInfo[]>([])
   const [stats, setStats] = useState<EtatStats | null>(null)
   const [showAddEtat, setShowAddEtat] = useState(false)
@@ -115,10 +115,7 @@ export function Etat({ userData }: EtatProps) {
   }
 
   const tabs = [
-    { id: 'overview', label: 'Vue d\'ensemble', icon: '📊' },
-    { id: 'details', label: 'Détails', icon: '📋' },
-    { id: 'evolution', label: 'Évolution', icon: '📈' },
-    { id: 'actions', label: 'Actions', icon: '🎯' }
+    { id: 'details', label: 'Détails', icon: '📋' }
   ]
 
   return (

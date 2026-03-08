@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AudioRecorder } from '../components/AudioRecorder';
 
 interface UserData {
   numeroH: string;
@@ -733,12 +734,28 @@ export default function LieuResidence3() {
                     placeholder="Partagez vos idées..."
                   />
                 </div>
-                {newPost.type !== 'text' && newPost.type !== 'market' && newPost.type !== 'business' && (
+                {newPost.type === 'audio' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Message vocal</label>
+                    {newPost.mediaFile ? (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                        <span className="text-sm text-green-700 flex-1">🎙️ Audio prêt</span>
+                        <button type="button" onClick={() => setNewPost({...newPost, mediaFile: null})} className="text-red-500 hover:text-red-700 text-xs font-medium">✕ Annuler</button>
+                      </div>
+                    ) : (
+                      <AudioRecorder maxDuration={120} onAudioRecorded={(blob) => {
+                        const file = new File([blob], 'vocal.webm', { type: blob.type });
+                        setNewPost({...newPost, mediaFile: file});
+                      }} />
+                    )}
+                  </div>
+                )}
+                {newPost.type !== 'text' && newPost.type !== 'market' && newPost.type !== 'business' && newPost.type !== 'audio' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Fichier média</label>
                     <input
                       type="file"
-                      accept={newPost.type === 'image' ? 'image/*' : newPost.type === 'video' ? 'video/*' : 'audio/*'}
+                      accept={newPost.type === 'image' ? 'image/*' : 'video/*'}
                       onChange={(e) => setNewPost({...newPost, mediaFile: e.target.files?.[0] || null})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />

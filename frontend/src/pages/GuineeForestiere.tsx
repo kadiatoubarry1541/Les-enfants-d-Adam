@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AudioRecorder } from '../components/AudioRecorder';
 
 interface UserData {
   numeroH: string;
@@ -940,10 +941,22 @@ export default function GuineeForestiere() {
                         placeholder="Tapez un message..."
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
+                    ) : newMessage.messageType === 'audio' ? (
+                      newMessage.mediaFile ? (
+                        <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
+                          <span className="text-sm text-green-700 flex-1">🎙️ Audio prêt</span>
+                          <button type="button" onClick={() => setNewMessage({...newMessage, mediaFile: null})} className="text-red-500 hover:text-red-700 text-xs font-medium">✕</button>
+                        </div>
+                      ) : (
+                        <AudioRecorder compact maxDuration={120} onAudioRecorded={(blob) => {
+                          const file = new File([blob], 'vocal.webm', { type: blob.type });
+                          setNewMessage({...newMessage, mediaFile: file});
+                        }} />
+                      )
                     ) : (
                       <input
                         type="file"
-                        accept={newMessage.messageType === 'image' ? 'image/*' : newMessage.messageType === 'video' ? 'video/*' : 'audio/*'}
+                        accept={newMessage.messageType === 'image' ? 'image/*' : 'video/*'}
                         onChange={(e) => setNewMessage({...newMessage, mediaFile: e.target.files?.[0] || null})}
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
                       />

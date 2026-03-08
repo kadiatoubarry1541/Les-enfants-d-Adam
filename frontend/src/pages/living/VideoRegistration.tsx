@@ -2,13 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { VideoRecorder } from '../../components/VideoRecorder'
 import { api } from '../../utils/api'
-import { 
-  getAllCountries,
-  getSousPrefecturesByCountry,
-  getQuartiersBySousPrefecture,
-  getLocationPath,
-  type GeographicLocation
-} from '../../utils/worldGeography'
+import { getAllCountries, getRegionsByCountry, getContinentAndRegionByCountry } from '../../utils/worldGeography'
 import { ETHNIE_CODES, FAMILLE_CODES, ETHNIES, FAMILLES } from '../../utils/constants'
 
 interface VideoData {
@@ -107,8 +101,9 @@ export function VideoRegistration() {
     const errors = new Set<string>()
     
     if (!videoData.paysCode) errors.add('paysCode')
-    if (!videoData.sousPrefectureCode) errors.add('sousPrefectureCode')
-    if (!videoData.quartierCode) errors.add('quartierCode')
+    if (!videoData.regionCode) errors.add('regionCode')
+    if (!(videoData.sousPrefecture && videoData.sousPrefecture.trim())) errors.add('sousPrefecture')
+    if (!(videoData.quartier && videoData.quartier.trim())) errors.add('quartier')
     if (!videoData.ethnie) errors.add('ethnie')
     if (!videoData.famille) errors.add('famille')
     if (!videoData.prenom) errors.add('prenom')
@@ -135,16 +130,8 @@ export function VideoRegistration() {
     return `${baseClass} border-gray-300`
   }
 
-  // Formulaire simplifié : Pays → Sous-préfecture → Quartier (continent, région, préfecture inférés du quartier)
   const countries = useMemo(() => getAllCountries(), [])
-  const sousPrefectures = useMemo(() => 
-    videoData.paysCode ? getSousPrefecturesByCountry(videoData.paysCode) : [], 
-    [videoData.paysCode]
-  )
-  const quartiers = useMemo(() => 
-    videoData.sousPrefectureCode ? getQuartiersBySousPrefecture(videoData.sousPrefectureCode) : [], 
-    [videoData.sousPrefectureCode]
-  )
+  const regions = useMemo(() => (videoData.paysCode ? getRegionsByCountry(videoData.paysCode) : []), [videoData.paysCode])
 
   const handleVideoRecorded = (videoBlob: Blob) => {
     console.log('✅ Vidéo enregistrée, taille:', videoBlob.size, 'bytes')
@@ -221,11 +208,11 @@ export function VideoRegistration() {
 
   const generateNumeroH = async (data: VideoData): Promise<string> => {
     const generation = calculateGeneration(data.dateNaissance)
-    // Inférer continent, région, préfecture à partir du quartier
-    const path = data.quartierCode ? getLocationPath(data.quartierCode) : null
-    const continentCode = path && path.length >= 1 ? path[0].code : (data.continentCode || 'C1')
-    const paysCode = path && path.length >= 2 ? path[1].code : (data.paysCode || 'P1')
-    const regionCode = path && path.length >= 3 ? path[2].code : (data.regionCode || 'R1')
+    // Préfixe NumeroH : génération + continent + pays + région (choisie) + ethnie + famille
+    const { continentCode: c } = data.paysCode ? getContinentAndRegionByCountry(data.paysCode) : { continentCode: 'C1', regionCode: 'R1' }
+    const continentCode = data.continentCode || c
+    const paysCode = data.paysCode || 'P1'
+    const regionCode = data.regionCode || (data.paysCode ? getContinentAndRegionByCountry(data.paysCode).regionCode : 'R1')
     
     // Utiliser les codes depuis constants.ts avec fallback automatique
     const ethnieEntry = ETHNIE_CODES.find(e => e.label === data.ethnie)
@@ -292,20 +279,15 @@ export function VideoRegistration() {
 
     const numeroH = await generateNumeroH(videoData)
     
-    // Inférer continent, région, préfecture pour l'API et Terre ADAM
-    const path = videoData.quartierCode ? getLocationPath(videoData.quartierCode) : null
-    const inferred = path && path.length >= 6 ? {
-      continentCode: path[0].code,
-      continent: path[0].name,
-      paysCode: path[1].code,
-      pays: path[1].name,
-      regionCode: path[2].code,
-      region: path[2].name,
-      prefectureCode: path[3].code,
-      prefecture: path[3].name,
-      sousPrefecture: path[4].name,
-      quartier: path[5].name
-    } : {}
+    // Région choisie ; sous-préfecture et quartier en saisie libre pour regroupement
+    const inferred = {
+      paysCode: videoData.paysCode,
+      pays: countries.find(c => c.code === videoData.paysCode)?.name || videoData.pays,
+      regionCode: videoData.regionCode,
+      region: regions.find(r => r.code === videoData.regionCode)?.name || videoData.region,
+      sousPrefecture: (videoData.sousPrefecture && videoData.sousPrefecture.trim()) || '',
+      quartier: (videoData.quartier && videoData.quartier.trim()) || ''
+    }
     
     setVideoData(prev => ({ ...prev, numeroH }))
     
@@ -324,7 +306,7 @@ export function VideoRegistration() {
       genre: videoData.genre,
       photo: videoData.photoPreview,
       photoPreview: videoData.photoPreview,
-      lieu1: videoData.lieu1 || videoData.quartier || '',
+      lieu1: (videoData.quartier && videoData.quartier.trim()) || videoData.lieu1 || '',
       video: videoBase64
     }
     
@@ -467,10 +449,8 @@ export function VideoRegistration() {
                       ...prev, 
                       pays: selectedCountry?.name || '',
                       paysCode: e.target.value,
-                      sousPrefecture: '',
-                      sousPrefectureCode: '',
-                      quartier: '',
-                      quartierCode: ''
+                      region: '',
+                      regionCode: ''
                     }))
                     if (e.target.value) {
                       setValidationErrors(prev => {
@@ -497,40 +477,38 @@ export function VideoRegistration() {
             </div>
             <div className="col-6">
               <div className="field">
-                <label>Sous-préfecture *</label>
-                <select 
-                  value={videoData.sousPrefectureCode} 
+                <label>Région *</label>
+                <select
+                  value={videoData.regionCode}
                   onChange={(e) => {
-                    const selected = sousPrefectures.find(sp => sp.code === e.target.value)
-                    setVideoData(prev => ({ 
-                      ...prev, 
-                      sousPrefecture: selected?.name || '',
-                      sousPrefectureCode: e.target.value,
-                      quartier: '',
-                      quartierCode: ''
+                    const selected = regions.find(r => r.code === e.target.value)
+                    setVideoData(prev => ({
+                      ...prev,
+                      region: selected?.name || '',
+                      regionCode: e.target.value
                     }))
                     if (e.target.value) {
                       setValidationErrors(prev => {
                         const newErrors = new Set(prev)
-                        newErrors.delete('sousPrefectureCode')
+                        newErrors.delete('regionCode')
                         return newErrors
                       })
                     }
                   }}
                   disabled={!videoData.paysCode}
                   required
-                  className={getFieldClassName('sousPrefectureCode', !!videoData.sousPrefectureCode)}
+                  className={getFieldClassName('regionCode', !!videoData.regionCode)}
                 >
-                  <option value="">{videoData.paysCode ? `Sous-préfecture (${sousPrefectures.length})` : 'Choisir un pays d\'abord'}</option>
-                  {sousPrefectures.map(sp => (
-                    <option key={sp.code} value={sp.code}>{sp.name}</option>
+                  <option value="">{videoData.paysCode ? `Région (${regions.length})` : 'Choisir un pays d\'abord'}</option>
+                  {regions.map(r => (
+                    <option key={r.code} value={r.code}>{r.name}</option>
                   ))}
                 </select>
                 {!videoData.paysCode && (
                   <small className="text-orange-600">Veuillez d&apos;abord sélectionner un pays</small>
                 )}
-                {videoData.sousPrefectureCode && (
-                  <small className="text-green-600">✓ Sous-préfecture : {sousPrefectures.find(sp => sp.code === videoData.sousPrefectureCode)?.name}</small>
+                {videoData.regionCode && (
+                  <small className="text-green-600 block mt-1">✓ Région : {regions.find(r => r.code === videoData.regionCode)?.name}</small>
                 )}
               </div>
             </div>
@@ -538,41 +516,58 @@ export function VideoRegistration() {
           <div className="row">
             <div className="col-6">
               <div className="field">
-                <label>Quartier *</label>
-                <select 
-                  value={videoData.quartierCode} 
+                <label>Sous-préfecture *</label>
+                <input
+                  type="text"
+                  value={videoData.sousPrefecture}
                   onChange={(e) => {
-                    const selected = quartiers.find(q => q.code === e.target.value)
-                    setVideoData(prev => ({ 
-                      ...prev, 
-                      quartier: selected?.name || '',
-                      quartierCode: e.target.value
-                    }))
-                    if (e.target.value) {
+                    const v = e.target.value
+                    setVideoData(prev => ({ ...prev, sousPrefecture: v }))
+                    if (v.trim()) {
                       setValidationErrors(prev => {
                         const newErrors = new Set(prev)
-                        newErrors.delete('quartierCode')
+                        newErrors.delete('sousPrefecture')
                         return newErrors
                       })
                     }
                   }}
-                  disabled={!videoData.sousPrefectureCode}
-                  required
-                  className={getFieldClassName('quartierCode', !!videoData.quartierCode)}
-                >
-                  <option value="">{videoData.sousPrefectureCode ? `Quartier (${quartiers.length})` : 'Choisir une sous-préf. d\'abord'}</option>
-                  {quartiers.map(q => (
-                    <option key={q.code} value={q.code}>{q.name}</option>
-                  ))}
-                </select>
-                {!videoData.sousPrefectureCode && (
-                  <small className="text-orange-600">Veuillez d&apos;abord sélectionner une sous-préfecture</small>
-                )}
-                {videoData.quartierCode && (
-                  <small className="text-green-600">✓ Quartier : {quartiers.find(q => q.code === videoData.quartierCode)?.name}</small>
+                  placeholder="Ex. Kaloum, Ratoma..."
+                  className={getFieldClassName('sousPrefecture', !!(videoData.sousPrefecture && videoData.sousPrefecture.trim()))}
+                />
+                <small className="text-gray-500">Saisissez le nom de votre sous-préfecture</small>
+                {videoData.sousPrefecture && videoData.sousPrefecture.trim() && (
+                  <small className="text-green-600 block mt-1">✓ Sous-préfecture : {videoData.sousPrefecture.trim()}</small>
                 )}
               </div>
             </div>
+            <div className="col-6">
+              <div className="field">
+                <label>Quartier *</label>
+                <input
+                  type="text"
+                  value={videoData.quartier}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setVideoData(prev => ({ ...prev, quartier: v }))
+                    if (v.trim()) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev)
+                        newErrors.delete('quartier')
+                        return newErrors
+                      })
+                    }
+                  }}
+                  placeholder="Ex. Hamdallaye, Taouyah..."
+                  className={getFieldClassName('quartier', !!(videoData.quartier && videoData.quartier.trim()))}
+                />
+                <small className="text-gray-500">Saisissez le nom de votre quartier (regroupement avec les personnes du même quartier)</small>
+                {videoData.quartier && videoData.quartier.trim() && (
+                  <small className="text-green-600 block mt-1">✓ Quartier : {videoData.quartier.trim()}</small>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="row">
             <div className="col-6">
               <div className="field">
                 <label>Activité principale (optionnel)</label>
@@ -884,8 +879,9 @@ export function VideoRegistration() {
               const missingFields: string[] = []
               if (!videoData.dateNaissance) missingFields.push('Date de naissance')
               if (!videoData.paysCode) missingFields.push('Pays')
-              if (!videoData.sousPrefectureCode) missingFields.push('Sous-préfecture')
-              if (!videoData.quartierCode) missingFields.push('Quartier')
+              if (!videoData.regionCode) missingFields.push('Région')
+              if (!(videoData.sousPrefecture && videoData.sousPrefecture.trim())) missingFields.push('Sous-préfecture')
+              if (!(videoData.quartier && videoData.quartier.trim())) missingFields.push('Quartier')
               if (!videoData.ethnie) missingFields.push('Ethnie')
               if (!videoData.famille) missingFields.push('Nom de famille')
               if (!videoData.prenom) missingFields.push('Prénom')

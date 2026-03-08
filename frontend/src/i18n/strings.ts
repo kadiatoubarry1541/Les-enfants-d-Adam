@@ -415,7 +415,7 @@ export const LANG_LABELS: Record<LangCode, string> = {
 export const STRINGS: Record<LangCode, Record<string, string>> = {
   fr: {
     'app.title': "ADAM, EVE ET SES ENFANTS",
-    'banner.message': "L’ENREGISTREMENT DES HOMMES QU’ONT EU LA CHANCE D’ETRE NE VIVANT PUIS DE RESPIRE L’AIRE(MONTREZ LES SIGNES DE VIE).",
+    'banner.message': "L’ENREGISTREMENT DES HOMMES QU’ONT EU LA CHANCE D’ETRE NE VIVANT PUIS DE RESPIRER L’AIR (MONTREZ LES SIGNES DE VIE).",
     'nav.home': 'Accueil',
     'nav.vivant': 'Enregistrement Vivant',
     'nav.defunt': 'Enregistrement Défunt',

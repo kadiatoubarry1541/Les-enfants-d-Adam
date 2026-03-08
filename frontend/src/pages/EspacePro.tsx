@@ -146,7 +146,7 @@ const SERVICE_CONFIG: Record<string, ServiceCfg> = {
   },
   echanges: {
     label: "Échanges",
-    icon: "📦",
+    icon: "🛒",
     bgGradient: "from-cyan-500 to-blue-600",
     accentBorder: "border-cyan-500",
     lightBg: "bg-cyan-50",
@@ -157,7 +157,7 @@ const SERVICE_CONFIG: Record<string, ServiceCfg> = {
     statCardBg: "bg-cyan-500/20",
     tabActive: "border-cyan-500 text-cyan-600 dark:text-cyan-400",
     ringColor: "ring-cyan-200 dark:ring-cyan-800",
-    welcomeMsg: "Gérez vos échanges commerciaux et communications",
+    welcomeMsg: "Gérez vos échanges et communications",
   },
 };
 

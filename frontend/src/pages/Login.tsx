@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { api } from '../utils/api'
 import { useI18n } from '../i18n/useI18n'
 
@@ -9,7 +9,9 @@ export function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useI18n()
+  const successMessage = (location.state as { message?: string } | null)?.message
 
   // Auto-remplir depuis sessionStorage si on vient d'un test
   useEffect(() => {
@@ -41,8 +43,8 @@ export function Login() {
       const result = await api.login(numeroH, password)
       
       if (result.success) {
-        // Redirection immédiate sans alert
-        navigate('/compte')
+        // Redirection vers le compte ; la page d'accueil favorite sera appliquée (UserDashboard)
+        navigate('/compte', { state: { fromLogin: true } })
       } else {
         // Messages d'erreur simples
         if (result.numeroHExists) {
@@ -89,6 +91,11 @@ export function Login() {
             </div>
           </div>
         </div>
+        {successMessage && (
+          <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-3 py-2 rounded text-sm">
+            {successMessage}
+          </div>
+        )}
         {error && (
           <div className="error">{error}</div>
         )}
@@ -103,8 +110,13 @@ export function Login() {
           {loading ? 'Connexion en cours…' : t('login.submit')}
         </button>
         </div>
+        <div className="text-center mt-3">
+          <Link to="/mot-de-passe-oublie" className="text-sm text-indigo-500 dark:text-indigo-400 underline hover:no-underline">
+            Mot de passe oublié ?
+          </Link>
+        </div>
         <div className="text-center mt-5 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-          {t('login.signup_prompt')} <a href="/choix" className="text-indigo-500 dark:text-indigo-400 underline cursor-pointer hover:no-underline">{t('login.signup_link')}</a>
+          {t('login.signup_prompt')} <Link to="/inscription" className="text-indigo-500 dark:text-indigo-400 underline cursor-pointer hover:no-underline">{t('login.signup_link')}</Link>
         </div>
       </div>
     </div>

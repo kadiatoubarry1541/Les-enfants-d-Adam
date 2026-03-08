@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
+import { VideoRecorder } from '../components/VideoRecorder';
+import { AudioRecorder } from '../components/AudioRecorder';
 
 interface UserData {
   numeroH: string;
@@ -68,7 +70,9 @@ export default function EchangeMedicament() {
     condition: 'bon' as 'neuf' | 'bon' | 'moyen' | 'usé',
     location: '',
     images: [] as File[],
-    videos: [] as File[]
+    videos: [] as File[],
+    photoForAudio: null as File | null,
+    audio30s: null as File | null
   });
 
   const [newSupplier, setNewSupplier] = useState({
@@ -181,7 +185,9 @@ export default function EchangeMedicament() {
       newProduct.videos.forEach((video, index) => {
         formData.append(`video_${index}`, video);
       });
-      
+      if (newProduct.photoForAudio) formData.append(`image_${newProduct.images.length}`, newProduct.photoForAudio);
+      if (newProduct.audio30s) formData.append('audio_0', newProduct.audio30s);
+
       const token = localStorage.getItem("token");
       const endpoint = `${config.API_BASE_URL}/exchange/primaire/products`;
       const response = await fetch(endpoint, {
@@ -204,7 +210,9 @@ export default function EchangeMedicament() {
           condition: 'bon',
           location: '',
           images: [],
-          videos: []
+          videos: [],
+          photoForAudio: null,
+          audio30s: null
         });
         loadData();
       } else {
@@ -496,6 +504,35 @@ export default function EchangeMedicament() {
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                 placeholder="Ex: Ville Principale"
               />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Ou : une photo + un audio de 30 secondes</label>
+              <p className="text-xs text-gray-500 mb-2">Prenez une photo de votre bien et enregistrez un court audio (30 s max) pour le présenter.</p>
+              <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-4 mb-4 space-y-3">
+                <div>
+                  <span className="block text-xs font-medium text-gray-600 mb-1">Photo du bien</span>
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => setNewProduct((prev) => ({ ...prev, photoForAudio: e.target.files?.[0] || null }))} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-100 file:text-teal-800" />
+                  {newProduct.photoForAudio && <p className="mt-1 text-xs text-teal-600">✓ Photo sélectionnée</p>}
+                </div>
+                <div>
+                  <span className="block text-xs font-medium text-gray-600 mb-1">Audio de présentation (30 s)</span>
+                  <AudioRecorder maxDuration={30} onAudioRecorded={(blob) => setNewProduct((prev) => ({ ...prev, audio30s: new File([blob], `audio-30s-${Date.now()}.webm`, { type: blob.type || 'audio/webm' }) }))} />
+                  {newProduct.audio30s && <p className="mt-2 text-xs text-emerald-600">✓ Audio enregistré (30 s)</p>}
+                </div>
+              </div>
+            </div>
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo de présentation (30 s) — toujours possible pour publier un bien</label>
+              <p className="text-xs text-gray-500 mb-2">Enregistrez une vidéo de 30 secondes pour présenter votre bien. L'enregistrement s'arrête automatiquement à 30 s.</p>
+              <div className="rounded-xl border-2 border-teal-200 bg-teal-50/50 p-4 mb-4">
+                <VideoRecorder
+                  maxDuration={30}
+                  onVideoRecorded={(blob) => {
+                    const file = new File([blob], `video-30s-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
+                    setNewProduct((prev) => ({ ...prev, videos: [file, ...prev.videos] }));
+                  }}
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-3">📷 Photos et Vidéos</label>

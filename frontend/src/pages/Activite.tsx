@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { config } from '../config/api';
 import ProSection from '../components/ProSection';
+import { AudioRecorder } from '../components/AudioRecorder';
 
 const API_BASE_URL = config.API_BASE_URL || 'http://localhost:5002/api';
 
@@ -64,8 +65,6 @@ export default function Activite() {
   const [loading, setLoading] = useState(true);
   const [selectedGroup, setSelectedGroup] = useState<ActivityGroup | null>(null);
   const [activityMessages, setActivityMessages] = useState<any[]>([]);
-  const [isRecordingActivity, setIsRecordingActivity] = useState(false);
-  const [mediaRecorderActivity, setMediaRecorderActivity] = useState<MediaRecorder | null>(null);
   const messagesEndRefActivity = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -407,43 +406,6 @@ export default function Activite() {
     }
   };
 
-  // Fonction pour démarrer l'enregistrement audio (activité)
-  const startRecordingActivity = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], 'audio-recording.webm', { type: 'audio/webm' });
-        setNewActivityPost({ ...newActivityPost, type: 'audio', mediaFile: audioFile });
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      recorder.start();
-      setMediaRecorderActivity(recorder);
-      setIsRecordingActivity(true);
-    } catch (error) {
-      console.error('Erreur lors de l\'accès au micro:', error);
-      alert('Impossible d\'accéder au micro. Vérifiez les permissions.');
-    }
-  };
-
-  // Fonction pour arrêter l'enregistrement audio (activité)
-  const stopRecordingActivity = () => {
-    if (mediaRecorderActivity && isRecordingActivity) {
-      mediaRecorderActivity.stop();
-      setIsRecordingActivity(false);
-      setMediaRecorderActivity(null);
-    }
-  };
 
   useEffect(() => {
     if (selectedGroup) {
@@ -842,9 +804,6 @@ export default function Activite() {
                           value={newActivityPost.type}
                           onChange={(e) => {
                             setNewActivityPost({...newActivityPost, type: e.target.value as any, mediaFile: null});
-                            if (e.target.value !== 'audio' && isRecordingActivity) {
-                              stopRecordingActivity();
-                            }
                           }}
                           className="px-2 py-2 border border-gray-300 rounded-lg bg-white text-sm"
                         >
@@ -869,56 +828,18 @@ export default function Activite() {
                           />
                         ) : newActivityPost.type === 'audio' ? (
                           <div className="flex gap-2 flex-1 items-center">
-                            {!isRecordingActivity && !newActivityPost.mediaFile ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={startRecordingActivity}
-                                  className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center gap-2"
-                                >
-                                  🎤 Enregistrer
-                                </button>
-                                <input
-                                  type="file"
-                                  accept="audio/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    if (file) {
-                                      setNewActivityPost({...newActivityPost, type: 'audio', mediaFile: file});
-                                    } else {
-                                      setNewActivityPost({...newActivityPost, mediaFile: null});
-                                    }
-                                  }}
-                                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                                />
-                              </>
-                            ) : isRecordingActivity ? (
-                              <div className="flex items-center gap-2 flex-1">
-                                <div className="flex items-center gap-2 px-4 py-2 bg-red-100 rounded-lg">
-                                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                                  <span className="text-sm text-red-700">Enregistrement...</span>
-                            </div>
-                                <button
-                                  type="button"
-                                  onClick={stopRecordingActivity}
-                                  className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                                >
-                                  ⏹️ Arrêter
-                                </button>
-                </div>
-              ) : (
-                              <div className="flex items-center gap-2 flex-1">
-                                <span className="text-sm text-gray-600">Audio prêt</span>
-                    <button
-                                  type="button"
-                                  onClick={() => setNewActivityPost({...newActivityPost, mediaFile: null})}
-                                  className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                                  ✕
-                    </button>
-                </div>
-              )}
-            </div>
+                            {newActivityPost.mediaFile ? (
+                              <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
+                                <span className="text-sm text-green-700 flex-1">🎙️ Audio prêt</span>
+                                <button type="button" onClick={() => setNewActivityPost({...newActivityPost, mediaFile: null})} className="text-red-500 hover:text-red-700 text-xs font-medium">✕</button>
+                              </div>
+                            ) : (
+                              <AudioRecorder compact maxDuration={120} onAudioRecorded={(blob) => {
+                                const file = new File([blob], 'vocal.webm', { type: blob.type });
+                                setNewActivityPost({...newActivityPost, mediaFile: file});
+                              }} />
+                            )}
+                          </div>
                         ) : (
                           <input
                             type="file"

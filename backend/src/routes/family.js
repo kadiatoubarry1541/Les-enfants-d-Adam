@@ -3,6 +3,7 @@ import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import User from '../models/User.js';
 import FamilyGallery from '../models/FamilyGallery.js';
+import FamilyProblemMedia from '../models/FamilyProblemMedia.js';
 import { sequelize } from '../config/database.js';
 
 const router = express.Router();
@@ -75,6 +76,29 @@ async function ensureGalleryTable() {
     await sequelize.query(`ALTER TABLE "family_gallery" ALTER COLUMN "url" TYPE TEXT;`).catch(() => {});
   } catch (err) {
     console.warn('⚠️ ensureGalleryTable:', err.message);
+  }
+}
+
+// Crée la table family_problem_media si elle n'existe pas
+async function ensureFamilyProblemTable() {
+  try {
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "family_problem_media" (
+        "id"           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+        "family_name"  VARCHAR(255) NOT NULL,
+        "numero_h"     VARCHAR(255) NOT NULL,
+        "author_name"  VARCHAR(255) NOT NULL DEFAULT 'Membre',
+        "media_type"   VARCHAR(20)  NOT NULL DEFAULT 'video',
+        "description"  TEXT,
+        "media_url"    TEXT         NOT NULL,
+        "created_at"   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        "updated_at"   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+    `);
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_fpm_family_name ON "family_problem_media" ("family_name");`).catch(() => {});
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_fpm_created_at ON "family_problem_media" ("created_at");`).catch(() => {});
+  } catch (err) {
+    console.warn('⚠️ ensureFamilyProblemTable:', err.message);
   }
 }
 
@@ -260,6 +284,68 @@ router.delete('/gallery/:album/:index', async (req, res) => {
     res.json({ success: true, albums });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÉDIAS POUR PROBLÈMES DE LA FAMILLE (santé, situations graves)
+// Visibles uniquement par les membres ayant le même nom de famille
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/family/problems/media
+router.get('/problems/media', async (req, res) => {
+  try {
+    await ensureFamilyProblemTable();
+    const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
+    const familyName = userData?.nomFamille;
+    if (!familyName) {
+      return res.json({ success: true, items: [] });
+    }
+
+    const items = await FamilyProblemMedia.findAll({
+      where: { familyName },
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json({ success: true, items });
+  } catch (error) {
+    console.error('Erreur chargement médias problèmes famille:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/family/problems/media
+router.post('/problems/media', upload.single('media'), async (req, res) => {
+  try {
+    await ensureFamilyProblemTable();
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
+    }
+
+    const userData = await User.findOne({ where: { numeroH: req.user.numeroH } });
+    const familyName = userData?.nomFamille;
+    if (!familyName) {
+      return res.status(400).json({ success: false, message: 'Vous devez avoir un nom de famille pour publier ici.' });
+    }
+
+    const dataUrl = toDataUrl(req.file);
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const description = (req.body.description || '').toString().slice(0, 500);
+    const authorName = [userData.prenom, userData.nomFamille].filter(Boolean).join(' ') || 'Membre';
+
+    const item = await FamilyProblemMedia.create({
+      familyName,
+      numeroH: req.user.numeroH,
+      authorName,
+      mediaType: isVideo ? 'video' : 'image',
+      description,
+      mediaUrl: dataUrl
+    });
+
+    res.json({ success: true, item });
+  } catch (error) {
+    console.error('Erreur ajout média problème famille:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

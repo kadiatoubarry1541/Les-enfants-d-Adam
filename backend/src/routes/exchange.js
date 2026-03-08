@@ -9,7 +9,19 @@ import Supplier from '../models/Supplier.js';
 import Order from '../models/Order.js';
 import PlatformCommission from '../models/PlatformCommission.js';
 import User from '../models/User.js';
+import PageAdmin from '../models/PageAdmin.js';
 import { authenticate } from '../middleware/auth.js';
+import { isGlobalAdmin, getManagedSectorsForUser } from '../utils/sectorAdmin.js';
+
+if (typeof PageAdmin.init === 'function') PageAdmin.init(sequelize);
+
+/** Vérifie que l'utilisateur peut gérer les fournisseurs (admin ou admin secteur Échanges). */
+async function canManageSuppliers(user) {
+  if (!user) return false;
+  if (isGlobalAdmin(user)) return true;
+  const sectors = await getManagedSectorsForUser(PageAdmin, user.numeroH);
+  return sectors.includes('echange');
+}
 
 const router = express.Router();
 
@@ -228,6 +240,10 @@ router.post('/primaire/products', upload.any(), async (req, res) => {
       .filter(file => file.fieldname && file.fieldname.startsWith('video_'))
       .map(file => `/uploads/${file.filename}`);
 
+    const audioUrls = (req.files || [])
+      .filter(file => file.fieldname && file.fieldname.startsWith('audio_'))
+      .map(file => `/uploads/${file.filename}`);
+
     const product = await ExchangeProduct.create({
       title,
       description,
@@ -239,6 +255,7 @@ router.post('/primaire/products', upload.any(), async (req, res) => {
       location,
       images: imageUrls,
       videos: videoUrls,
+      audio: audioUrls,
       numeroH: user.numeroH,
       createdBy: user.numeroH,
       isActive: true,
@@ -276,6 +293,10 @@ router.post('/secondaire/products', upload.any(), async (req, res) => {
       .filter(file => file.fieldname && file.fieldname.startsWith('video_'))
       .map(file => `/uploads/${file.filename}`);
 
+    const audioUrls = (req.files || [])
+      .filter(file => file.fieldname && file.fieldname.startsWith('audio_'))
+      .map(file => `/uploads/${file.filename}`);
+
     const product = await ExchangeProduct.create({
       title,
       description,
@@ -287,6 +308,7 @@ router.post('/secondaire/products', upload.any(), async (req, res) => {
       location,
       images: imageUrls,
       videos: videoUrls,
+      audio: audioUrls,
       numeroH: user.numeroH,
       createdBy: user.numeroH,
       isActive: true,
@@ -324,6 +346,10 @@ router.post('/tertiaire/products', upload.any(), async (req, res) => {
       .filter(file => file.fieldname && file.fieldname.startsWith('video_'))
       .map(file => `/uploads/${file.filename}`);
 
+    const audioUrls = (req.files || [])
+      .filter(file => file.fieldname && file.fieldname.startsWith('audio_'))
+      .map(file => `/uploads/${file.filename}`);
+
     const product = await ExchangeProduct.create({
       title,
       description,
@@ -335,6 +361,7 @@ router.post('/tertiaire/products', upload.any(), async (req, res) => {
       location,
       images: imageUrls,
       videos: videoUrls,
+      audio: audioUrls,
       numeroH: user.numeroH,
       createdBy: user.numeroH,
       isActive: true,
@@ -442,16 +469,16 @@ router.post('/suppliers', async (req, res) => {
 // @route   POST /api/exchange/suppliers/:supplierId/approve
 // @desc    Approuver un fournisseur (Admin uniquement)
 // @access  Authentifié + Admin
-router.post('/suppliers/:supplierId/approve', async (req, res) => {
+router.post('/suppliers/:supplierId/approve', authenticate, async (req, res) => {
   try {
     const { supplierId } = req.params;
     const user = req.user;
 
-    // Vérifier que l'utilisateur est admin
-    if (user.role !== 'admin' && user.role !== 'super-admin') {
+    const canManage = await canManageSuppliers(user);
+    if (!canManage) {
       return res.status(403).json({
         success: false,
-        message: 'Accès refusé. Admin requis.'
+        message: 'Accès refusé. Admin ou admin secteur Échanges requis.'
       });
     }
 
@@ -486,17 +513,17 @@ router.post('/suppliers/:supplierId/approve', async (req, res) => {
 // @route   POST /api/exchange/suppliers/:supplierId/reject
 // @desc    Rejeter un fournisseur (Admin uniquement)
 // @access  Authentifié + Admin
-router.post('/suppliers/:supplierId/reject', async (req, res) => {
+router.post('/suppliers/:supplierId/reject', authenticate, async (req, res) => {
   try {
     const { supplierId } = req.params;
     const { rejectionReason } = req.body;
     const user = req.user;
 
-    // Vérifier que l'utilisateur est admin
-    if (user.role !== 'admin' && user.role !== 'super-admin') {
+    const canManage = await canManageSuppliers(user);
+    if (!canManage) {
       return res.status(403).json({
         success: false,
-        message: 'Accès refusé. Admin requis.'
+        message: 'Accès refusé. Admin ou admin secteur Échanges requis.'
       });
     }
 

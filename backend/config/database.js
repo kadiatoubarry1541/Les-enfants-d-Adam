@@ -74,14 +74,20 @@ const connectDB = async () => {
     try {
       await sequelize.authenticate();
       console.log('PostgreSQL connecte avec succes');
-      if (process.env.NODE_ENV === 'development') {
-        try {
+      try {
+        if (process.env.NODE_ENV === 'development') {
+          // En dev : alter=true pour appliquer les nouvelles colonnes/types
           await sequelize.sync({ alter: true });
-          console.log('Modeles synchronises avec la base de donnees');
-        } catch (syncError) {
-          console.warn('Sync partiel (certaines colonnes/ENUM non appliques):', syncError.message);
-          console.warn('Si colonne manquante : npm run fix-users-table | Si ENUM manquante : npm run fix-pro-enum');
+          console.log('Modeles synchronises avec la base de donnees (dev)');
+        } else {
+          // En production : sync sans alter → crée uniquement les tables manquantes,
+          // ne modifie pas les tables existantes (sécurisé pour Render/Neon)
+          await sequelize.sync({ force: false });
+          console.log('Modeles synchronises avec la base de donnees (production)');
         }
+      } catch (syncError) {
+        console.warn('Sync partiel (certaines colonnes/ENUM non appliques):', syncError.message);
+        console.warn('Si colonne manquante : npm run fix-users-table | Si ENUM manquante : npm run fix-pro-enum');
       }
       return sequelize;
     } catch (error) {

@@ -12,6 +12,7 @@ import { getSessionUser } from "./utils/auth";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { LoginMembre } from "./pages/LoginMembre";
+import { ForgotPassword } from "./pages/ForgotPassword";
 import { Account } from "./pages/Account";
 import { RegistrationChoice } from "./pages/RegistrationChoice";
 
@@ -47,6 +48,7 @@ const EchangePrimaire = lazy(() => import("./pages/EchangePrimaire"));
 const EchangeNourriture = lazy(() => import("./pages/EchangeNourriture"));
 const EchangeMedicament = lazy(() => import("./pages/EchangeMedicament"));
 const EchangeSecondaire = lazy(() => import("./pages/EchangeSecondaire"));
+const EchangeTertiaire = lazy(() => import("./pages/EchangeTertiaire"));
 const Science = lazy(() => import("./pages/Science"));
 const ProfesseurIA = lazy(() => import("./pages/ProfesseurIA"));
 const InscriptionPro = lazy(() => import("./pages/InscriptionPro"));
@@ -144,6 +146,7 @@ function App() {
           <Route path="/defunt/*" element={<DeceasedWizard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/login-membre" element={<LoginMembre />} />
+          <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
           <Route path="/compte" element={<Account />} />
           <Route path="/moi" element={<Navigate to="/compte" replace />} />
           <Route path="/moi/profil" element={<MonProfil />} />
@@ -195,6 +198,7 @@ function App() {
             <Route path="/echange/nourriture" element={<EchangeNourriture />} />
             <Route path="/echange/medicament" element={<EchangeMedicament />} />
           <Route path="/echange/secondaire" element={<EchangeSecondaire />} />
+          <Route path="/echange/tertiaire" element={<EchangeTertiaire />} />
           <Route path="/ia-sc" element={<ProfesseurIA />} />
           <Route path="/professeur-ia" element={<ProfesseurIA />} />
           <Route path="/inscription-pro" element={<InscriptionPro />} />

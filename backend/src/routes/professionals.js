@@ -1,9 +1,45 @@
 import express from 'express';
+import { Op } from 'sequelize';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import ProfessionalAccount from '../models/ProfessionalAccount.js';
 import Notification from '../models/Notification.js';
+import PageAdmin from '../models/PageAdmin.js';
+import { sequelize } from '../config/database.js';
+import {
+  isGlobalAdmin,
+  getManagedSectorsForUser,
+  canUserApproveProfessional,
+  getProTypesForSectors
+} from '../utils/sectorAdmin.js';
+
+if (typeof PageAdmin.init === 'function') PageAdmin.init(sequelize);
 
 const router = express.Router();
+
+/** Autorise admin global OU admin de secteur (santé, éducation, échanges). */
+async function requireAdminOrSectorAdmin(req, res, next) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentification requise' });
+    }
+    if (isGlobalAdmin(req.user)) {
+      req.managedSectors = null;
+      return next();
+    }
+    const sectors = await getManagedSectorsForUser(PageAdmin, req.user.numeroH);
+    if (sectors.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Privilèges administrateur ou admin de secteur requis'
+      });
+    }
+    req.managedSectors = sectors;
+    next();
+  } catch (e) {
+    console.error('requireAdminOrSectorAdmin:', e);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+}
 
 /** Retire le justificatif des réponses publiques : réservé à l'admin uniquement. */
 function sanitizeAccountForPublic(account) {
@@ -152,23 +188,31 @@ router.put('/:id', authenticate, async (req, res) => {
 
 // ============ ADMINISTRATION ============
 
-// GET /api/professionals/admin/pending - Comptes en attente (admin)
-router.get('/admin/pending', authenticate, requireAdmin, async (req, res) => {
+// GET /api/professionals/admin/pending - Comptes en attente (admin ou admin secteur)
+router.get('/admin/pending', authenticate, requireAdminOrSectorAdmin, async (req, res) => {
   try {
-    const accounts = await ProfessionalAccount.getPendingAccounts();
+    let accounts = await ProfessionalAccount.getPendingAccounts();
+    if (req.managedSectors && req.managedSectors.length > 0) {
+      const types = getProTypesForSectors(req.managedSectors);
+      accounts = accounts.filter(a => types.includes(a.type));
+    }
     res.json({ success: true, accounts });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
-// GET /api/professionals/admin/all - Tous les comptes (admin)
-router.get('/admin/all', authenticate, requireAdmin, async (req, res) => {
+// GET /api/professionals/admin/all - Tous les comptes (admin ou admin secteur)
+router.get('/admin/all', authenticate, requireAdminOrSectorAdmin, async (req, res) => {
   try {
     const { type, status } = req.query;
     const where = { isActive: true };
     if (type) where.type = type;
     if (status) where.status = status;
+    if (req.managedSectors && req.managedSectors.length > 0) {
+      const types = getProTypesForSectors(req.managedSectors);
+      where.type = types.length === 1 ? types[0] : { [Op.in]: types };
+    }
     const accounts = await ProfessionalAccount.findAll({ where, order: [['created_at', 'DESC']] });
     res.json({ success: true, accounts });
   } catch (error) {
@@ -176,12 +220,19 @@ router.get('/admin/all', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/professionals/admin/approve/:id - Approuver un compte (admin)
-router.post('/admin/approve/:id', authenticate, requireAdmin, async (req, res) => {
+// POST /api/professionals/admin/approve/:id - Approuver un compte (admin ou admin secteur)
+router.post('/admin/approve/:id', authenticate, async (req, res) => {
   try {
     const account = await ProfessionalAccount.findByPk(req.params.id);
     if (!account) {
       return res.status(404).json({ success: false, message: 'Compte non trouvé' });
+    }
+    const canApprove = await canUserApproveProfessional(PageAdmin, req.user, account.type);
+    if (!canApprove) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez approuver que les comptes de votre secteur (santé, éducation ou échanges).'
+      });
     }
 
     await account.update({
@@ -211,12 +262,19 @@ router.post('/admin/approve/:id', authenticate, requireAdmin, async (req, res) =
   }
 });
 
-// POST /api/professionals/admin/reject/:id - Rejeter un compte (admin)
-router.post('/admin/reject/:id', authenticate, requireAdmin, async (req, res) => {
+// POST /api/professionals/admin/reject/:id - Rejeter un compte (admin ou admin secteur)
+router.post('/admin/reject/:id', authenticate, async (req, res) => {
   try {
     const account = await ProfessionalAccount.findByPk(req.params.id);
     if (!account) {
       return res.status(404).json({ success: false, message: 'Compte non trouvé' });
+    }
+    const canReject = await canUserApproveProfessional(PageAdmin, req.user, account.type);
+    if (!canReject) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez rejeter que les comptes de votre secteur (santé, éducation ou échanges).'
+      });
     }
 
     const { reason } = req.body;

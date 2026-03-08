@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { isAdmin } from '../../utils/auth'
+import { isAdmin, getNumeroHForDisplay } from '../../utils/auth'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002'
 
@@ -206,12 +206,12 @@ export default function FamilleAdmin() {
                         <span className="font-medium">
                           {link.parent?.prenom} {link.parent?.nomFamille}
                         </span>
-                        <span className="text-gray-500"> ({link.parentNumeroH})</span>
+                        <span className="text-gray-500"> ({getNumeroHForDisplay(link.parentNumeroH, false)})</span>
                         <span className="mx-2 text-gray-400">→</span>
                         <span className="font-medium">
                           {link.child?.prenom} {link.child?.nomFamille}
                         </span>
-                        <span className="text-gray-500"> ({link.childNumeroH})</span>
+                        <span className="text-gray-500"> ({getNumeroHForDisplay(link.childNumeroH, false)})</span>
                         <span className="ml-2 px-2 py-0.5 rounded text-sm bg-gray-100 text-gray-700">
                           {link.status}
                         </span>
@@ -262,12 +262,12 @@ export default function FamilleAdmin() {
                         <span className="font-medium">
                           {link.user1?.prenom} {link.user1?.nomFamille}
                         </span>
-                        <span className="text-gray-500"> ({link.numeroH1})</span>
+                        <span className="text-gray-500"> ({getNumeroHForDisplay(link.numeroH1, false)})</span>
                         <span className="mx-2 text-gray-400">↔</span>
                         <span className="font-medium">
                           {link.user2?.prenom} {link.user2?.nomFamille}
                         </span>
-                        <span className="text-gray-500"> ({link.numeroH2})</span>
+                        <span className="text-gray-500"> ({getNumeroHForDisplay(link.numeroH2, false)})</span>
                         <span className="ml-2 px-2 py-0.5 rounded text-sm bg-gray-100 text-gray-700">
                           {link.status}
                         </span>

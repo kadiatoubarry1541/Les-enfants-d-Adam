@@ -10,6 +10,13 @@ interface Message {
   timestamp: Date;
 }
 
+interface Exercice {
+  question: string;
+  reponse: string | number;
+  explication: string;
+  type?: string;
+}
+
 export default function ProfesseurIA() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -20,6 +27,7 @@ export default function ProfesseurIA() {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [lastExercice, setLastExercice] = useState<Exercice | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -65,7 +73,8 @@ export default function ProfesseurIA() {
         },
         body: JSON.stringify({
           message: inputValue.trim(),
-          history: historyPairs
+          history: historyPairs,
+          lastExercice: lastExercice
         })
       });
 
@@ -78,6 +87,12 @@ export default function ProfesseurIA() {
             timestamp: new Date()
           };
           setMessages(prev => [...prev, botMessage]);
+          // Stocker l'exercice généré pour pouvoir corriger la réponse de l'élève
+          if (data.exercice) {
+            setLastExercice(data.exercice);
+          } else if (data.lastExercice === null) {
+            setLastExercice(null);
+          }
         } else {
           console.error('[ProfesseurIA] Réponse success=false:', data);
           const errorMessage: Message = {
@@ -237,15 +252,44 @@ export default function ProfesseurIA() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Raccourcis rapides */}
+            <div className="border-t bg-gray-50 px-4 py-2 flex flex-wrap gap-1.5">
+              {[
+                { label: '📝 Exercice', msg: 'donne moi un exercice' },
+                { label: '🔤 Homophones', msg: 'exercice homophones' },
+                { label: '🔡 Conjugaison', msg: 'exercice conjugaison' },
+                { label: '➕ Addition', msg: 'exercice addition' },
+                { label: '✖️ Multiplication', msg: 'exercice multiplication' },
+                { label: '📐 Équation', msg: 'exercice equation' },
+                { label: '📏 Aire triangle', msg: 'exercice aire triangle' },
+                { label: '⚡ Pythagore', msg: 'exercice pythagore' },
+              ].map((btn) => (
+                <button
+                  key={btn.label}
+                  type="button"
+                  onClick={() => { setInputValue(btn.msg); }}
+                  disabled={isLoading}
+                  className="px-2.5 py-1 bg-white border border-cyan-200 hover:border-cyan-400 hover:bg-cyan-50 text-gray-700 text-xs font-medium rounded-full transition-colors disabled:opacity-40"
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
             {/* Input Area */}
             <div className="border-t bg-white p-4">
+              {lastExercice && (
+                <div className="mb-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                  <strong>Exercice en cours :</strong> tapez votre réponse ou &quot;reponse: [votre réponse]&quot;
+                </div>
+              )}
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Posez votre question (français ou mathématiques)"
+                  placeholder={lastExercice ? 'Entrez votre réponse...' : 'Posez votre question (français ou mathématiques)'}
                   className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   disabled={isLoading}
                 />
@@ -257,18 +301,22 @@ export default function ProfesseurIA() {
                   Envoyer
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Français et Mathématiques.
-              </p>
             </div>
           </div>
         </div>
 
         {/* Info Card */}
-        <div className="mt-6 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg p-4 border-l-4 border-yellow-500">
-          <p className="text-gray-800 font-medium">
-            <strong>ℹ️</strong> Assistance en Français et en Mathématiques.
-          </p>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+            <p className="font-bold text-blue-800 mb-1">📖 Français</p>
+            <p className="text-xs text-gray-700">Grammaire · Conjugaison · Orthographe · Homophones · Figures de style · Littérature · Dissertation · Commentaire</p>
+            <p className="text-xs text-gray-500 mt-1 italic">Ex : "Explique le passé composé" · "exercice homophones"</p>
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+            <p className="font-bold text-green-800 mb-1">📐 Mathématiques</p>
+            <p className="text-xs text-gray-700">Calculs · Équations 1er/2ème degré · Fractions · Géométrie · Trigonométrie · Probabilités · Dérivées · Analyse</p>
+            <p className="text-xs text-gray-500 mt-1 italic">Ex : "x² + 5x + 6 = 0" · "aire cercle rayon 4" · "sin(30)"</p>
+          </div>
         </div>
       </div>
     </div>

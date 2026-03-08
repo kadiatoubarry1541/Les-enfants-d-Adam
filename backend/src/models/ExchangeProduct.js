@@ -79,6 +79,11 @@ ExchangeProduct.init({
     defaultValue: [],
     comment: 'URLs des vidéos du produit'
   },
+  audio: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'URLs des enregistrements audio (ex. photo + audio 30s)'
+  },
   numeroH: {
     type: DataTypes.STRING,
     allowNull: false,

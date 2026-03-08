@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getNumeroHForDisplay } from '../../utils/auth'
 import { MediaUploader } from '../../components/MediaUploader'
 import { CommunicationHub } from '../../components/CommunicationHub'
 
@@ -401,7 +402,7 @@ export default function Parents() {
                     <p className="font-semibold text-slate-800">
                       {inv.parent ? `${inv.parent.prenom} ${inv.parent.nomFamille}` : inv.parentNumeroH}
                     </p>
-                    <p className="text-sm text-slate-500">{inv.parentNumeroH}</p>
+                    <p className="text-sm text-slate-500">{getNumeroHForDisplay(inv.parentNumeroH, false)}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -466,7 +467,7 @@ export default function Parents() {
                       <p className="text-sm text-slate-500">
                         {link.parentType === 'mere' ? 'Maman' : 'Papa'}
                       </p>
-                      <p className="text-xs text-slate-400">{link.parentNumeroH}</p>
+                      <p className="text-xs text-slate-400">{getNumeroHForDisplay(link.parentNumeroH, false)}</p>
                     </div>
                   </div>
                 </button>

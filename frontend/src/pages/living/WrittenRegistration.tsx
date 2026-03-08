@@ -1,12 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../utils/api'
-import { 
-  getAllCountries,
-  getSousPrefecturesByCountry,
-  getQuartiersBySousPrefecture,
-  getLocationPath
-} from '../../utils/worldGeography'
+import { getAllCountries, getRegionsByCountry, getContinentAndRegionByCountry } from '../../utils/worldGeography'
 import { ETHNIE_CODES, FAMILLE_CODES, ETHNIES, FAMILLES } from '../../utils/constants'
 
 interface WrittenData {
@@ -93,13 +88,9 @@ export function WrittenRegistration() {
   const navigate = useNavigate()
 
   const countries = useMemo(() => getAllCountries(), [])
-  const sousPrefectures = useMemo(
-    () => (data.paysCode ? getSousPrefecturesByCountry(data.paysCode) : []),
+  const regions = useMemo(
+    () => (data.paysCode ? getRegionsByCountry(data.paysCode) : []),
     [data.paysCode]
-  )
-  const quartiers = useMemo(
-    () => (data.sousPrefectureCode ? getQuartiersBySousPrefecture(data.sousPrefectureCode) : []),
-    [data.sousPrefectureCode]
   )
 
   const calculateGeneration = (dateNaissance: string): string => {
@@ -117,8 +108,9 @@ export function WrittenRegistration() {
     const errors = new Set<string>()
 
     if (!data.paysCode) errors.add('paysCode')
-    if (!data.sousPrefectureCode) errors.add('sousPrefectureCode')
-    if (!data.quartierCode) errors.add('quartierCode')
+    if (!data.regionCode) errors.add('regionCode')
+    if (!(data.sousPrefecture && data.sousPrefecture.trim())) errors.add('sousPrefecture')
+    if (!(data.quartier && data.quartier.trim())) errors.add('quartier')
     if (!data.ethnie) errors.add('ethnie')
     if (!data.famille) errors.add('famille')
     if (!data.prenom) errors.add('prenom')
@@ -181,10 +173,11 @@ export function WrittenRegistration() {
 
   const generateNumeroH = async (form: WrittenData): Promise<string> => {
     const generation = calculateGeneration(form.dateNaissance)
-    const path = form.quartierCode ? getLocationPath(form.quartierCode) : null
-    const continentCode = path && path.length >= 1 ? path[0].code : form.continentCode || 'C1'
-    const paysCode = path && path.length >= 2 ? path[1].code : form.paysCode || 'P1'
-    const regionCode = path && path.length >= 3 ? path[2].code : form.regionCode || 'R1'
+    // Préfixe NumeroH : génération + continent + pays + région (choisie) + ethnie + famille
+    const { continentCode: c } = form.paysCode ? getContinentAndRegionByCountry(form.paysCode) : { continentCode: 'C1', regionCode: 'R1' }
+    const continentCode = form.continentCode || c
+    const paysCode = form.paysCode || 'P1'
+    const regionCode = form.regionCode || (form.paysCode ? getContinentAndRegionByCountry(form.paysCode).regionCode : 'R1')
 
     const ethnieEntry = ETHNIE_CODES.find((e) => e.label === form.ethnie)
     const familleEntry = FAMILLE_CODES.find((f) => f.label === form.famille)
@@ -239,22 +232,15 @@ export function WrittenRegistration() {
 
     const numeroH = await generateNumeroH(data)
 
-    const path = data.quartierCode ? getLocationPath(data.quartierCode) : null
-    const inferred =
-      path && path.length >= 6
-        ? {
-            continentCode: path[0].code,
-            continent: path[0].name,
-            paysCode: path[1].code,
-            pays: path[1].name,
-            regionCode: path[2].code,
-            region: path[2].name,
-            prefectureCode: path[3].code,
-            prefecture: path[3].name,
-            sousPrefecture: path[4].name,
-            quartier: path[5].name
-          }
-        : {}
+    // Région choisie dans la liste ; sous-préfecture et quartier en saisie libre pour regroupement
+    const inferred = {
+      paysCode: data.paysCode,
+      pays: countries.find((c) => c.code === data.paysCode)?.name || data.pays,
+      regionCode: data.regionCode,
+      region: regions.find((r) => r.code === data.regionCode)?.name || data.region,
+      sousPrefecture: (data.sousPrefecture && data.sousPrefecture.trim()) || '',
+      quartier: (data.quartier && data.quartier.trim()) || ''
+    }
 
     setData((prev) => ({ ...prev, numeroH }))
 
@@ -272,7 +258,7 @@ export function WrittenRegistration() {
       genre: data.genre,
       photo: data.photoPreview,
       photoPreview: data.photoPreview,
-      lieu1: data.lieu1 || data.quartier || ''
+      lieu1: (data.quartier && data.quartier.trim()) || data.lieu1 || ''
     }
 
     try {
@@ -339,8 +325,9 @@ export function WrittenRegistration() {
   const missingFields: string[] = []
   if (!data.dateNaissance) missingFields.push('Date de naissance')
   if (!data.paysCode) missingFields.push('Pays')
-  if (!data.sousPrefectureCode) missingFields.push('Sous-préfecture')
-  if (!data.quartierCode) missingFields.push('Quartier')
+  if (!data.regionCode) missingFields.push('Région')
+  if (!(data.sousPrefecture && data.sousPrefecture.trim())) missingFields.push('Sous-préfecture')
+  if (!(data.quartier && data.quartier.trim())) missingFields.push('Quartier')
   if (!data.ethnie) missingFields.push('Ethnie')
   if (!data.famille) missingFields.push('Nom de famille')
   if (!data.prenom) missingFields.push('Prénom')
@@ -413,10 +400,8 @@ export function WrittenRegistration() {
                     ...prev,
                     pays: selectedCountry?.name || '',
                     paysCode: e.target.value,
-                    sousPrefecture: '',
-                    sousPrefectureCode: '',
-                    quartier: '',
-                    quartierCode: ''
+                    region: '',
+                    regionCode: ''
                   }))
                   if (e.target.value) {
                     setValidationErrors((prev) => {
@@ -445,50 +430,43 @@ export function WrittenRegistration() {
           </div>
           <div className="col-6">
             <div className="field">
-              <label>Sous-préfecture *</label>
+              <label>Région *</label>
               <select
-                value={data.sousPrefectureCode}
+                value={data.regionCode}
                 onChange={(e) => {
-                  const selected = sousPrefectures.find((sp) => sp.code === e.target.value)
+                  const selected = regions.find((r) => r.code === e.target.value)
                   setData((prev) => ({
                     ...prev,
-                    sousPrefecture: selected?.name || '',
-                    sousPrefectureCode: e.target.value,
-                    quartier: '',
-                    quartierCode: ''
+                    region: selected?.name || '',
+                    regionCode: e.target.value
                   }))
                   if (e.target.value) {
                     setValidationErrors((prev) => {
                       const next = new Set(prev)
-                      next.delete('sousPrefectureCode')
+                      next.delete('regionCode')
                       return next
                     })
                   }
                 }}
                 disabled={!data.paysCode}
                 required
-                className={getFieldClassName('sousPrefectureCode', !!data.sousPrefectureCode)}
+                className={getFieldClassName('regionCode', !!data.regionCode)}
               >
                 <option value="">
-                  {data.paysCode
-                    ? `Sous-préfecture (${sousPrefectures.length})`
-                    : "Choisir un pays d'abord"}
+                  {data.paysCode ? `Région (${regions.length})` : 'Choisir un pays d\'abord'}
                 </option>
-                {sousPrefectures.map((sp) => (
-                  <option key={sp.code} value={sp.code}>
-                    {sp.name}
+                {regions.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.name}
                   </option>
                 ))}
               </select>
               {!data.paysCode && (
-                <small className="text-orange-600">
-                  Veuillez d&apos;abord sélectionner un pays
-                </small>
+                <small className="text-orange-600">Veuillez d&apos;abord sélectionner un pays</small>
               )}
-              {data.sousPrefectureCode && (
-                <small className="text-green-600">
-                  ✓ Sous-préfecture :{' '}
-                  {sousPrefectures.find((sp) => sp.code === data.sousPrefectureCode)?.name}
+              {data.regionCode && (
+                <small className="text-green-600 block mt-1">
+                  ✓ Région : {regions.find((r) => r.code === data.regionCode)?.name}
                 </small>
               )}
             </div>
@@ -498,51 +476,66 @@ export function WrittenRegistration() {
         <div className="row">
           <div className="col-6">
             <div className="field">
-              <label>Quartier *</label>
-              <select
-                value={data.quartierCode}
+              <label>Sous-préfecture *</label>
+              <input
+                type="text"
+                value={data.sousPrefecture}
                 onChange={(e) => {
-                  const selected = quartiers.find((q) => q.code === e.target.value)
-                  setData((prev) => ({
-                    ...prev,
-                    quartier: selected?.name || '',
-                    quartierCode: e.target.value
-                  }))
-                  if (e.target.value) {
+                  const v = e.target.value
+                  setData((prev) => ({ ...prev, sousPrefecture: v }))
+                  if (v.trim()) {
                     setValidationErrors((prev) => {
                       const next = new Set(prev)
-                      next.delete('quartierCode')
+                      next.delete('sousPrefecture')
                       return next
                     })
                   }
                 }}
-                disabled={!data.sousPrefectureCode}
-                required
-                className={getFieldClassName('quartierCode', !!data.quartierCode)}
-              >
-                <option value="">
-                  {data.sousPrefectureCode
-                    ? `Quartier (${quartiers.length})`
-                    : "Choisir une sous-préf. d'abord"}
-                </option>
-                {quartiers.map((q) => (
-                  <option key={q.code} value={q.code}>
-                    {q.name}
-                  </option>
-                ))}
-              </select>
-              {!data.sousPrefectureCode && (
-                <small className="text-orange-600">
-                  Veuillez d&apos;abord sélectionner une sous-préfecture
-                </small>
-              )}
-              {data.quartierCode && (
-                <small className="text-green-600">
-                  ✓ Quartier : {quartiers.find((q) => q.code === data.quartierCode)?.name}
+                placeholder="Ex. Kaloum, Ratoma..."
+                className={getFieldClassName('sousPrefecture', !!(data.sousPrefecture && data.sousPrefecture.trim()))}
+              />
+              <small className="text-gray-500">
+                Saisissez le nom de votre sous-préfecture
+              </small>
+              {data.sousPrefecture && data.sousPrefecture.trim() && (
+                <small className="text-green-600 block mt-1">
+                  ✓ Sous-préfecture : {data.sousPrefecture.trim()}
                 </small>
               )}
             </div>
           </div>
+          <div className="col-6">
+            <div className="field">
+              <label>Quartier *</label>
+              <input
+                type="text"
+                value={data.quartier}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setData((prev) => ({ ...prev, quartier: v }))
+                  if (v.trim()) {
+                    setValidationErrors((prev) => {
+                      const next = new Set(prev)
+                      next.delete('quartier')
+                      return next
+                    })
+                  }
+                }}
+                placeholder="Ex. Hamdallaye, Taouyah..."
+                className={getFieldClassName('quartier', !!(data.quartier && data.quartier.trim()))}
+              />
+              <small className="text-gray-500">
+                Saisissez le nom de votre quartier (regroupement avec les personnes du même quartier)
+              </small>
+              {data.quartier && data.quartier.trim() && (
+                <small className="text-green-600 block mt-1">
+                  ✓ Quartier : {data.quartier.trim()}
+                </small>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="row">
           <div className="col-6">
             <div className="field">
               <label>Activité principale *</label>

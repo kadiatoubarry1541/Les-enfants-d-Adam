@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { isAdmin } from '../../utils/auth'
+import { isAdmin, getNumeroHForDisplay } from '../../utils/auth'
 import { MediaUploader } from '../../components/MediaUploader'
 import { CommunicationHub } from '../../components/CommunicationHub'
 
@@ -635,7 +635,7 @@ export default function Partenaire() {
                   <p className="font-semibold text-slate-800 text-lg">
                     {partner.prenom} {partner.nomFamille}
                   </p>
-                  <p className="text-slate-600">{partner.numeroH}</p>
+                  <p className="text-slate-600">{getNumeroHForDisplay(partner.numeroH, false)}</p>
                   {linkInfo?.numeroMariageMairie && (
                     <p className="text-sm text-slate-500 mt-1">
                       Numéro mariage (mairie) : <span className="font-mono">{linkInfo.numeroMariageMairie}</span>

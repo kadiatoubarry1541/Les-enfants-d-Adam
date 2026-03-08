@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { getNumeroHForDisplay } from '../../utils/auth';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 
@@ -603,7 +604,7 @@ export default function MesAmours() {
                         <h3 className="font-semibold text-gray-900">
                           {friend.prenom} {friend.nomFamille}
                         </h3>
-                        <p className="text-sm text-gray-600">{friend.numeroH}</p>
+                        <p className="text-sm text-gray-600">{getNumeroHForDisplay(friend.numeroH, false)}</p>
                         {friend.isOnline ? (
                           <p className="text-xs text-green-600">En ligne</p>
                         ) : (
@@ -849,8 +850,10 @@ export default function MesAmours() {
         </div>
       )}
 
-      {/* Modal d'informations d'ami */}
-      {showInfoModal && selectedFriend && (
+      {/* Modal d'informations d'ami — autres membres : nom, NumeroH et photo uniquement */}
+      {showInfoModal && selectedFriend && (() => {
+        const isCurrentUser = userData?.numeroH && String(selectedFriend.numeroH).trim() === String(userData.numeroH).trim();
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
             <h3 className="text-xl font-bold text-gray-900 mb-4">
@@ -867,59 +870,67 @@ export default function MesAmours() {
                   <h4 className="font-semibold text-gray-900">
                     {selectedFriend.prenom} {selectedFriend.nomFamille}
                   </h4>
-                  <p className="text-sm text-gray-600">{selectedFriend.numeroH}</p>
+                  <p className="text-sm text-gray-600">{getNumeroHForDisplay(selectedFriend.numeroH, isCurrentUser)}</p>
                 </div>
               </div>
 
-              {selectedFriend.bio && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                  <p className="text-gray-900">{selectedFriend.bio}</p>
-                </div>
+              {!isCurrentUser && (
+                <p className="text-sm text-gray-500">Pour l'identification : nom, NumeroH et photo. Les autres informations sont privées.</p>
               )}
 
-              {selectedFriend.location && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Localisation</label>
-                  <p className="text-gray-900">{selectedFriend.location}</p>
-                </div>
-              )}
+              {isCurrentUser && (
+                <>
+                  {selectedFriend.bio && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                      <p className="text-gray-900">{selectedFriend.bio}</p>
+                    </div>
+                  )}
 
-              {selectedFriend.occupation && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
-                  <p className="text-gray-900">{selectedFriend.occupation}</p>
-                </div>
-              )}
+                  {selectedFriend.location && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Localisation</label>
+                      <p className="text-gray-900">{selectedFriend.location}</p>
+                    </div>
+                  )}
 
-              {selectedFriend.hobbies && selectedFriend.hobbies.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hobbies</label>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedFriend.hobbies.map((hobby, index) => (
-                      <span key={index} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">
-                        {hobby}
-                      </span>
-                    ))}
+                  {selectedFriend.occupation && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                      <p className="text-gray-900">{selectedFriend.occupation}</p>
+                    </div>
+                  )}
+
+                  {selectedFriend.hobbies && selectedFriend.hobbies.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Hobbies</label>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedFriend.hobbies.map((hobby, index) => (
+                          <span key={index} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">
+                            {hobby}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amis en commun</label>
+                    <p className="text-gray-900">{selectedFriend.mutualFriends}</p>
                   </div>
-                </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Intérêts communs</label>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedFriend.commonInterests.map((interest, index) => (
+                        <span key={index} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amis en commun</label>
-                <p className="text-gray-900">{selectedFriend.mutualFriends}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Intérêts communs</label>
-                <div className="flex flex-wrap gap-1">
-                  {selectedFriend.commonInterests.map((interest, index) => (
-                    <span key={index} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
             </div>
             <div className="flex space-x-3 mt-6">
               <button
@@ -934,7 +945,8 @@ export default function MesAmours() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Modal d'édition des informations */}
       {showEditInfo && (

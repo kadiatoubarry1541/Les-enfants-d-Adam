@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getNumeroHForDisplay } from '../utils/auth'
 import './ArbreGenealogique.css'
 import { buildFamilyTree, getTreeCompletionRecommendations, FamilyMember as FamilyMemberType, CercleDesRacinesCounts } from '../services/FamilyTreeBuilder'
 import { InvitationManager } from '../utils/invitationManager'
@@ -26,9 +27,12 @@ interface FamilyMember {
 interface ArbreGenealogiqueProps {
   userData: any
   cercleCounts?: CercleDesRacinesCounts
+  treeHidden?: string[]
+  onTreeHiddenChange?: (newList: string[]) => void
+  onOpenGallery?: () => void
 }
 
-export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueProps) {
+export function ArbreGenealogique({ userData, cercleCounts, treeHidden = [], onTreeHiddenChange }: ArbreGenealogiqueProps) {
   const { t } = useI18n()
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null)
@@ -194,9 +198,13 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
     )
   }
 
-  // Filtrer les membres visibles uniquement
-  const visibleMembers = familyMembers.filter(m => (m as any).isVisible !== false)
-  const filteredMembers = getGenerationMembers(generationFilter).filter(m => (m as any).isVisible !== false)
+  // Personnes masquées de ma visibilité (je ne les vois plus dans l'arbre)
+  const hiddenSet = new Set((treeHidden || []).map(s => String(s).trim()))
+  const isHidden = (numeroH: string) => hiddenSet.has(String(numeroH || '').trim())
+
+  // Filtrer les membres visibles : conditions remplies ET non masqués
+  const visibleMembers = familyMembers.filter(m => (m as any).isVisible !== false && !isHidden(m.numeroH))
+  const filteredMembers = getGenerationMembers(generationFilter).filter(m => (m as any).isVisible !== false && !isHidden(m.numeroH))
   const generations = [...new Set(visibleMembers.map(m => m.generation))].sort()
 
   return (
@@ -653,68 +661,124 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
         </svg>
       </div>
 
-      {/* Détails du membre sélectionné */}
-      {selectedMember && (
-        <div className="member-details-modal">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Détails de {selectedMember.prenom} {selectedMember.nomFamille}</h3>
-              <button onClick={() => setSelectedMember(null)}>✕</button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="detail-photo">
-                {selectedMember.photo ? (
-                  <img src={selectedMember.photo} alt={selectedMember.prenom} />
-                ) : (
-                  <div className="avatar-large">
-                    {selectedMember.prenom.charAt(0)}
-                  </div>
-                )}
+      {/* Personnes masquées : liste avec bouton Réafficher */}
+      {treeHidden.length > 0 && onTreeHiddenChange && (
+        <div className="arbre-controls mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">👁️ Personnes masquées dans mon arbre</h4>
+          <p className="text-xs text-amber-800 dark:text-amber-300 mb-2">Vous ne les voyez plus dans l&apos;arbre. Cliquez sur « Réafficher » pour les faire réapparaître.</p>
+          <ul className="space-y-1">
+            {treeHidden.map((numeroH) => (
+              <li key={numeroH} className="flex items-center justify-between gap-2 text-sm">
+                <span className="font-mono text-gray-700 dark:text-gray-300">{numeroH}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newList = treeHidden.filter((n) => n !== numeroH);
+                    onTreeHiddenChange(newList);
+                  }}
+                  className="px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium"
+                >
+                  Réafficher
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Détails du membre sélectionné — autres membres : nom, NumeroH et photo uniquement */}
+      {selectedMember && (() => {
+        const isCurrentUser = userData?.numeroH && String(selectedMember.numeroH).trim() === String(userData.numeroH).trim();
+        const canHide = !isCurrentUser && onTreeHiddenChange && selectedMember.numeroH && selectedMember.numeroH !== 'N/A';
+        return (
+          <div className="member-details-modal">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Détails de {selectedMember.prenom} {selectedMember.nomFamille}</h3>
+                <button onClick={() => setSelectedMember(null)}>✕</button>
               </div>
               
-              <div className="detail-info">
-                <div className="info-grid">
-                  <div className="info-item">
-                    <span className="label">NumeroH:</span>
-                    <span className="value">{selectedMember.numeroH}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="label">Genre:</span>
-                    <span className="value">{selectedMember.genre}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="label">Relation:</span>
-                    <span className="value">{getRelationIcon(selectedMember.relation)} {selectedMember.relation}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="label">Génération:</span>
-                    <span className="value">{selectedMember.generation}</span>
-                  </div>
-                  {selectedMember.dateNaissance && (
-                    <div className="info-item">
-                      <span className="label">Date de naissance:</span>
-                      <span className="value">{new Date(selectedMember.dateNaissance).toLocaleDateString()}</span>
+              <div className="modal-body">
+                <div className="detail-photo">
+                  {selectedMember.photo ? (
+                    <img src={selectedMember.photo} alt={selectedMember.prenom} />
+                  ) : (
+                    <div className="avatar-large">
+                      {selectedMember.prenom.charAt(0)}
                     </div>
                   )}
-                  {selectedMember.dateDeces && (
-                    <div className="info-item">
-                      <span className="label">Date de décès:</span>
-                      <span className="value">{new Date(selectedMember.dateDeces).toLocaleDateString()}</span>
+                </div>
+                
+                <div className="detail-info">
+                  {canHide && (
+                    <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const num = String(selectedMember.numeroH).trim();
+                          if (!treeHidden.includes(num)) {
+                            onTreeHiddenChange([...treeHidden, num]);
+                            setSelectedMember(null);
+                          }
+                        }}
+                        className="px-3 py-2 rounded-lg font-medium text-sm bg-amber-600 hover:bg-amber-700 text-white"
+                      >
+                        🙈 Masquer cette personne de mon arbre
+                      </button>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                        Elle ne sera plus visible dans votre arbre. Vous pourrez la réafficher plus tard via la liste « Personnes masquées ».
+                      </p>
                     </div>
                   )}
-                  <div className="info-item">
-                    <span className="label">Statut:</span>
-                    <span className="value">
-                      {selectedMember.isDeceased ? '🕊️ Décédé' : '❤️ Vivant'}
-                    </span>
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <span className="label">NumeroH:</span>
+                      <span className="value">{getNumeroHForDisplay(selectedMember.numeroH, isCurrentUser)}</span>
+                    </div>
+                    {!isCurrentUser && (
+                      <p className="text-sm text-gray-500 mt-2">Pour l'identification : nom, NumeroH et photo. Les autres informations sont privées.</p>
+                    )}
+                    {isCurrentUser && (
+                      <>
+                        <div className="info-item">
+                          <span className="label">Genre:</span>
+                          <span className="value">{selectedMember.genre}</span>
+                        </div>
+                        <div className="info-item">
+                          <span className="label">Relation:</span>
+                          <span className="value">{getRelationIcon(selectedMember.relation)} {selectedMember.relation}</span>
+                        </div>
+                        <div className="info-item">
+                          <span className="label">Génération:</span>
+                          <span className="value">{selectedMember.generation}</span>
+                        </div>
+                        {selectedMember.dateNaissance && (
+                          <div className="info-item">
+                            <span className="label">Date de naissance:</span>
+                            <span className="value">{new Date(selectedMember.dateNaissance).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        {selectedMember.dateDeces && (
+                          <div className="info-item">
+                            <span className="label">Date de décès:</span>
+                            <span className="value">{new Date(selectedMember.dateDeces).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        <div className="info-item">
+                          <span className="label">Statut:</span>
+                          <span className="value">
+                            {selectedMember.isDeceased ? '🕊️ Décédé' : '❤️ Vivant'}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Statistiques dans une fenêtre modale indépendante */}
       {showStats && (
@@ -846,45 +910,54 @@ export function ArbreGenealogique({ userData, cercleCounts }: ArbreGenealogiqueP
                 <div className="list-view">
                   <h4 className="mt-4 mb-2">📋 Détails des membres</h4>
                   <div className="members-list">
-                    {filteredMembers.map(member => (
-                      <div 
-                        key={member.id}
-                        className={`list-member ${member.isDeceased ? 'deceased' : ''}`}
-                        onClick={() => setSelectedMember(member)}
-                      >
-                        <div className="member-avatar">
-                          {member.photo ? (
-                            <img src={member.photo} alt={member.prenom} />
-                          ) : (
-                            <div className="avatar-placeholder">
-                              {member.prenom.charAt(0)}
+                    {filteredMembers.map(member => {
+                      const isCurrentUser = userData?.numeroH && String(member.numeroH).trim() === String(userData.numeroH).trim();
+                      return (
+                        <div 
+                          key={member.id}
+                          className={`list-member ${member.isDeceased ? 'deceased' : ''}`}
+                          onClick={() => setSelectedMember(member)}
+                        >
+                          <div className="member-avatar">
+                            {member.photo ? (
+                              <img src={member.photo} alt={member.prenom} />
+                            ) : (
+                              <div className="avatar-placeholder">
+                                {member.prenom.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="member-details">
+                            <h4>{member.prenom} {member.nomFamille}</h4>
+                            <p><strong>NumeroH:</strong> {getNumeroHForDisplay(member.numeroH, isCurrentUser)}</p>
+                            {isCurrentUser && (
+                              <>
+                                <p><strong>Relation:</strong> {getRelationIcon(member.relation)} {member.relation}</p>
+                                <p><strong>Génération:</strong> {member.generation}</p>
+                                <p><strong>Genre:</strong> {member.genre}</p>
+                                {member.dateNaissance && (
+                                  <p><strong>Né:</strong> {new Date(member.dateNaissance).toLocaleDateString()}</p>
+                                )}
+                                {member.dateDeces && (
+                                  <p><strong>Décédé:</strong> {new Date(member.dateDeces).toLocaleDateString()}</p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          
+                          {isCurrentUser && (
+                            <div className="member-status">
+                              {member.isDeceased ? (
+                                <span className="status deceased">🕊️ Décédé</span>
+                              ) : (
+                                <span className="status alive">❤️ Vivant</span>
+                              )}
                             </div>
                           )}
                         </div>
-                        
-                        <div className="member-details">
-                          <h4>{member.prenom} {member.nomFamille}</h4>
-                          <p><strong>NumeroH:</strong> {member.numeroH}</p>
-                          <p><strong>Relation:</strong> {getRelationIcon(member.relation)} {member.relation}</p>
-                          <p><strong>Génération:</strong> {member.generation}</p>
-                          <p><strong>Genre:</strong> {member.genre}</p>
-                          {member.dateNaissance && (
-                            <p><strong>Né:</strong> {new Date(member.dateNaissance).toLocaleDateString()}</p>
-                          )}
-                          {member.dateDeces && (
-                            <p><strong>Décédé:</strong> {new Date(member.dateDeces).toLocaleDateString()}</p>
-                          )}
-                        </div>
-                        
-                        <div className="member-status">
-                          {member.isDeceased ? (
-                            <span className="status deceased">🕊️ Décédé</span>
-                          ) : (
-                            <span className="status alive">❤️ Vivant</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

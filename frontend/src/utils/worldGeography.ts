@@ -1422,6 +1422,21 @@ export function getAllCountries(): GeographicLocation[] {
   return list;
 }
 
+/** Déduit le code continent et le code région (1ère région du pays) à partir du code pays. Pour la génération du NumeroH avec saisie libre sous-préf./quartier. */
+export function getContinentAndRegionByCountry(countryCode: string): { continentCode: string; regionCode: string } {
+  for (const continent of WORLD_GEOGRAPHY) {
+    const country = continent.children?.find((c) => c.code === countryCode);
+    if (country) {
+      const firstRegion = country.children?.[0];
+      return {
+        continentCode: continent.code,
+        regionCode: firstRegion?.code || 'R1'
+      };
+    }
+  }
+  return { continentCode: 'C1', regionCode: 'R1' };
+}
+
 /** Toutes les sous-préfectures d’un pays. Pour formulaire simplifié après choix du pays. */
 export function getSousPrefecturesByCountry(countryCode: string): GeographicLocation[] {
   const country = WORLD_GEOGRAPHY.flatMap(c => c.children || []).find(p => p.code === countryCode);

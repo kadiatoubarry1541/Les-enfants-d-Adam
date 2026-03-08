@@ -8,6 +8,7 @@ import {
   type GeographicLocation
 } from '../utils/worldGeography';
 import { getCountryFlag, getContinentIcon, getRegionIcon } from '../utils/countryFlags';
+import { AudioRecorder } from '../components/AudioRecorder';
 
 interface UserData {
   numeroH: string;
@@ -52,8 +53,8 @@ function DevelopmentBlock({ scope }: { scope: string }) {
         🌱 Développement – {scope}
       </h3>
       <p className="text-[11px] sm:text-xs md:text-sm text-slate-600">
-        Espace réservé pour suivre et organiser le <strong>développement</strong> de cette partie de Terre Adam
-        (projets, améliorations, actions à venir). Ce bloc sera le même dans chaque page de Terre Adam.
+        Espace pour échanger et organiser le <strong>développement</strong> local : projets, améliorations,
+        actions à venir. Les gens du même quartier se retrouvent ici pour en parler ensemble.
       </p>
     </div>
   );
@@ -89,8 +90,6 @@ export default function TerreAdam() {
     category: 'information' as string,
     mediaFile: null as File | null
   });
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   // ✅ Vérifier si l'utilisateur est journaliste
@@ -153,8 +152,10 @@ export default function TerreAdam() {
       setIsJournalist(journalist);
       if (admin) setFilterScope('all');
       
-      // ✅ Dynamiquement renommer le label du quartier
-      const quartierName = user.quartierCode ? findLocationByCode(user.quartierCode)?.name : 'Quartier';
+      // ✅ Dynamiquement renommer le label du quartier (code géo ou saisie libre)
+      const quartierName = user.quartierCode
+        ? (findLocationByCode(user.quartierCode)?.name || user.lieu1 || user.quartier)
+        : (user.lieu1 || user.quartier || 'Quartier');
       setTabLabels(quartierName || 'Quartier');
 
       // ✅ Choisir automatiquement le bon onglet de résidence:
@@ -298,39 +299,6 @@ export default function TerreAdam() {
     return c ? c.label : 'Information';
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      recorder.onstop = () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], 'audio-recording.webm', { type: 'audio/webm' });
-        setNewMessage({ ...newMessage, messageType: 'audio', mediaFile: audioFile });
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Erreur accès micro:', error);
-      alert('Impossible d\'accéder au micro. Vérifiez les permissions.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
   const sendMessage = async () => {
     if (!selectedGroup) return;
     
@@ -422,7 +390,9 @@ export default function TerreAdam() {
                 <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 break-words">
                   Terre ADAM {userContinent?.name ? `- ${userContinent.name}` : ''}
                 </h1>
-                <p className="mt-0.5 sm:mt-1 md:mt-2 text-[10px] sm:text-xs md:text-sm text-gray-600 break-words"></p>
+                <p className="mt-0.5 sm:mt-1 md:mt-2 text-[10px] sm:text-xs md:text-sm text-gray-600 break-words">
+                  Page d’information : les gens du même quartier se retrouvent ici pour échanger sur le développement local (projets, actions, vie du quartier).
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -544,7 +514,7 @@ export default function TerreAdam() {
                         ];
                         const code = codes[slotNum - 1] || null;
                         const loc = code ? findLocationByCode(code) : null;
-                        const name = loc?.name || null;
+                        const name = loc?.name || code || null;
 
                         return (
                           <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4 sm:p-5 overflow-hidden">
@@ -858,7 +828,6 @@ export default function TerreAdam() {
                                       value={newMessage.messageType}
                                       onChange={(e) => {
                                         setNewMessage({...newMessage, messageType: e.target.value as any, mediaFile: null});
-                                        if (e.target.value !== 'audio' && isRecording) stopRecording();
                                       }}
                                       className="px-2 py-2 border border-gray-300 rounded-lg bg-white text-sm"
                                     >
@@ -883,50 +852,17 @@ export default function TerreAdam() {
                                       />
                                     ) : newMessage.messageType === 'audio' ? (
                                       <div className="flex gap-2 flex-1 items-center">
-                                        {!isRecording && !newMessage.mediaFile ? (
-                                          <>
-                                            <button
-                                              type="button"
-                                              onClick={startRecording}
-                                              className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center gap-2"
-                                            >
-                                              🎤 Enregistrer
-                                            </button>
-                                            <input
-                                              type="file"
-                                              accept="audio/*"
-                                              onChange={(e) => {
-                                                const file = e.target.files?.[0] || null;
-                                                if (file) setNewMessage({...newMessage, messageType: 'audio', mediaFile: file});
-                                                else setNewMessage({...newMessage, mediaFile: null});
-                                              }}
-                                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                                            />
-                                          </>
-                                        ) : isRecording ? (
-                                          <div className="flex items-center gap-2 flex-1">
-                                            <div className="flex items-center gap-2 px-4 py-2 bg-red-100 rounded-lg">
-                                              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                                              <span className="text-sm text-red-700">Enregistrement...</span>
-                                            </div>
-                                            <button
-                                              type="button"
-                                              onClick={stopRecording}
-                                              className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                                            >
-                                              ⏹️ Arrêter
-                                            </button>
+                                        {newMessage.mediaFile ? (
+                                          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex-1">
+                                            <span className="text-sm text-green-700 flex-1">🎙️ Audio prêt</span>
+                                            <button type="button" onClick={() => setNewMessage({...newMessage, mediaFile: null})} className="text-red-500 hover:text-red-700 text-xs font-medium">✕ Annuler</button>
                                           </div>
                                         ) : (
-                                          <div className="flex items-center gap-2 flex-1">
-                                            <span className="text-sm text-gray-600">Audio prêt</span>
-                                            <button
-                                              type="button"
-                                              onClick={() => setNewMessage({...newMessage, mediaFile: null})}
-                                              className="text-red-500 hover:text-red-700 text-sm"
-                                            >
-                                              ✕
-                                            </button>
+                                          <div className="flex-1">
+                                            <AudioRecorder maxDuration={120} onAudioRecorded={(blob) => {
+                                              const file = new File([blob], 'vocal.webm', { type: blob.type });
+                                              setNewMessage({...newMessage, messageType: 'audio', mediaFile: file});
+                                            }} />
                                           </div>
                                         )}
                                       </div>

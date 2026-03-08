@@ -83,11 +83,33 @@ export default function Arbre() {
   const [viewerMedia, setViewerMedia] = useState<GalleryItem | null>(null)
   const [galleryView, setGalleryView] = useState<'list' | 'detail'>('list')
 
+  // Personnes masquées dans mon arbre (je ne les vois plus)
+  const [treeHidden, setTreeHidden] = useState<string[]>([])
+
 useEffect(() => {
   const sessionData = JSON.parse(localStorage.getItem('session_user') || '{}')
   const u = sessionData.userData || sessionData
   if (u?.numeroH) setUser(u)
 }, [])
+
+useEffect(() => {
+  const loadTreeHidden = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me/tree-hidden`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && Array.isArray(data.treeHidden)) setTreeHidden(data.treeHidden)
+      }
+    } catch {
+      // ignore
+    }
+  }
+  loadTreeHidden()
+}, [API_BASE])
 
 useEffect(() => {
   const loadPartnerAndParents = async () => {
@@ -426,6 +448,29 @@ const enhancedUser: UserData = useMemo(() => {
               userData={enhancedUser}
               cercleCounts={cercleCounts}
               onOpenGallery={openGallery}
+              treeHidden={treeHidden}
+              onTreeHiddenChange={async (newList) => {
+                setTreeHidden(newList)
+                const token = localStorage.getItem('token')
+                if (!token) return
+                try {
+                  const res = await fetch(`${API_BASE}/api/auth/me/tree-hidden`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ treeHidden: newList })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    if (data.success && Array.isArray(data.treeHidden)) setTreeHidden(data.treeHidden)
+                  }
+                } catch {
+                  const refetch = await fetch(`${API_BASE}/api/auth/me/tree-hidden`, { headers: { Authorization: `Bearer ${token}` } })
+                  if (refetch.ok) {
+                    const data = await refetch.json()
+                    if (data.success && Array.isArray(data.treeHidden)) setTreeHidden(data.treeHidden)
+                  }
+                }
+              }}
             />
           </>
         )}

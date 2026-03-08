@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getNumeroHForDisplay } from '../../utils/auth'
 import { MediaUploader } from '../../components/MediaUploader'
 import { CommunicationHub } from '../../components/CommunicationHub'
 
@@ -527,7 +528,7 @@ export default function Enfants() {
                     <p className="font-semibold text-slate-800">
                       {inv.child ? `${inv.child.prenom} ${inv.child.nomFamille}` : inv.childNumeroH}
                     </p>
-                    <p className="text-sm text-slate-500">{inv.childNumeroH}</p>
+                    <p className="text-sm text-slate-500">{getNumeroHForDisplay(inv.childNumeroH, false)}</p>
                     <p className="text-sm mt-1">
                       {inv.status === 'rejected' ? (
                         <span className="text-red-600 font-medium">❌ Refusé - Désolé</span>
@@ -593,7 +594,7 @@ export default function Enfants() {
                       <p className="font-semibold text-slate-800">
                         {link.child ? `${link.child.prenom} ${link.child.nomFamille}` : link.childNumeroH}
                       </p>
-                      <p className="text-sm text-slate-500">{link.childNumeroH}</p>
+                      <p className="text-sm text-slate-500">{getNumeroHForDisplay(link.childNumeroH, false)}</p>
                       {link.numeroMaternite && (
                         <p className="text-xs text-slate-400">Maternité: {link.numeroMaternite}</p>
                       )}

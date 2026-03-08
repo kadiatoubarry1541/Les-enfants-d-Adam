@@ -373,7 +373,21 @@ User.init({
     defaultValue: 'GNF',
     comment: 'Devise du portefeuille'
   },
-  
+
+  // Visibilité dans l'arbre : ce que les autres voient de moi (name_only | name_photo | name_photo_numeroH)
+  treeVisibility: {
+    type: DataTypes.STRING,
+    defaultValue: 'name_photo_numeroH',
+    field: 'tree_visibility'
+  },
+  // Personnes masquées dans mon arbre (liste de numeroH) : je ne les vois plus dans mon arbre
+  treeHidden: {
+    type: DataTypes.JSON,
+    defaultValue: () => [],
+    field: 'tree_hidden',
+    comment: 'NumeroH des personnes à ne plus afficher dans mon arbre (masquées de ma visibilité)'
+  },
+
   // Métadonnées
   isActive: {
     type: DataTypes.BOOLEAN,

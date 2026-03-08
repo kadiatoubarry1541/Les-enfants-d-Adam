@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
+import { AudioRecorder } from '../components/AudioRecorder';
 
 const API_BASE_URL = config.API_BASE_URL || 'http://localhost:5002/api';
 
@@ -87,10 +88,6 @@ export default function Pays() {
   const [selectedResidenceGroup, setSelectedResidenceGroup] = useState<ResidenceGroup | null>(null);
   const [residenceMessages, setResidenceMessages] = useState<any[]>([]);
   const [regionMessages, setRegionMessages] = useState<any[]>([]);
-  const [isRecordingResidence, setIsRecordingResidence] = useState(false);
-  const [isRecordingRegion, setIsRecordingRegion] = useState(false);
-  const [mediaRecorderResidence, setMediaRecorderResidence] = useState<MediaRecorder | null>(null);
-  const [mediaRecorderRegion, setMediaRecorderRegion] = useState<MediaRecorder | null>(null);
   const messagesEndRefResidence = useRef<HTMLDivElement>(null);
   const messagesEndRefRegion = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -691,82 +688,6 @@ export default function Pays() {
     }
   };
 
-  // Fonction pour démarrer l'enregistrement audio (résidence)
-  const startRecordingResidence = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], 'audio-recording.webm', { type: 'audio/webm' });
-        setNewResidencePost({ ...newResidencePost, type: 'audio', mediaFile: audioFile });
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      recorder.start();
-      setMediaRecorderResidence(recorder);
-      setIsRecordingResidence(true);
-    } catch (error) {
-      console.error('Erreur lors de l\'accès au micro:', error);
-      alert('Impossible d\'accéder au micro. Vérifiez les permissions.');
-    }
-  };
-
-  // Fonction pour arrêter l'enregistrement audio (résidence)
-  const stopRecordingResidence = () => {
-    if (mediaRecorderResidence && isRecordingResidence) {
-      mediaRecorderResidence.stop();
-      setIsRecordingResidence(false);
-      setMediaRecorderResidence(null);
-    }
-  };
-
-  // Fonction pour démarrer l'enregistrement audio (région)
-  const startRecordingRegion = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], 'audio-recording.webm', { type: 'audio/webm' });
-        setNewRegionPost({ ...newRegionPost, type: 'audio', mediaFile: audioFile });
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      recorder.start();
-      setMediaRecorderRegion(recorder);
-      setIsRecordingRegion(true);
-    } catch (error) {
-      console.error('Erreur lors de l\'accès au micro:', error);
-      alert('Impossible d\'accéder au micro. Vérifiez les permissions.');
-    }
-  };
-
-  // Fonction pour arrêter l'enregistrement audio (région)
-  const stopRecordingRegion = () => {
-    if (mediaRecorderRegion && isRecordingRegion) {
-      mediaRecorderRegion.stop();
-      setIsRecordingRegion(false);
-      setMediaRecorderRegion(null);
-    }
-  };
-
   useEffect(() => {
     if (selectedResidenceGroup) {
       loadResidenceMessages();
@@ -1021,9 +942,6 @@ export default function Pays() {
                           value={newResidencePost.type}
                             onChange={(e) => {
                               setNewResidencePost({...newResidencePost, type: e.target.value as any, mediaFile: null});
-                              if (e.target.value !== 'audio' && isRecordingResidence) {
-                                stopRecordingResidence();
-                              }
                             }}
                             className="pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 appearance-none cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[80px]"
                         >
@@ -1063,57 +981,21 @@ export default function Pays() {
                               className="w-full px-4 py-2.5 bg-gray-100 border border-gray-300 rounded-full text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-colors"
                         />
                           ) : newResidencePost.type === 'audio' ? (
-                            <div className="flex gap-2 items-center">
-                              {!isRecordingResidence && !newResidencePost.mediaFile ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={startRecordingResidence}
-                                    className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center gap-2 text-sm font-medium"
-                                  >
-                                    🎤 Enregistrer
-                                  </button>
-                          <input
-                            type="file"
-                                    accept="audio/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0] || null;
-                                      if (file) {
-                                        setNewResidencePost({...newResidencePost, type: 'audio', mediaFile: file});
-                                      } else {
-                                        setNewResidencePost({...newResidencePost, mediaFile: null});
-                                      }
-                                    }}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                                  />
-                                </>
-                              ) : isRecordingResidence ? (
-                                <div className="flex items-center gap-2 flex-1">
-                                  <div className="flex items-center gap-2 px-4 py-2 bg-red-100 rounded-lg">
-                                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                                    <span className="text-sm text-red-700 font-medium">Enregistrement...</span>
-                        </div>
-                      <button
-                                    type="button"
-                                    onClick={stopRecordingResidence}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors text-sm font-medium"
-                      >
-                                    ⏹️ Arrêter
-                      </button>
-                    </div>
+                            <div className="flex gap-2 items-center flex-1">
+                              {newResidencePost.mediaFile ? (
+                                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex-1">
+                                  <span className="text-sm text-green-700 flex-1">🎙️ Audio prêt</span>
+                                  <button type="button" onClick={() => setNewResidencePost({...newResidencePost, mediaFile: null})} className="text-red-500 hover:text-red-700 text-xs font-medium">✕ Annuler</button>
+                                </div>
                               ) : (
-                                <div className="flex items-center gap-2 flex-1">
-                                  <span className="text-sm text-gray-600 font-medium">Audio prêt</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setNewResidencePost({...newResidencePost, mediaFile: null})}
-                                    className="text-red-500 hover:text-red-700 text-sm font-medium"
-                                  >
-                                    ✕
-                            </button>
-                          </div>
-                            )}
-                          </div>
+                                <div className="flex-1">
+                                  <AudioRecorder maxDuration={120} onAudioRecorded={(blob) => {
+                                    const file = new File([blob], 'vocal.webm', { type: blob.type });
+                                    setNewResidencePost({...newResidencePost, type: 'audio', mediaFile: file});
+                                  }} />
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <input
                               type="file"
@@ -1293,9 +1175,6 @@ export default function Pays() {
                           value={newRegionPost.type}
                           onChange={(e) => {
                             setNewRegionPost({...newRegionPost, type: e.target.value as any, mediaFile: null});
-                            if (e.target.value !== 'audio' && isRecordingRegion) {
-                              stopRecordingRegion();
-                            }
                           }}
                           className="pl-10 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 appearance-none cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[80px]"
                       >
@@ -1335,57 +1214,21 @@ export default function Pays() {
                             className="w-full px-4 py-2.5 bg-gray-100 border border-gray-300 rounded-full text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-colors"
                           />
                         ) : newRegionPost.type === 'audio' ? (
-                          <div className="flex gap-2 items-center">
-                            {!isRecordingRegion && !newRegionPost.mediaFile ? (
-                              <>
-          <button
-                                  type="button"
-                                  onClick={startRecordingRegion}
-                                  className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center gap-2 text-sm font-medium"
-          >
-                                  🎤 Enregistrer
-          </button>
-                <input
-                                  type="file"
-                                  accept="audio/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    if (file) {
-                                      setNewRegionPost({...newRegionPost, type: 'audio', mediaFile: file});
-                                    } else {
-                                      setNewRegionPost({...newRegionPost, mediaFile: null});
-                                    }
-                                  }}
-                                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                                />
-                              </>
-                            ) : isRecordingRegion ? (
-                              <div className="flex items-center gap-2 flex-1">
-                                <div className="flex items-center gap-2 px-4 py-2 bg-red-100 rounded-lg">
-                                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                                  <span className="text-sm text-red-700 font-medium">Enregistrement...</span>
-              </div>
-              <button
-                                  type="button"
-                                  onClick={stopRecordingRegion}
-                                  className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors text-sm font-medium"
-              >
-                                  ⏹️ Arrêter
-              </button>
+                          <div className="flex gap-2 items-center flex-1">
+                            {newRegionPost.mediaFile ? (
+                              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex-1">
+                                <span className="text-sm text-green-700 flex-1">🎙️ Audio prêt</span>
+                                <button type="button" onClick={() => setNewRegionPost({...newRegionPost, mediaFile: null})} className="text-red-500 hover:text-red-700 text-xs font-medium">✕ Annuler</button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 flex-1">
-                                <span className="text-sm text-gray-600 font-medium">Audio prêt</span>
-              <button
-                                  type="button"
-                                  onClick={() => setNewRegionPost({...newRegionPost, mediaFile: null})}
-                                  className="text-red-500 hover:text-red-700 text-sm font-medium"
-              >
-                                  ✕
-              </button>
-        </div>
-      )}
-                </div>
+                              <div className="flex-1">
+                                <AudioRecorder maxDuration={120} onAudioRecorded={(blob) => {
+                                  const file = new File([blob], 'vocal.webm', { type: blob.type });
+                                  setNewRegionPost({...newRegionPost, type: 'audio', mediaFile: file});
+                                }} />
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <input
                             type="file"
