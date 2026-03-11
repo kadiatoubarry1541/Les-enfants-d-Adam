@@ -9,6 +9,11 @@ interface ProAccount {
   city: string;
   status: string;
   created_at: string;
+  subscriptionStatus?: "never_paid" | "active" | "overdue" | "blocked";
+  subscriptionValidUntil?: string | null;
+  billingInfo?: {
+    proPaymentDetails?: string;
+  } | null;
 }
 
 const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
@@ -62,6 +67,19 @@ const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   pending:  { label: "En attente d'approbation", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" },
   approved: { label: "Approuvé ✓",               cls: "bg-green-100  text-green-700  dark:bg-green-900/40  dark:text-green-300"  },
   rejected: { label: "Rejeté",                   cls: "bg-red-100    text-red-700    dark:bg-red-900/40    dark:text-red-300"    },
+};
+
+const SUBSCRIPTION_LABELS: Record<string, string> = {
+  never_paid: "🧾 En attente de paiement",
+  active:     "✅ Abonnement actif",
+  overdue:    "⚠️ En retard de paiement",
+  blocked:    "⛔ Compte bloqué (impayé)",
+};
+
+// Coordonnées de paiement de l'administrateur (à adapter avec tes vrais numéros)
+const ADMIN_PAYMENT_INFO = {
+  orangeMoney: "Orange Money: 000000000",
+  bank:        "Compte bancaire: IBAN / RIB ici",
 };
 
 export default function MesComptesPro() {
@@ -141,6 +159,8 @@ export default function MesComptesPro() {
               const btnClass   = TYPE_TO_BTN[acc.type]      || "bg-blue-600 hover:bg-blue-700";
               const badgeClass = TYPE_TO_BADGE[acc.type]    || "bg-gray-100 text-gray-700";
               const svcLabel   = TYPE_TO_SERVICE_LABEL[acc.type] || "";
+              const subStatus  = acc.subscriptionStatus || "never_paid";
+              const canOpenDashboard = acc.status === "approved" && subStatus === "active";
 
               return (
                 <div
@@ -171,19 +191,47 @@ export default function MesComptesPro() {
                     </p>
                   </div>
 
-                  {/* Statut */}
-                  <span className={`px-3 py-1.5 text-xs font-semibold rounded-full flex-shrink-0 ${statusInfo.cls}`}>
-                    {statusInfo.label}
-                  </span>
+                  {/* Statut compte + abonnement */}
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${statusInfo.cls}`}>
+                      {statusInfo.label}
+                    </span>
+                    {acc.status === "approved" && (
+                      <span className="px-3 py-1 text-[11px] font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                        {SUBSCRIPTION_LABELS[subStatus] || "Abonnement"}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Bouton dashboard */}
-                  {acc.status === "approved" && (
+                  {canOpenDashboard && (
                     <button
                       onClick={() => navigate(`/espace-pro/${acc.id}`)}
                       className={`min-h-[42px] px-5 py-2 ${btnClass} text-white text-sm font-semibold rounded-xl transition-colors flex-shrink-0 flex items-center gap-2`}
                     >
                       📊 Mon dashboard
                     </button>
+                  )}
+
+                  {acc.status === "approved" && !canOpenDashboard && (
+                    <div className="flex flex-col gap-2 flex-shrink-0 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 px-3 py-2 rounded-xl max-w-[260px] text-xs">
+                      <p className="font-semibold">
+                        🔒 Dashboard bloqué. Merci de régler votre abonnement auprès de l'administrateur.
+                      </p>
+                      <div className="text-[11px] text-red-900/80 dark:text-red-100">
+                        <p className="font-semibold mb-1">1. Payer votre abonnement</p>
+                        <p>{ADMIN_PAYMENT_INFO.orangeMoney}</p>
+                        <p>{ADMIN_PAYMENT_INFO.bank}</p>
+                      </div>
+                      <div className="text-[11px] text-red-900/80 dark:text-red-100">
+                        <p className="font-semibold mb-1">2. Enregistrer vos coordonnées de paiement</p>
+                        <p>
+                          Dans la page <span className="font-semibold">Inscription Pro</span> (édition du compte),
+                          indiquez votre numéro Orange Money ou compte bancaire. L'administrateur pourra alors
+                          vous facturer automatiquement et activer votre abonnement.
+                        </p>
+                      </div>
+                    </div>
                   )}
 
                   {acc.status === "pending" && (

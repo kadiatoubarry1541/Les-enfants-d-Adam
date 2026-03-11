@@ -544,7 +544,11 @@ const canCreateCourse = async (req, res, next) => {
     const user = req.user;
     
     // L'admin peut toujours créer des cours
-    if (user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0') {
+    if (
+      user.role === 'admin' ||
+      user.role === 'super-admin' ||
+      user.numeroH === 'G7C7P7R7E7F7 7'
+    ) {
       return next();
     }
     

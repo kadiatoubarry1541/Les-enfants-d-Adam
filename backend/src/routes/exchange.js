@@ -20,7 +20,15 @@ async function canManageSuppliers(user) {
   if (!user) return false;
   if (isGlobalAdmin(user)) return true;
   const sectors = await getManagedSectorsForUser(PageAdmin, user.numeroH);
-  return sectors.includes('echange');
+  // Autoriser l'admin du secteur Échanges global
+  // ainsi que les admins dédiés aux sous-niveaux primaire/secondaire/tertiaire.
+  return sectors.some(
+    (s) =>
+      s === 'echange' ||
+      s === 'echange_primaire' ||
+      s === 'echange_secondaire' ||
+      s === 'echange_tertiaire'
+  );
 }
 
 const router = express.Router();

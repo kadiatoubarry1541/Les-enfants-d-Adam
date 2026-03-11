@@ -11,7 +11,7 @@ class ProfessionalAccount extends Model {
 
   static async getApprovedByType(type) {
     return await this.findAll({
-      where: { type, status: 'approved', isActive: true },
+      where: { type, status: 'approved', isActive: true, subscriptionStatus: 'active' },
       order: [['name', 'ASC']]
     });
   }
@@ -27,6 +27,7 @@ class ProfessionalAccount extends Model {
     const where = {
       status: 'approved',
       isActive: true,
+      subscriptionStatus: 'active',
       [Op.or]: [
         { name: { [Op.iLike]: `%${query}%` } },
         { description: { [Op.iLike]: `%${query}%` } },
@@ -45,7 +46,20 @@ ProfessionalAccount.init({
     primaryKey: true
   },
   type: {
-    type: DataTypes.ENUM('clinic', 'security_agency', 'journalist', 'enterprise', 'school', 'supplier', 'scientist', 'ngo'),
+    type: DataTypes.ENUM(
+      'clinic',
+      'security_agency',
+      'journalist',
+      'enterprise',
+      'school',
+      'supplier',
+      'scientist',
+      'ngo',
+      // Types spécifiques au secteur Échanges
+      'vendor',      // vendeurs / détaillants
+      'producer',    // entreprises de production
+      'broker'       // démarcheurs / agents pour location de maisons
+    ),
     allowNull: false
   },
   name: {
@@ -132,6 +146,28 @@ ProfessionalAccount.init({
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  // Statut d'abonnement / de paiement du compte pro
+  subscriptionStatus: {
+    // never_paid : approuvé mais jamais payé
+    // active     : abonnement en règle, visible et utilisable
+    // overdue    : en retard mais encore visible (optionnel pour plus tard)
+    // blocked    : bloqué pour impayés
+    type: DataTypes.ENUM('never_paid', 'active', 'overdue', 'blocked'),
+    allowNull: false,
+    defaultValue: 'never_paid',
+    field: 'subscription_status'
+  },
+  subscriptionValidUntil: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'subscription_valid_until'
+  },
+  // Coordonnées de paiement fournies par le professionnel (Orange Money / compte bancaire)
+  billingInfo: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Informations de paiement du professionnel (jamais exposées publiquement)'
   }
 }, {
   sequelize,
@@ -144,7 +180,8 @@ ProfessionalAccount.init({
     { fields: ['type'] },
     { fields: ['status'] },
     { fields: ['owner_numero_h'] },
-    { fields: ['type', 'status'] }
+    { fields: ['type', 'status'] },
+    { fields: ['subscription_status'] }
   ]
 });
 

@@ -5,13 +5,16 @@ interface QuickMediaCaptureProps {
   onClose?: () => void;
   allowedTypes?: ('photo' | 'video' | 'audio')[];
   autoPublish?: boolean;
+  /** Durée max pour vidéo/audio en secondes (défaut 60s, toujours ≤ 3 min) */
+  maxDurationSeconds?: number;
 }
 
 export function QuickMediaCapture({ 
   onCapture, 
   onClose,
   allowedTypes = ['photo', 'video', 'audio'],
-  autoPublish = true
+  autoPublish = true,
+  maxDurationSeconds = 60
 }: QuickMediaCaptureProps) {
   const [mediaType, setMediaType] = useState<'photo' | 'video' | 'audio'>('photo');
   const [isRecording, setIsRecording] = useState(false);
@@ -25,6 +28,7 @@ export function QuickMediaCapture({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<number | null>(null);
 
   // Nettoyer les ressources
   useEffect(() => {
@@ -34,6 +38,9 @@ export function QuickMediaCapture({
       }
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
+      }
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
       }
     };
   }, [previewUrl]);
@@ -126,6 +133,18 @@ export function QuickMediaCapture({
     
     recorder.start();
     setIsRecording(true);
+
+    // Couper automatiquement à la durée max configurée (sécurité 3 min max)
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+    }
+    const safeMaxMs = Math.min(maxDurationSeconds, 180) * 1000;
+    timerRef.current = window.setTimeout(() => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+      }
+    }, safeMaxMs);
   };
 
   // Arrêter l'enregistrement
@@ -133,6 +152,10 @@ export function QuickMediaCapture({
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     }
   };
 

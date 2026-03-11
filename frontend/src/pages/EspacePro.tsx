@@ -15,6 +15,8 @@ interface ProAccount {
   specialties: string[];
   status: string;
   ownerNumeroH: string;
+  subscriptionStatus?: "never_paid" | "active" | "overdue" | "blocked";
+  subscriptionValidUntil?: string | null;
 }
 
 interface Appointment {
@@ -46,6 +48,9 @@ const TYPE_TO_SERVICE: Record<string, string> = {
   ngo:              "solidarite",
   security_agency:  "securite",
   supplier:         "echanges",
+  vendor:           "echanges",
+  producer:         "echanges",
+  broker:           "echanges",
   journalist:       "echanges",
 };
 
@@ -167,7 +172,10 @@ const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
   journalist:      { label: "Journaliste / Média",           icon: "📰" },
   enterprise:      { label: "Entreprise",                    icon: "🏢" },
   school:          { label: "École / Professeur",            icon: "🎓" },
-  supplier:        { label: "Fournisseur",                   icon: "📦" },
+  supplier:        { label: "Fournisseur / Grossiste",       icon: "📦" },
+  vendor:          { label: "Vendeur",                       icon: "🛒" },
+  producer:        { label: "Entreprise de production",      icon: "🏭" },
+  broker:          { label: "Démarcheur / Location",         icon: "🏘️" },
   scientist:       { label: "Chercheur / Scientifique",      icon: "🔬" },
   ngo:             { label: "ONG / Association",             icon: "🤝" },
 };
@@ -377,6 +385,33 @@ export default function EspacePro() {
       </div>
     </div>
   );
+
+  // Si l'abonnement n'est pas actif, on bloque tout le dashboard pro
+  if (account.status === "approved" && account.subscriptionStatus && account.subscriptionStatus !== "active") {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-red-200 dark:border-red-800 p-6 text-center">
+          <div className="text-5xl mb-3">🔒</div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Accès à votre dashboard bloqué
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            Votre compte professionnel est approuvé mais votre <strong>abonnement n'est pas réglé</strong> ou a expiré.
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Merci de contacter l'administrateur pour régulariser votre situation. Tant que le paiement n'est pas validé, 
+            votre profil ne sera pas visible dans les recherches et vous ne pourrez pas utiliser ce tableau de bord.
+          </p>
+          <button
+            onClick={() => navigate("/mes-comptes-pro")}
+            className="min-h-[40px] px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl"
+          >
+            ← Retour à mes comptes
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   /* ============================================================
      RENDU PRINCIPAL

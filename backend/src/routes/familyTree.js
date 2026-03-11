@@ -408,7 +408,10 @@ router.put('/set-family-heads', async (req, res) => {
 
     // Vérifier que l'utilisateur est un chef de famille actuel ou admin
     const isCurrentHead = tree.chefFamille1 === user.numeroH || tree.chefFamille2 === user.numeroH;
-    const isAdmin = user.role === 'admin' || user.role === 'super-admin' || user.numeroH === 'G0C0P0R0E0F0 0';
+    const isAdmin =
+      user.role === 'admin' ||
+      user.role === 'super-admin' ||
+      user.numeroH === 'G7C7P7R7E7F7 7';
 
     if (!isCurrentHead && !isAdmin) {
       return res.status(403).json({

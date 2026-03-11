@@ -62,12 +62,12 @@ router.post('/games', async (req, res) => {
       });
     }
     
-    // L'admin principal G0C0P0R0E0F0 0 bypass toutes les vérifications
-    const isSuperMasterAdmin = req.user.numeroH === 'G0C0P0R0E0F0 0';
+    // L'admin principal (G7...) bypass toutes les vérifications
+    const isSuperMasterAdmin = req.user.numeroH === 'G7C7P7R7E7F7 7';
     
     const createdBy = req.user.numeroH;
 
-    // L'admin principal G0C0P0R0E0F0 0 bypass toutes les vérifications
+    // L'admin principal (G7...) bypass toutes les vérifications
     if (!isSuperMasterAdmin) {
       // Vérifier que les modèles sont initialisés - sinon les initialiser
       if (!Game || !GameDeposit || !GamePlayer) {

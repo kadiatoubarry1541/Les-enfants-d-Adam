@@ -58,7 +58,7 @@ export default function EchangeSecondaire() {
   const [showSupplierRegistration, setShowSupplierRegistration] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ExchangeProduct | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [activeStyleTab, setActiveStyleTab] = useState<'vetements' | 'chaussures' | 'sacs' | 'numerique'>('vetements');
+  const [activeStyleTab, setActiveStyleTab] = useState<'mode' | 'numerique' | 'vehicules'>('mode');
   const navigate = useNavigate();
 
   const [newProduct, setNewProduct] = useState({
@@ -243,6 +243,23 @@ export default function EchangeSecondaire() {
 
   const createProduct = async () => {
     try {
+      // Validation minimale avant envoi
+      if (
+        !newProduct.title.trim() ||
+        !newProduct.category ||
+        !newProduct.price ||
+        !newProduct.location.trim()
+      ) {
+        alert("Remplissez au minimum le titre, la catégorie, le prix et la localisation.");
+        return;
+      }
+      const hasVideo = newProduct.videos.length > 0;
+      const hasImage = newProduct.images.length > 0 || !!newProduct.photoForAudio;
+      if (!hasVideo && !hasImage) {
+        alert("Ajoutez au moins une photo du produit ou une vidéo de présentation.");
+        return;
+      }
+
       const formData = new FormData();
       formData.append('title', newProduct.title);
       formData.append('description', newProduct.description);
@@ -400,43 +417,42 @@ export default function EchangeSecondaire() {
       return [];
     }
     
-    if (activeStyleTab === 'vetements') {
+    if (activeStyleTab === 'mode') {
       return products.filter(p => {
         if (!p) return false;
-        const cat = (p.category || '').toLowerCase();
+        const cat = ((p.subcategory || p.category) || '').toLowerCase();
         const title = (p.title || '').toLowerCase();
         return cat.includes('vêtement') || cat.includes('vetement') || cat.includes('textile') || cat.includes('habillement') ||
+               cat.includes('chaussure') || cat.includes('sac') || cat.includes('accessoire') || cat.includes('mode') ||
                title.includes('vêtement') || title.includes('chemise') || title.includes('pantalon') || title.includes('robe') ||
-               title.includes('t-shirt') || title.includes('pull') || title.includes('jupe');
-      });
-    } else if (activeStyleTab === 'chaussures') {
-      return products.filter(p => {
-        if (!p) return false;
-        const cat = (p.category || '').toLowerCase();
-        const title = (p.title || '').toLowerCase();
-        return cat.includes('chaussure') || cat.includes('chaussures') ||
+               title.includes('t-shirt') || title.includes('pull') || title.includes('jupe') ||
                title.includes('chaussure') || title.includes('basket') || title.includes('soulier') ||
-               title.includes('sneaker') || title.includes('sandale');
+               title.includes('sneaker') || title.includes('sandale') ||
+               title.includes('sac') || title.includes('accessoire') || title.includes('valise') || title.includes('bagage');
       });
-    } else if (activeStyleTab === 'sacs') {
+    } else if (activeStyleTab === 'vehicules') {
       return products.filter(p => {
         if (!p) return false;
-        const cat = (p.category || '').toLowerCase();
+        const cat = ((p.subcategory || p.category) || '').toLowerCase();
         const title = (p.title || '').toLowerCase();
-        return cat.includes('sac') || cat.includes('accessoire') || cat.includes('accessoires') ||
-               title.includes('sac') || title.includes('porte') || title.includes('accessoire') ||
-               title.includes('valise') || title.includes('bagage');
+        return cat.includes('véhicule') || cat.includes('vehicule') || cat.includes('voiture') || cat.includes('moto') ||
+               cat.includes('scooter') || cat.includes('vélo') || cat.includes('velo') || cat.includes('camion') ||
+               cat.includes('auto') || cat.includes('transport') ||
+               title.includes('véhicule') || title.includes('voiture') || title.includes('moto') ||
+               title.includes('camion') || title.includes('scooter') || title.includes('vélo') ||
+               title.includes('velo') || title.includes('auto') || title.includes('berline') ||
+               title.includes('suv') || title.includes('4x4');
       });
     } else if (activeStyleTab === 'numerique') {
-      // Regrouper téléphones et ordinateurs dans "Numérique"
       return products.filter(p => {
         if (!p) return false;
-        const cat = (p.category || '').toLowerCase();
+        const cat = ((p.subcategory || p.category) || '').toLowerCase();
         const title = (p.title || '').toLowerCase();
-        return cat.includes('téléphone') || cat.includes('telephone') || cat.includes('phone') ||
+        return cat.includes('téléphone') || cat.includes('telephone') || cat.includes('phone') || cat.includes('électronique') ||
+               cat.includes('electronique') || cat.includes('ordinateur') || cat.includes('pc') || cat.includes('tablette') ||
+               cat.includes('laptop') || cat.includes('numérique') || cat.includes('numerique') ||
                title.includes('téléphone') || title.includes('smartphone') || title.includes('mobile') ||
                title.includes('iphone') || title.includes('samsung') || title.includes('huawei') ||
-               cat.includes('ordinateur') || cat.includes('pc') || cat.includes('tablette') || cat.includes('laptop') ||
                title.includes('ordinateur') || title.includes('pc') || title.includes('laptop') ||
                title.includes('tablette') || title.includes('ipad') || title.includes('macbook');
       });
@@ -468,36 +484,26 @@ export default function EchangeSecondaire() {
 
       {/* Navigation Style */}
       <div className="bg-white rounded-lg shadow border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="grid grid-cols-3 gap-2 mb-3">
           <button
-            onClick={() => setActiveStyleTab('vetements')}
+            onClick={() => setActiveStyleTab('mode')}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeStyleTab === 'vetements'
+              activeStyleTab === 'mode'
                 ? 'bg-orange-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            👕 Vêtements
+            👗 Mode
           </button>
           <button
-            onClick={() => setActiveStyleTab('chaussures')}
+            onClick={() => setActiveStyleTab('vehicules')}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeStyleTab === 'chaussures'
+              activeStyleTab === 'vehicules'
                 ? 'bg-orange-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            👟 Chaussures
-          </button>
-          <button
-            onClick={() => setActiveStyleTab('sacs')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeStyleTab === 'sacs'
-                ? 'bg-orange-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            👜 Sacs
+            🚗 Véhicules
           </button>
           <button
             onClick={() => setActiveStyleTab('numerique')}
@@ -558,13 +564,33 @@ export default function EchangeSecondaire() {
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
               >
                 <option value="">Sélectionner une catégorie</option>
-                <option value="Électronique">Électronique</option>
-                <option value="Machinerie">Machinerie</option>
-                <option value="Équipement">Équipement</option>
-                <option value="Automobile">Automobile</option>
-                <option value="Mobilier">Mobilier</option>
-                <option value="Outillage">Outillage</option>
-                <option value="Autre">Autre</option>
+                <optgroup label="👗 Mode">
+                  <option value="Vêtement">Vêtement</option>
+                  <option value="Chaussure">Chaussure</option>
+                  <option value="Sac">Sac</option>
+                  <option value="Accessoire">Accessoire</option>
+                </optgroup>
+                <optgroup label="🚗 Véhicules">
+                  <option value="Voiture">Voiture</option>
+                  <option value="Moto">Moto</option>
+                  <option value="Scooter">Scooter</option>
+                  <option value="Vélo">Vélo</option>
+                  <option value="Camion">Camion</option>
+                  <option value="Autre véhicule">Autre véhicule</option>
+                </optgroup>
+                <optgroup label="💻 Numérique">
+                  <option value="Téléphone">Téléphone</option>
+                  <option value="Ordinateur">Ordinateur</option>
+                  <option value="Tablette">Tablette</option>
+                  <option value="Électronique">Électronique</option>
+                </optgroup>
+                <optgroup label="Autres">
+                  <option value="Machinerie">Machinerie</option>
+                  <option value="Équipement">Équipement</option>
+                  <option value="Mobilier">Mobilier</option>
+                  <option value="Outillage">Outillage</option>
+                  <option value="Autre">Autre</option>
+                </optgroup>
               </select>
             </div>
             <div>
@@ -628,11 +654,11 @@ export default function EchangeSecondaire() {
               </div>
             </div>
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo de présentation (30 s) — toujours possible pour publier un bien</label>
-              <p className="text-xs text-gray-500 mb-2">Enregistrez une vidéo de 30 secondes pour présenter votre bien. L'enregistrement s'arrête automatiquement à 30 s.</p>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo de présentation (jusqu'à 1 minute)</label>
+              <p className="text-xs text-gray-500 mb-2">Enregistrez une courte vidéo (30 secondes à 1 minute) pour présenter votre bien.</p>
               <div className="rounded-xl border-2 border-orange-200 bg-orange-50/50 p-4 mb-4">
                 <VideoRecorder
-                  maxDuration={30}
+                  maxDuration={60}
                   onVideoRecorded={(blob) => {
                     const file = new File([blob], `video-30s-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
                     setNewProduct((prev) => ({ ...prev, videos: [file, ...prev.videos] }));

@@ -129,6 +129,27 @@ export default function GalerieFamily() {
     setUploading(true)
     setError(null)
     try {
+      // Si c'est une vidéo, vérifier que la durée ≤ 3 minutes
+      if (file.type.startsWith('video/')) {
+        const url = URL.createObjectURL(file)
+        const v = document.createElement('video')
+        v.preload = 'metadata'
+        const duration: number = await new Promise((resolve, reject) => {
+          v.onloadedmetadata = () => {
+            resolve(v.duration || 0)
+          }
+          v.onerror = () => reject(new Error('Impossible de lire la vidéo'))
+          v.src = url
+        }).finally(() => {
+          URL.revokeObjectURL(url)
+        })
+        if (duration > 180) {
+          alert('La vidéo est trop longue. Maximum 3 minutes pour la galerie familiale.')
+          setUploading(false)
+          return
+        }
+      }
+
       const formData = new FormData()
       formData.append('media', file)
       const res = await fetch(`${API_BASE}/api/family/shared-gallery/${uploadAlbum}`, {

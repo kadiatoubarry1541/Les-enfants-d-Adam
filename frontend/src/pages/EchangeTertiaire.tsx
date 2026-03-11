@@ -127,6 +127,23 @@ export default function EchangeTertiaire() {
 
   const createProduct = async () => {
     try {
+      // Validation minimale avant envoi
+      if (
+        !newProduct.title.trim() ||
+        !newProduct.subcategory ||
+        !newProduct.price ||
+        !newProduct.location.trim()
+      ) {
+        alert("Remplissez au minimum le titre, le type, le prix et la localisation.");
+        return;
+      }
+      const hasVideo = newProduct.videos.length > 0;
+      const hasImage = newProduct.images.length > 0 || !!newProduct.photoForAudio;
+      if (!hasVideo && !hasImage) {
+        alert("Ajoutez au moins une photo du bien ou une vidéo de présentation.");
+        return;
+      }
+
       const formData = new FormData();
       formData.append('title', newProduct.title);
       formData.append('description', newProduct.description);
@@ -358,14 +375,14 @@ export default function EchangeTertiaire() {
             </div>
             <div className="lg:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Vidéo de présentation (30 s) — toujours possible pour publier un bien
+                Vidéo de présentation (jusqu'à 1 minute)
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Enregistrez une vidéo de 30 secondes pour présenter votre bien. L'enregistrement s'arrête automatiquement à 30 s.
+                Enregistrez une courte vidéo (30 secondes à 1 minute) pour présenter votre bien.
               </p>
               <div className="rounded-xl border-2 border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/20 p-4 mb-3">
                 <VideoRecorder
-                  maxDuration={30}
+                  maxDuration={60}
                   onVideoRecorded={(blob) => {
                     const file = new File([blob], `video-30s-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
                     setNewProduct((prev) => ({

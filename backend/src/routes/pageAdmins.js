@@ -153,7 +153,11 @@ router.post('/', async (req, res) => {
 
     const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
     const isSectorPage = Object.values(SECTOR_PAGE_PATHS).includes(normalizedPath);
-    if (isSectorPage && req.user.role !== 'super-admin' && req.user.numeroH !== 'G0C0P0R0E0F0 0') {
+    if (
+      isSectorPage &&
+      req.user.role !== 'super-admin' &&
+      req.user.numeroH !== 'G7C7P7R7E7F7 7'
+    ) {
       return res.status(403).json({
         success: false,
         message: 'Seul l\'administrateur général peut créer ou approuver un admin de secteur (santé, éducation, échanges).'

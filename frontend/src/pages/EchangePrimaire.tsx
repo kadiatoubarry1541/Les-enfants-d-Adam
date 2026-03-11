@@ -225,6 +225,23 @@ export default function EchangePrimaire() {
 
   const createProduct = async () => {
     try {
+      // Validation minimale avant envoi
+      if (
+        !newProduct.title.trim() ||
+        !newProduct.category ||
+        !newProduct.price ||
+        !newProduct.location.trim()
+      ) {
+        alert("Remplissez au minimum le titre, la catégorie, le prix et la localisation.");
+        return;
+      }
+      const hasVideo = newProduct.videos.length > 0;
+      const hasImage = newProduct.images.length > 0 || !!newProduct.photoForAudio;
+      if (!hasVideo && !hasImage) {
+        alert("Ajoutez au moins une photo du produit ou une vidéo de présentation.");
+        return;
+      }
+
       const formData = new FormData();
       formData.append('title', newProduct.title);
       formData.append('description', newProduct.description);
@@ -548,11 +565,11 @@ export default function EchangePrimaire() {
               </div>
             </div>
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo de présentation (30 s) — toujours possible pour publier un bien</label>
-              <p className="text-xs text-gray-500 mb-2">Enregistrez une vidéo de 30 secondes pour présenter votre bien. L'enregistrement s'arrête automatiquement à 30 s.</p>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo de présentation (jusqu'à 1 minute)</label>
+              <p className="text-xs text-gray-500 mb-2">Enregistrez une courte vidéo (30 secondes à 1 minute) pour présenter votre bien.</p>
               <div className="rounded-xl border-2 border-green-200 bg-green-50/50 p-4 mb-4">
                 <VideoRecorder
-                  maxDuration={30}
+                  maxDuration={60}
                   onVideoRecorded={(blob) => {
                     const file = new File([blob], `video-30s-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
                     setNewProduct((prev) => ({ ...prev, videos: [file, ...prev.videos] }));

@@ -59,7 +59,20 @@ router.post('/register', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Type et nom requis' });
     }
 
-    const validTypes = ['clinic', 'security_agency', 'journalist', 'enterprise', 'school', 'supplier', 'scientist', 'ngo'];
+    const validTypes = [
+      'clinic',
+      'security_agency',
+      'journalist',
+      'enterprise',
+      'school',
+      'supplier',
+      'scientist',
+      'ngo',
+      // Secteur Échanges
+      'vendor',
+      'producer',
+      'broker'
+    ];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ success: false, message: 'Type invalide' });
     }
@@ -103,7 +116,8 @@ router.get('/approved', async (req, res) => {
       accounts = await ProfessionalAccount.getApprovedByType(type);
     } else {
       accounts = await ProfessionalAccount.findAll({
-        where: { status: 'approved', isActive: true },
+        // Visible publiquement UNIQUEMENT si approuvé + actif + abonnement actif
+        where: { status: 'approved', isActive: true, subscriptionStatus: 'active' },
         order: [['name', 'ASC']]
       });
     }
@@ -166,7 +180,7 @@ router.put('/:id', authenticate, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Non autorisé' });
     }
 
-    const { name, description, address, city, country, phone, email, services, specialties, photo } = req.body;
+  const { name, description, address, city, country, phone, email, services, specialties, photo, billingInfo } = req.body;
     await account.update({
       name: name || account.name,
       description: description !== undefined ? description : account.description,
@@ -177,7 +191,8 @@ router.put('/:id', authenticate, async (req, res) => {
       email: email !== undefined ? email : account.email,
       services: services !== undefined ? services : account.services,
       specialties: specialties !== undefined ? specialties : account.specialties,
-      photo: photo !== undefined ? photo : account.photo
+      photo: photo !== undefined ? photo : account.photo,
+      billingInfo: billingInfo !== undefined ? billingInfo : account.billingInfo
     });
 
     res.json({ success: true, account: sanitizeAccountForPublic(account) });
@@ -238,14 +253,23 @@ router.post('/admin/approve/:id', authenticate, async (req, res) => {
     await account.update({
       status: 'approved',
       approvedAt: new Date(),
-      approvedBy: req.userId
+      approvedBy: req.userId,
+      // Dès qu'un compte est approuvé, on le met en "never_paid" :
+      // l'abonnement devra être activé après paiement.
+      subscriptionStatus: account.subscriptionStatus || 'never_paid'
     });
 
     // Notifier le propriétaire
     const typeLabels = {
-      clinic: 'Clinique/Hôpital', security_agency: 'Agence de sécurité',
-      journalist: 'Journaliste', enterprise: 'Entreprise',
-      school: 'École/Professeur', supplier: 'Fournisseur'
+      clinic: 'Clinique/Hôpital',
+      security_agency: 'Agence de sécurité',
+      journalist: 'Journaliste',
+      enterprise: 'Entreprise',
+      school: 'École/Professeur',
+      supplier: 'Fournisseur',
+      vendor: 'Vendeur',
+      producer: 'Entreprise de production',
+      broker: 'Démarcheur / Location'
     };
 
     await Notification.createNotification({
@@ -258,6 +282,32 @@ router.post('/admin/approve/:id', authenticate, async (req, res) => {
 
     res.json({ success: true, message: 'Compte approuvé', account });
   } catch (error) {
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/professionals/admin/subscription/:id - Mettre à jour le statut d'abonnement (paiement)
+router.post('/admin/subscription/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const account = await ProfessionalAccount.findByPk(req.params.id);
+    if (!account) {
+      return res.status(404).json({ success: false, message: 'Compte non trouvé' });
+    }
+
+    const { status, validUntil } = req.body;
+    const allowed = ['never_paid', 'active', 'overdue', 'blocked'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Statut d\'abonnement invalide' });
+    }
+
+    await account.update({
+      subscriptionStatus: status,
+      subscriptionValidUntil: validUntil ? new Date(validUntil) : account.subscriptionValidUntil
+    });
+
+    return res.json({ success: true, account: sanitizeAccountForPublic(account) });
+  } catch (error) {
+    console.error('Erreur abonnement pro:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

@@ -20,8 +20,8 @@ export const authenticate = async (req, res, next) => {
       // Vérifier si c'est une requête d'un admin via un header spécial
       const adminHeader = req.headers['x-admin-numero-h'];
       if (adminHeader) {
-        // L'admin principal G0C0P0R0E0F0 0 bypass toutes les vérifications
-        if (adminHeader === 'G0C0P0R0E0F0 0') {
+        // L'admin principal (G7...) bypass toutes les vérifications
+        if (adminHeader === 'G7C7P7R7E7F7 7') {
           const user = await User.findByNumeroH(adminHeader);
           if (user) {
             req.user = user;
@@ -41,7 +41,10 @@ export const authenticate = async (req, res, next) => {
         if (user && user.isActive) {
           req.user = user;
           req.userId = user.numeroH;
-          if (user.numeroH === 'G1C1P1R1E1F1 1' || user.numeroH === 'G0C0P0R0E0F0 0') {
+          if (
+            user.numeroH === 'G1C1P1R1E1F1 1' ||
+            user.numeroH === 'G7C7P7R7E7F7 7'
+          ) {
             req.user.isMasterAdmin = true;
           }
           next();
@@ -62,15 +65,22 @@ export const authenticate = async (req, res, next) => {
       const adminHeader = req.headers['x-admin-numero-h'];
       if (adminHeader) {
         const user = await User.findByNumeroH(adminHeader);
-        if (user && user.isActive && (
-          user.role === 'admin' || 
-          user.role === 'super-admin' || 
-          user.numeroH === 'G1C1P1R1E1F1 1' ||
-          user.numeroH === 'G0C0P0R0E0F0 0'
-        )) {
+        if (
+          user &&
+          user.isActive &&
+          (
+            user.role === 'admin' ||
+            user.role === 'super-admin' ||
+            user.numeroH === 'G1C1P1R1E1F1 1' ||
+            user.numeroH === 'G7C7P7R7E7F7 7'
+          )
+        ) {
           req.user = user;
           req.userId = user.numeroH;
-          if (user.numeroH === 'G1C1P1R1E1F1 1' || user.numeroH === 'G0C0P0R0E0F0 0') {
+          if (
+            user.numeroH === 'G1C1P1R1E1F1 1' ||
+            user.numeroH === 'G7C7P7R7E7F7 7'
+          ) {
             req.user.isMasterAdmin = true;
           }
           next();
@@ -98,8 +108,8 @@ export const authenticate = async (req, res, next) => {
         });
       }
       
-      // L'admin principal G0C0P0R0E0F0 0 bypass toutes les vérifications
-      if (user.numeroH === 'G0C0P0R0E0F0 0') {
+      // L'admin principal (G7...) bypass toutes les vérifications
+      if (user.numeroH === 'G7C7P7R7E7F7 7') {
         req.user = user;
         req.userId = user.numeroH;
         req.user.isMasterAdmin = true;
@@ -128,7 +138,7 @@ export const authenticate = async (req, res, next) => {
       const adminHeader = req.headers['x-admin-numero-h'];
       if (adminHeader) {
         try {
-          if (adminHeader === 'G0C0P0R0E0F0 0') {
+          if (adminHeader === 'G7C7P7R7E7F7 7') {
             const user = await User.findByNumeroH(adminHeader);
             if (user) {
               req.user = user;
@@ -144,14 +154,18 @@ export const authenticate = async (req, res, next) => {
           }
 
           const user = await User.findByNumeroH(adminHeader);
-          if (user && user.isActive && (
-            user.role === 'admin' ||
-            user.role === 'super-admin' ||
-            user.numeroH === 'G0C0P0R0E0F0 0'
-          )) {
+          if (
+            user &&
+            user.isActive &&
+            (
+              user.role === 'admin' ||
+              user.role === 'super-admin' ||
+              user.numeroH === 'G7C7P7R7E7F7 7'
+            )
+          ) {
             req.user = user;
             req.userId = user.numeroH;
-            if (user.numeroH === 'G0C0P0R0E0F0 0') {
+            if (user.numeroH === 'G7C7P7R7E7F7 7') {
               req.user.isMasterAdmin = true;
             }
             next();
@@ -195,8 +209,8 @@ export const requireAdmin = async (req, res, next) => {
       });
     }
     
-    // L'admin principal G0C0P0R0E0F0 0 bypass toutes les vérifications
-    if (req.user.numeroH === 'G0C0P0R0E0F0 0') {
+    // L'admin principal (G7...) bypass toutes les vérifications
+    if (req.user.numeroH === 'G7C7P7R7E7F7 7') {
       next();
       return;
     }
@@ -260,23 +274,8 @@ export const requireMasterAdmin = async (req, res, next) => {
     }
     
     // Vérifier si c'est le compte administrateur principal
-    const masterAdminNumeroH = 'G1C1P1R1E1F1 1';
-    const superMasterAdmin = 'G0C0P0R0E0F0 0';
-    
-    // L'admin principal G0C0P0R0E0F0 0 a accès absolu
-    if (req.user.numeroH === superMasterAdmin) {
-      req.user.isMasterAdmin = true;
-      req.user.canViewAll = true;
-      req.user.canEditAll = true;
-      req.user.canDeleteAll = true;
-      req.user.canManageUsers = true;
-      req.user.canManageContent = true;
-      req.user.canManageSystem = true;
-      req.user.bypassRestrictions = true;
-      next();
-      return;
-    }
-    
+    const masterAdminNumeroH = 'G7C7P7R7E7F7 7';
+
     if (req.user.numeroH === masterAdminNumeroH) {
       // Accès complet sans restriction
       req.user.isMasterAdmin = true;
@@ -286,12 +285,7 @@ export const requireMasterAdmin = async (req, res, next) => {
       req.user.canManageUsers = true;
       req.user.canManageContent = true;
       req.user.canManageSystem = true;
-      next();
-      return;
-    }
-    
-    // Pour les autres super-admins
-    if (req.user.role === 'super-admin') {
+      req.user.bypassRestrictions = true;
       next();
       return;
     }
@@ -312,7 +306,7 @@ export const requireMasterAdmin = async (req, res, next) => {
 // Middleware pour bypasser toutes les restrictions pour l'admin principal
 export const bypassAllRestrictions = async (req, res, next) => {
   try {
-    if (req.user && req.user.numeroH === 'G0C0P0R0E0F0 0') {
+    if (req.user && req.user.numeroH === 'G7C7P7R7E7F7 7') {
       // L'administrateur principal peut tout faire
       req.user.isMasterAdmin = true;
       req.user.canViewAll = true;

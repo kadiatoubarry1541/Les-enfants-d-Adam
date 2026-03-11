@@ -7,7 +7,11 @@ const PRO_TYPES = [
   { id: "journalist", label: "Journaliste", icon: "📰", desc: "Publiez des informations sur Terre Adam" },
   { id: "enterprise", label: "Entreprise", icon: "🏢", desc: "Publiez des outils de travail sur Activité" },
   { id: "school", label: "École / Professeur", icon: "🎓", desc: "Publiez des formations et recevez des rendez-vous" },
-  { id: "supplier", label: "Fournisseur", icon: "📦", desc: "Proposez vos produits et services" },
+  // Types liés au secteur Échanges
+  { id: "vendor", label: "Vendeur", icon: "🛒", desc: "Vente directe de produits (primaire, secondaire, tertiaire)" },
+  { id: "supplier", label: "Fournisseur / Grossiste", icon: "📦", desc: "Approvisionnement et gros pour les autres vendeurs" },
+  { id: "producer", label: "Entreprise de production", icon: "🏭", desc: "Production / transformation de biens pour les échanges" },
+  { id: "broker", label: "Démarcheur / Location de maison", icon: "🏘️", desc: "Mise en relation pour location de maisons et biens tertiaires" },
   { id: "scientist", label: "Chercheur / Scientifique", icon: "🔬", desc: "Partagez vos travaux et publications" },
   { id: "ngo", label: "ONG / Association", icon: "🤝", desc: "Gérez vos projets humanitaires et bénévoles" },
 ];
@@ -35,8 +39,28 @@ const PRO_TYPE_INFO: Record<string, { expect: string; page: string }> = {
     page: "Vous serez visible et publié sur la page **Éducation** : les utilisateurs pourront voir vos formations et prendre rendez-vous ou s’inscrire à vos cours.",
   },
   supplier: {
-    expect: "Nous attendons que vous proposiez des produits ou services (vente, livraison, catalogues) et que vous répondiez aux demandes d’achat ou de devis de la communauté.",
-    page: "Vous serez visible et publié sur la page **Échanges** : les utilisateurs pourront consulter vos produits et services et vous contacter pour commander ou demander un devis.",
+    expect:
+      "Nous attendons que vous proposiez des produits ou services en tant que fournisseur ou grossiste (approvisionnement des vendeurs, contrats réguliers, livraison en quantité).",
+    page:
+      "Vous serez visible et publié sur les pages **Échanges** (primaire, secondaire, tertiaire) comme fournisseur/grossiste : les vendeurs et entreprises pourront vous contacter pour s’approvisionner.",
+  },
+  vendor: {
+    expect:
+      "Nous attendons que vous vendiez directement des produits (aliments, vêtements, véhicules, matériaux, etc.) au détail ou en petite quantité, avec des annonces claires et à jour.",
+    page:
+      "Vous serez visible et publié dans les niveaux **Échanges Primaire / Secondaire / Tertiaire** selon vos produits, afin que les utilisateurs puissent facilement vous trouver et acheter.",
+  },
+  producer: {
+    expect:
+      "Nous attendons que vous produisiez, transformiez ou fabriquiez des biens (production agricole, ateliers, usines, artisanat organisé) pour les mettre à disposition dans les échanges.",
+    page:
+      "Vous serez visible et publié dans les pages **Échanges** en tant qu’**entreprise de production**, souvent mise en avant en bas des pages pour représenter les structures de production.",
+  },
+  broker: {
+    expect:
+      "Nous attendons que vous mettiez en relation des propriétaires et des locataires (maisons, appartements, biens tertiaires) de manière sérieuse et transparente.",
+    page:
+      "Vous serez visible surtout dans la page **Échanges Tertiaire** (location de maisons, biens tertiaires) comme **démarcheur / agent**, pour aider les utilisateurs à trouver un logement ou un bien à louer.",
   },
   scientist: {
     expect: "Nous attendons que vous partagiez des travaux, publications ou contenus scientifiques validés, dans un langage accessible, pour éclairer la communauté.",

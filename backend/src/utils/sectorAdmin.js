@@ -9,6 +9,10 @@ export const SECTOR_PAGE_PATHS = {
   sante: '/sante',
   education: '/education',
   echange: '/echange',
+  // Sous-secteurs spécifiques pour la page Échanges
+  echange_primaire: '/echange/primaire',
+  echange_secondaire: '/echange/secondaire',
+  echange_tertiaire: '/echange/tertiaire',
   securite: '/securite',
   journalisme: '/journalisme'
 };
@@ -17,6 +21,9 @@ export const SECTOR_NAMES = {
   sante: 'Santé',
   education: 'Éducation',
   echange: 'Échanges',
+  echange_primaire: 'Échanges - Primaire',
+  echange_secondaire: 'Échanges - Secondaire',
+  echange_tertiaire: 'Échanges - Tertiaire',
   securite: 'Sécurité',
   journalisme: 'Journalisme'
 };
@@ -25,7 +32,17 @@ export const SECTOR_NAMES = {
 export const SECTOR_PRO_TYPES = {
   sante: ['clinic'],
   education: ['school'],
-  echange: ['supplier'],
+  // Secteur Échanges : plusieurs profils pro
+  // - vendor    : vendeurs / détaillants
+  // - supplier  : fournisseurs / grossistes
+  // - producer  : entreprises de production
+  // - broker    : démarcheurs (ex. location de maisons)
+  echange: ['vendor', 'supplier', 'producer', 'broker'],
+  // Les trois niveaux d'échanges partagent ces mêmes types pro,
+  // mais chaque niveau peut avoir ses propres admins de page.
+  echange_primaire: ['vendor', 'supplier', 'producer'],
+  echange_secondaire: ['vendor', 'supplier', 'producer'],
+  echange_tertiaire: ['vendor', 'supplier', 'producer', 'broker'],
   securite: ['security_agency'],
   journalisme: ['journalist']
 };
@@ -51,7 +68,7 @@ export function getSectorForProType(professionalType) {
  */
 export function isGlobalAdmin(user) {
   if (!user) return false;
-  if (user.numeroH === 'G0C0P0R0E0F0 0') return true;
+  if (user.numeroH === 'G7C7P7R7E7F7 7') return true;
   return user.role === 'admin' || user.role === 'super-admin';
 }
 

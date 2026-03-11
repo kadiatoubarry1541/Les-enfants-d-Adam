@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProSection from '../components/ProSection';
 import {
+  WORLD_GEOGRAPHY,
   findLocationByCode,
   getLocationGroupTitle,
   getAllLocationsForGroups,
@@ -114,6 +115,26 @@ export default function TerreAdam() {
   const userPrefecture = userData?.prefectureCode ? findLocationByCode(userData.prefectureCode) : null;
   const userSousPrefecture = userData?.sousPrefectureCode ? findLocationByCode(userData.sousPrefectureCode) : null;
   const userQuartier = userData?.quartierCode ? findLocationByCode(userData.quartierCode) : null;
+
+  // 🔎 Si les codes ne sont pas enregistrés (anciens comptes), essayer de déduire
+  // le pays et le continent à partir du nom de pays (`userData.pays`)
+  const inferredGeo = (() => {
+    if (userContinent || userCountry || !userData?.pays) return null;
+    const paysName = String(userData.pays).trim().toLowerCase();
+    if (!paysName) return null;
+
+    for (const continent of WORLD_GEOGRAPHY) {
+      for (const country of continent.children || []) {
+        if (country.name.trim().toLowerCase() === paysName) {
+          return { continent, country };
+        }
+      }
+    }
+    return null;
+  })();
+
+  const effectiveContinent = userContinent || inferredGeo?.continent || null;
+  const effectiveCountry = userCountry || inferredGeo?.country || null;
   
   /** Codes des 1 à 3 quartiers de l'utilisateur (peuvent être null si non renseignés) */
   const userQuartierCodes: (string | null)[] = [
@@ -384,11 +405,13 @@ export default function TerreAdam() {
           <div className="flex justify-between items-center py-3 sm:py-4 md:py-6 overflow-hidden">
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 overflow-hidden flex-1 min-w-0">
               <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl flex-shrink-0">
-                {userData?.continentCode ? getContinentIcon(userData.continentCode, userContinent?.name) : '🌍'}
+                {effectiveContinent
+                  ? getContinentIcon(userData?.continentCode || effectiveContinent.code, effectiveContinent.name)
+                  : '🌍'}
               </div>
               <div className="min-w-0 flex-1 overflow-hidden">
                 <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 break-words">
-                  Terre ADAM {userContinent?.name ? `- ${userContinent.name}` : ''}
+                  Terre ADAM {effectiveContinent?.name ? `- ${effectiveContinent.name}` : ''}
                 </h1>
                 <p className="mt-0.5 sm:mt-1 md:mt-2 text-[10px] sm:text-xs md:text-sm text-gray-600 break-words">
                   Page d’information : les gens du même quartier se retrouvent ici pour échanger sur le développement local (projets, actions, vie du quartier).
@@ -421,20 +444,27 @@ export default function TerreAdam() {
               { 
                 id: 'region', 
                 label: 'Région', 
-                icon: getRegionIcon(userData?.regionCode, userRegion?.name || userData?.region || userData?.regionOrigine),
-                customLabel: userRegion ? `Ma Région` : 'Région'
+                icon: getRegionIcon(
+                  userData?.regionCode,
+                  userRegion?.name || userData?.region || userData?.regionOrigine
+                ),
+                customLabel: userRegion || userData?.region || userData?.regionOrigine ? `Ma Région` : 'Région'
               },
               { 
                 id: 'pays', 
                 label: 'Pays', 
-                icon: userData?.paysCode ? getCountryFlag(userData.paysCode, userCountry?.name) : '🏳️',
-                customLabel: userCountry ? `Mon Pays` : 'Pays'
+                icon: effectiveCountry
+                  ? getCountryFlag(userData?.paysCode || effectiveCountry.code, effectiveCountry.name)
+                  : '🏳️',
+                customLabel: effectiveCountry || userData?.pays ? `Mon Pays` : 'Pays'
               },
               { 
                 id: 'continent', 
                 label: 'Continent', 
-                icon: userData?.continentCode ? getContinentIcon(userData.continentCode, userContinent?.name) : '🌐',
-                customLabel: userContinent ? `Mon Continent` : 'Continent'
+                icon: effectiveContinent
+                  ? getContinentIcon(userData?.continentCode || effectiveContinent.code, effectiveContinent.name)
+                  : '🌐',
+                customLabel: effectiveContinent ? `Mon Continent` : 'Continent'
               },
               { id: 'mondial', label: 'Mondial', icon: '🌎' },
               { id: 'journalistes', label: 'Journalistes', icon: '📰' }
@@ -473,13 +503,43 @@ export default function TerreAdam() {
                   {[
                     // Afficher uniquement les résidences réellement configurées dans le profil
                     ...(userQuartierCodes[0]
-                      ? [{ id: 'quartier-1' as LieuTabId, label: (() => { const c = userQuartierCodes[0]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 1'; })(), icon: '🏘️' }]
+                      ? [{
+                          id: 'quartier-1' as LieuTabId,
+                          label: (() => {
+                            const c = userQuartierCodes[0];
+                            const loc = c ? findLocationByCode(c) : null;
+                            if (loc?.name) return loc.name;
+                            const raw = typeof c === 'string' ? c.trim() : '';
+                            return raw || 'Résidence 1';
+                          })(),
+                          icon: '🏘️'
+                        }]
                       : []),
                     ...(userQuartierCodes[1]
-                      ? [{ id: 'quartier-2' as LieuTabId, label: (() => { const c = userQuartierCodes[1]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 2'; })(), icon: '🏘️' }]
+                      ? [{
+                          id: 'quartier-2' as LieuTabId,
+                          label: (() => {
+                            const c = userQuartierCodes[1];
+                            const loc = c ? findLocationByCode(c) : null;
+                            if (loc?.name) return loc.name;
+                            const raw = typeof c === 'string' ? c.trim() : '';
+                            return raw || 'Résidence 2';
+                          })(),
+                          icon: '🏘️'
+                        }]
                       : []),
                     ...(userQuartierCodes[2]
-                      ? [{ id: 'quartier-3' as LieuTabId, label: (() => { const c = userQuartierCodes[2]; const loc = c ? findLocationByCode(c) : null; return loc?.name || 'Résidence 3'; })(), icon: '🏘️' }]
+                      ? [{
+                          id: 'quartier-3' as LieuTabId,
+                          label: (() => {
+                            const c = userQuartierCodes[2];
+                            const loc = c ? findLocationByCode(c) : null;
+                            if (loc?.name) return loc.name;
+                            const raw = typeof c === 'string' ? c.trim() : '';
+                            return raw || 'Résidence 3';
+                          })(),
+                          icon: '🏘️'
+                        }]
                       : []),
                     { id: 'sous-prefecture' as LieuTabId, label: userSousPrefecture?.name || userData.sousPrefecture || 'Sous-préfecture', icon: '🏛️' },
                     { id: 'prefecture' as LieuTabId, label: userPrefecture?.name || userData.prefecture || 'Préfecture', icon: '🏢' }
@@ -944,8 +1004,15 @@ export default function TerreAdam() {
           <div className="space-y-3 sm:space-y-4 md:space-y-6 overflow-hidden">
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 overflow-hidden">
               <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
-                <span className="text-base sm:text-lg md:text-xl">{getRegionIcon(userData?.regionCode, userRegion?.name || userData?.region || userData?.regionOrigine)}</span>
-                <span className="text-[11px] sm:text-xs md:text-sm break-words">{userRegion?.name || userData?.region || userData?.regionOrigine || 'Région'}</span>
+                <span className="text-base sm:text-lg md:text-xl">
+                  {getRegionIcon(
+                    userData?.regionCode,
+                    userRegion?.name || userData?.region || userData?.regionOrigine
+                  )}
+                </span>
+                <span className="text-[11px] sm:text-xs md:text-sm break-words">
+                  {userRegion?.name || userData?.region || userData?.regionOrigine || 'Région'}
+                </span>
               </h2>
               <DevelopmentBlock scope="Région" />
 
@@ -993,20 +1060,26 @@ export default function TerreAdam() {
           <div className="space-y-3 sm:space-y-4 md:space-y-6 overflow-hidden">
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 overflow-hidden">
               <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
-                <span className="text-base sm:text-lg md:text-xl lg:text-2xl">{userData?.paysCode ? getCountryFlag(userData.paysCode, userCountry?.name) : '🏳️'}</span>
-                <span className="text-[11px] sm:text-xs md:text-sm break-words">{userCountry?.name || 'Pays'}</span>
+                <span className="text-base sm:text-lg md:text-xl lg:text-2xl">
+                  {effectiveCountry
+                    ? getCountryFlag(userData?.paysCode || effectiveCountry.code, effectiveCountry.name)
+                    : '🏳️'}
+                </span>
+                <span className="text-[11px] sm:text-xs md:text-sm break-words">
+                  {effectiveCountry?.name || userData?.pays || 'Pays'}
+                </span>
               </h2>
               <DevelopmentBlock scope="Pays" />
 
-              {userData?.paysCode && userCountry ? (
+              {effectiveCountry ? (
                 <div className="space-y-2 sm:space-y-3 md:space-y-4 overflow-hidden">
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-3 sm:p-4 md:p-6 overflow-hidden">
                     <div className="text-center overflow-hidden">
                       <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">
-                        {getCountryFlag(userData.paysCode, userCountry.name)}
+                        {getCountryFlag(userData?.paysCode || effectiveCountry.code, effectiveCountry.name)}
                       </div>
                       <p className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-purple-600 mb-2 sm:mb-3 break-words">
-                        {userCountry.name}
+                        {effectiveCountry.name}
                       </p>
                     </div>
                   </div>
@@ -1031,27 +1104,48 @@ export default function TerreAdam() {
           <div className="space-y-3 sm:space-y-4 md:space-y-6 overflow-hidden">
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 overflow-hidden">
               <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
-                <span className="text-base sm:text-lg md:text-xl">{getContinentIcon(userData?.continentCode, userContinent?.name)}</span>
-                <span className="text-[11px] sm:text-xs md:text-sm break-words">{userContinent?.name || userData?.continent || 'Continent'}</span>
+                <span className="text-base sm:text-lg md:text-xl">
+                  {effectiveContinent
+                    ? getContinentIcon(
+                        userData?.continentCode || effectiveContinent.code,
+                        effectiveContinent.name
+                      )
+                    : getContinentIcon(undefined, undefined)}
+                </span>
+                <span className="text-[11px] sm:text-xs md:text-sm break-words">
+                  {effectiveContinent?.name || userData?.continent || 'Continent'}
+                </span>
               </h2>
               <DevelopmentBlock scope="Continent" />
 
-              {userData?.continentCode ? (
+              {effectiveContinent ? (
                 <div className="space-y-2 sm:space-y-3 md:space-y-4 overflow-hidden">
                   <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-lg p-3 sm:p-4 md:p-6 overflow-hidden">
                     <div className="text-center overflow-hidden">
-                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">{getContinentIcon(userData.continentCode, userContinent?.name)}</div>
+                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 sm:mb-3">
+                        {getContinentIcon(
+                          userData?.continentCode || effectiveContinent.code,
+                          effectiveContinent.name
+                        )}
+                      </div>
                       <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-900 mb-1.5 sm:mb-2 break-words">
-                        {userContinent?.name || userData.continent || 'Non défini'}
+                        {effectiveContinent?.name || userData?.continent || 'Non défini'}
                       </h3>
-                      {userData.continentCode && (
+                      {userData?.continentCode && (
                         <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-2 sm:mb-3">
                           Code : <span className="font-mono font-semibold">{userData.continentCode}</span>
                         </p>
                       )}
                       <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-orange-300">
                         <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 break-words">
-                          <strong>Pays :</strong> {userCountry?.name || userData.pays || 'Non défini'} {getCountryFlag(userData.paysCode, userCountry?.name)}
+                          <strong>Pays :</strong>{' '}
+                          {effectiveCountry?.name || userData?.pays || 'Non défini'}{' '}
+                          {effectiveCountry
+                            ? getCountryFlag(
+                                userData?.paysCode || effectiveCountry.code,
+                                effectiveCountry.name
+                              )
+                            : getCountryFlag(undefined, undefined)}
                         </p>
                       </div>
                     </div>

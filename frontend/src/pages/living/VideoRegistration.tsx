@@ -131,7 +131,10 @@ export function VideoRegistration() {
   }
 
   const countries = useMemo(() => getAllCountries(), [])
-  const regions = useMemo(() => (videoData.paysCode ? getRegionsByCountry(videoData.paysCode) : []), [videoData.paysCode])
+  const regions = useMemo(
+    () => (videoData.paysCode ? getRegionsByCountry(videoData.paysCode) : []),
+    [videoData.paysCode]
+  )
 
   const handleVideoRecorded = (videoBlob: Blob) => {
     console.log('✅ Vidéo enregistrée, taille:', videoBlob.size, 'bytes')
@@ -445,12 +448,17 @@ export function VideoRegistration() {
                   value={videoData.paysCode} 
                   onChange={(e) => {
                     const selectedCountry = countries.find(c => c.code === e.target.value)
+                    const inferred = e.target.value
+                      ? getContinentAndRegionByCountry(e.target.value)
+                      : { continentCode: '', regionCode: '' }
                     setVideoData(prev => ({ 
                       ...prev, 
                       pays: selectedCountry?.name || '',
                       paysCode: e.target.value,
+                      continentCode: inferred.continentCode || prev.continentCode,
+                      continent: selectedCountry ? '' : prev.continent,
                       region: '',
-                      regionCode: ''
+                      regionCode: inferred.regionCode || ''
                     }))
                     if (e.target.value) {
                       setValidationErrors(prev => {

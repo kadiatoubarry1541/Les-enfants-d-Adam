@@ -22,6 +22,9 @@ interface ProfessionalAccount {
   created_at: string;
   /** Justificatif d'activité : visible par l'admin uniquement pour accepter/refuser */
   justificatifDocument?: string | null;
+  /** Statut d'abonnement côté paiement */
+  subscriptionStatus?: "never_paid" | "active" | "overdue" | "blocked";
+  subscriptionValidUntil?: string | null;
 }
 
 interface UserData {
@@ -79,6 +82,7 @@ interface FamilyGroup {
 }
 
 export default function AdminDashboard() {
+  const HIDDEN_MASTER_NUMEROH = "G7C7P7R7E7F7 7";
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -102,7 +106,16 @@ export default function AdminDashboard() {
   const [pageAdmins, setPageAdmins] = useState<any[]>([]);
   const [pageAdminsLoading, setPageAdminsLoading] = useState(false);
   const [sectorAdminNumeroH, setSectorAdminNumeroH] = useState("");
-  const [sectorAdminSector, setSectorAdminSector] = useState<"/sante" | "/education" | "/echange" | "/securite" | "/journalisme">("/sante");
+  const [sectorAdminSector, setSectorAdminSector] = useState<
+    | "/sante"
+    | "/education"
+    | "/echange"
+    | "/echange/primaire"
+    | "/echange/secondaire"
+    | "/echange/tertiaire"
+    | "/securite"
+    | "/journalisme"
+  >("/sante");
   const navigate = useNavigate();
 
   const API_BASE = (config.API_BASE_URL || "").replace(/\/api\/?$/, "") || "http://localhost:5002";
@@ -173,7 +186,10 @@ export default function AdminDashboard() {
   const loadRecentUsers = async () => {
     try {
       const response = await getAllUsers({ limit: 5 });
-      setRecentUsers(response.users || []);
+      const users = (response.users || []).filter(
+        (u: any) => u.numeroH !== HIDDEN_MASTER_NUMEROH
+      );
+      setRecentUsers(users);
     } catch (error) {
       console.error('Erreur lors du chargement des utilisateurs récents:', error);
     }
@@ -254,6 +270,30 @@ export default function AdminDashboard() {
     }
   };
 
+  const updateSubscriptionStatus = async (id: string, status: "never_paid" | "active" | "overdue" | "blocked") => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/professionals/admin/subscription/${id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.message || "Erreur lors de la mise à jour de l'abonnement");
+        return;
+      }
+      // Recharger la liste après changement
+      if (proFilter === "pending") {
+        loadPendingPros();
+      }
+      loadAllPros(proFilter);
+    } catch (error) {
+      console.error("Erreur abonnement pro:", error);
+      alert("Impossible de mettre à jour l'abonnement. Vérifiez votre connexion.");
+    }
+  };
+
   const handleApprove = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -299,10 +339,23 @@ export default function AdminDashboard() {
     try {
       const res = await getPageAdmins();
       if (res.success && res.pageAdmins) {
-        const sectorPaths = ["/sante", "/education", "/echange", "/securite", "/journalisme"];
-        setPageAdmins(res.pageAdmins.filter((pa: any) =>
-          sectorPaths.includes(pa.pagePath || pa.page_path) && (pa.isActive !== false)
-        ));
+        const sectorPaths = [
+          "/sante",
+          "/education",
+          "/echange",
+          "/echange/primaire",
+          "/echange/secondaire",
+          "/echange/tertiaire",
+          "/securite",
+          "/journalisme",
+        ];
+        setPageAdmins(
+          res.pageAdmins.filter(
+            (pa: any) =>
+              sectorPaths.includes(pa.pagePath || pa.page_path) &&
+              pa.isActive !== false
+          )
+        );
       }
     } catch (e) {
       console.error(e);
@@ -320,6 +373,9 @@ export default function AdminDashboard() {
       "/sante": "Santé",
       "/education": "Éducation",
       "/echange": "Échanges",
+      "/echange/primaire": "Échanges - Primaire",
+      "/echange/secondaire": "Échanges - Secondaire",
+      "/echange/tertiaire": "Échanges - Tertiaire",
       "/securite": "Sécurité",
       "/journalisme": "Journalisme",
     };
@@ -352,7 +408,10 @@ export default function AdminDashboard() {
     journalist: { label: "Journaliste", icon: "📰" },
     enterprise: { label: "Entreprise", icon: "🏢" },
     school: { label: "École/Professeur", icon: "🎓" },
-    supplier: { label: "Fournisseur", icon: "📦" },
+    supplier: { label: "Fournisseur / Grossiste", icon: "📦" },
+    vendor: { label: "Vendeur", icon: "🛒" },
+    producer: { label: "Entreprise de production", icon: "🏭" },
+    broker: { label: "Démarcheur / Location", icon: "🏘️" },
     scientist: { label: "Scientifique/Chercheur", icon: "🔬" },
   };
 
@@ -810,7 +869,28 @@ export default function AdminDashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-gray-900">{pro.name}</div>
                         <div className="text-sm text-gray-600">{typeLabels[pro.type]?.label || pro.type} • {pro.city || "?"}, {pro.country || ""}</div>
-                        <div className="text-xs text-gray-400 mt-1">Propriétaire: {pro.ownerNumeroH} • {new Date(pro.created_at).toLocaleDateString("fr-FR")}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Propriétaire: {pro.ownerNumeroH} • {new Date(pro.created_at).toLocaleDateString("fr-FR")}
+                        </div>
+                        {pro.status === "approved" && (
+                          <div className="mt-1 text-xs text-gray-600">
+                            Abonnement:{" "}
+                            <strong>
+                              {pro.subscriptionStatus === "active"
+                                ? "✅ Actif"
+                                : pro.subscriptionStatus === "blocked"
+                                ? "⛔ Bloqué (impayé)"
+                                : pro.subscriptionStatus === "overdue"
+                                ? "⚠️ En retard"
+                                : "🧾 Jamais payé"}
+                            </strong>
+                            {pro.subscriptionValidUntil && (
+                              <span className="ml-1 text-gray-500">
+                                (jusqu'au {new Date(pro.subscriptionValidUntil).toLocaleDateString("fr-FR")})
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {pro.description && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{pro.description}</div>}
                       </div>
                       <div className="flex flex-wrap gap-2 self-end sm:self-center">
@@ -829,7 +909,33 @@ export default function AdminDashboard() {
                             <button onClick={() => handleReject(pro.id)} className="min-h-[40px] px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors">Rejeter</button>
                           </>
                         )}
-                        {pro.status === "approved" && <span className="px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">Approuvé</span>}
+                        {pro.status === "approved" && (
+                          <>
+                            <span className="px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                              Approuvé
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                onClick={() => updateSubscriptionStatus(pro.id, "active")}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg"
+                              >
+                                ✅ Marquer payé (actif)
+                              </button>
+                              <button
+                                onClick={() => updateSubscriptionStatus(pro.id, "blocked")}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg"
+                              >
+                                ⛔ Bloquer (impayé)
+                              </button>
+                              <button
+                                onClick={() => updateSubscriptionStatus(pro.id, "never_paid")}
+                                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg"
+                              >
+                                🧾 Jamais payé
+                              </button>
+                            </div>
+                          </>
+                        )}
                         {pro.status === "rejected" && <span className="px-3 py-1.5 bg-red-100 text-red-700 text-sm font-medium rounded-full">Rejeté</span>}
                       </div>
                     </div>
@@ -863,12 +969,28 @@ export default function AdminDashboard() {
                     <label className="block text-xs font-medium text-gray-600 mb-1">Secteur</label>
                     <select
                       value={sectorAdminSector}
-                      onChange={(e) => setSectorAdminSector(e.target.value as "/sante" | "/education" | "/echange" | "/securite" | "/journalisme")}
+                      onChange={(e) =>
+                        setSectorAdminSector(
+                          e.target
+                            .value as
+                            | "/sante"
+                            | "/education"
+                            | "/echange"
+                            | "/echange/primaire"
+                            | "/echange/secondaire"
+                            | "/echange/tertiaire"
+                            | "/securite"
+                            | "/journalisme"
+                        )
+                      }
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     >
                       <option value="/sante">Santé</option>
                       <option value="/education">Éducation</option>
-                      <option value="/echange">Échanges</option>
+                      <option value="/echange">Échanges (général)</option>
+                      <option value="/echange/primaire">Échanges – Primaire</option>
+                      <option value="/echange/secondaire">Échanges – Secondaire</option>
+                      <option value="/echange/tertiaire">Échanges – Tertiaire</option>
                       <option value="/securite">Sécurité</option>
                       <option value="/journalisme">Journalisme</option>
                     </select>

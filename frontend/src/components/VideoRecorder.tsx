@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 
 interface VideoRecorderProps {
   onVideoRecorded: (videoBlob: Blob) => void
-  /** Durée max d'enregistrement en secondes (défaut 30) */
+  /** Durée max d'enregistrement en secondes (défaut 60, toujours ≤ 180) */
   maxDuration?: number
 }
 
-export function VideoRecorder({ onVideoRecorded, maxDuration = 30 }: VideoRecorderProps) {
+export function VideoRecorder({ onVideoRecorded, maxDuration = 60 }: VideoRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [duration, setDuration] = useState(0)
@@ -20,7 +20,8 @@ export function VideoRecorder({ onVideoRecorded, maxDuration = 30 }: VideoRecord
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const maxDurationMs = maxDuration * 1000 // secondes → millisecondes
+  const safeMaxSeconds = Math.min(maxDuration, 180)
+  const maxDurationMs = safeMaxSeconds * 1000 // secondes → millisecondes
 
   useEffect(() => {
     return () => {

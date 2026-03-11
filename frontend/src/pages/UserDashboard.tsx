@@ -201,9 +201,9 @@ export function UserDashboard() {
               <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4 animate-pulse"></div>
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 animate-pulse"></div>
             </div>
-            <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2">
+            <div className="grid grid-cols-5 gap-1 sm:gap-2 lg:flex lg:flex-row lg:flex-nowrap">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                <div key={i} className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl shadow-md p-3 sm:p-4 w-16 h-16 sm:w-24 sm:h-24 animate-pulse"></div>
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm min-h-[52px] sm:min-h-[72px] lg:flex-1 animate-pulse"></div>
               ))}
             </div>
           </div>
@@ -362,19 +362,13 @@ export function UserDashboard() {
         </div>
       </div>
 
-      {/* ─── Navigation principale ───────────────────────────────────────────
-          📱 Téléphone  (< 640px)  : liste verticale 1 colonne, chaque item = ligne horizontale (icône + texte)
-          📟 Tablette   (640-1023) : grille 2 colonnes, chaque item = icône + texte empilés
-          🖥️  Desktop    (≥ 1024px) : 1 seule ligne horizontale, items répartis sur toute la largeur
+      {/* ─── Navigation principale ────────────────────────────────────────────
+          📱 Petit téléphone (< 640px) : grille 5 colonnes × 2 lignes, 0 scroll
+          📟 Tablette        (640-1023): grille 5 colonnes × 2 lignes, plus grand
+          🖥️  Desktop         (≥ 1024px): 1 ligne horizontale, items répartis
       ─────────────────────────────────────────────────────────────────── */}
-      <div className="dashboard-tabs px-3 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-3">
-
-        {/* Conteneur adaptatif selon l'appareil */}
-        <div className="
-          flex flex-col gap-1.5
-          sm:grid sm:grid-cols-2 sm:gap-2
-          lg:flex lg:flex-row lg:flex-nowrap lg:justify-between lg:gap-2
-        ">
+      <div className="dashboard-tabs px-2 xs:px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-3">
+        <div className="grid grid-cols-5 gap-1 sm:gap-2 lg:flex lg:flex-row lg:flex-nowrap lg:justify-between lg:gap-2">
           {navItems.map((item) => {
             const isActive = item.type === "tab" && activeTab === item.id;
             const isLink = item.type === "link";
@@ -385,35 +379,35 @@ export function UserDashboard() {
                 onClick={() => handleNavClick(item)}
                 className={`
                   border-none cursor-pointer transition-all duration-200 rounded-xl w-full
-                  flex flex-row items-center gap-4 px-4 py-3 min-h-[56px]
-                  sm:flex-col sm:items-center sm:justify-center sm:gap-1.5 sm:px-3 sm:py-4 sm:min-h-[88px]
-                  lg:flex-col lg:gap-1 lg:px-2 lg:py-3 lg:min-h-[64px] lg:flex-1
+                  flex flex-col items-center justify-center
+                  gap-0.5 sm:gap-1 lg:gap-1
+                  p-1.5 sm:p-2.5 lg:p-3
+                  min-h-[52px] sm:min-h-[72px] lg:min-h-[64px] lg:flex-1
                   ${isActive
                     ? "bg-blue-100 dark:bg-blue-900/50 ring-1 ring-blue-300 dark:ring-blue-700"
                     : isLink
                     ? "bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 shadow-sm"
-                    : "bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/60 shadow-sm sm:bg-white sm:dark:bg-gray-800 sm:hover:bg-gray-50 sm:dark:hover:bg-gray-700 lg:bg-transparent lg:shadow-none lg:hover:bg-gray-100/60 lg:dark:bg-transparent lg:dark:hover:bg-gray-700/30"
+                    : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm"
                   }
                 `}
               >
                 {/* Icône */}
                 {item.useSvg && item.SvgIcon ? (
                   <item.SvgIcon
-                    className={`flex-shrink-0 w-7 h-7 sm:w-6 sm:h-6 lg:w-6 lg:h-6 ${
+                    className={`flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 ${
                       isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"
                     }`}
-                    size={28}
+                    size={20}
                   />
                 ) : (
-                  <span className="flex-shrink-0 text-3xl sm:text-2xl lg:text-2xl leading-none">{item.icon}</span>
+                  <span className="flex-shrink-0 text-xl sm:text-2xl leading-none">{item.icon}</span>
                 )}
 
-                {/* Texte */}
+                {/* Texte — visible même sur petit écran */}
                 <span className={`
-                  font-medium leading-tight
-                  text-sm sm:text-[11px] lg:text-xs
-                  text-left sm:text-center
-                  ${isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-800 dark:text-gray-200"}
+                  font-medium leading-tight text-center w-full truncate
+                  text-[9px] xs:text-[10px] sm:text-[11px] lg:text-xs
+                  ${isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-200"}
                 `}>
                   {item.label}
                 </span>
