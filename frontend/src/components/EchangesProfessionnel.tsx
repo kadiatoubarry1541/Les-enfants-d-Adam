@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
 import ProSection from './ProSection';
+import { PublierAnnonceButtons } from './PublierAnnonceButtons';
 
 const API_ORIGIN = (config.API_BASE_URL || '').replace(/\/api\/?$/, '') || '';
 
@@ -131,6 +132,13 @@ export function EchangesProfessionnel({ userData }: EchangesProfessionnelProps) 
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Choisissez une catégorie et voyez un aperçu des produits avant d’entrer
         </p>
+      </div>
+
+      {/* Publier une annonce : 3 boutons distincts */}
+      <div className="mb-6">
+        <PublierAnnonceButtons
+          onSelect={(mode) => navigate(`/echange/publier?mode=${mode}`)}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

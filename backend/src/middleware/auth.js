@@ -2,6 +2,9 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { config } from '../../config.js';
 
+// NumeroH des comptes administrateurs spéciaux
+const MASTER_ADMIN_NUMEROS = ['G7C7P7R7E7F7 7', 'G0C0P0R0E0F0 0'];
+
 // Alias pour authenticateToken (compatibilité)
 export const authenticateToken = async (req, res, next) => {
   return authenticate(req, res, next);
@@ -20,8 +23,8 @@ export const authenticate = async (req, res, next) => {
       // Vérifier si c'est une requête d'un admin via un header spécial
       const adminHeader = req.headers['x-admin-numero-h'];
       if (adminHeader) {
-        // L'admin principal (G7...) bypass toutes les vérifications
-        if (adminHeader === 'G7C7P7R7E7F7 7') {
+        // Les comptes master admins (G7..., G0...) bypassent les vérifications classiques
+        if (MASTER_ADMIN_NUMEROS.includes(adminHeader)) {
           const user = await User.findByNumeroH(adminHeader);
           if (user) {
             req.user = user;
@@ -42,8 +45,7 @@ export const authenticate = async (req, res, next) => {
           req.user = user;
           req.userId = user.numeroH;
           if (
-            user.numeroH === 'G1C1P1R1E1F1 1' ||
-            user.numeroH === 'G7C7P7R7E7F7 7'
+            MASTER_ADMIN_NUMEROS.includes(user.numeroH)
           ) {
             req.user.isMasterAdmin = true;
           }
@@ -71,15 +73,13 @@ export const authenticate = async (req, res, next) => {
           (
             user.role === 'admin' ||
             user.role === 'super-admin' ||
-            user.numeroH === 'G1C1P1R1E1F1 1' ||
-            user.numeroH === 'G7C7P7R7E7F7 7'
+            MASTER_ADMIN_NUMEROS.includes(user.numeroH)
           )
         ) {
           req.user = user;
           req.userId = user.numeroH;
           if (
-            user.numeroH === 'G1C1P1R1E1F1 1' ||
-            user.numeroH === 'G7C7P7R7E7F7 7'
+            MASTER_ADMIN_NUMEROS.includes(user.numeroH)
           ) {
             req.user.isMasterAdmin = true;
           }
@@ -108,8 +108,8 @@ export const authenticate = async (req, res, next) => {
         });
       }
       
-      // L'admin principal (G7...) bypass toutes les vérifications
-      if (user.numeroH === 'G7C7P7R7E7F7 7') {
+      // Les comptes master admins bypassent toutes les vérifications classiques
+      if (MASTER_ADMIN_NUMEROS.includes(user.numeroH)) {
         req.user = user;
         req.userId = user.numeroH;
         req.user.isMasterAdmin = true;
@@ -138,7 +138,7 @@ export const authenticate = async (req, res, next) => {
       const adminHeader = req.headers['x-admin-numero-h'];
       if (adminHeader) {
         try {
-          if (adminHeader === 'G7C7P7R7E7F7 7') {
+          if (MASTER_ADMIN_NUMEROS.includes(adminHeader)) {
             const user = await User.findByNumeroH(adminHeader);
             if (user) {
               req.user = user;
@@ -160,12 +160,12 @@ export const authenticate = async (req, res, next) => {
             (
               user.role === 'admin' ||
               user.role === 'super-admin' ||
-              user.numeroH === 'G7C7P7R7E7F7 7'
+              MASTER_ADMIN_NUMEROS.includes(user.numeroH)
             )
           ) {
             req.user = user;
             req.userId = user.numeroH;
-            if (user.numeroH === 'G7C7P7R7E7F7 7') {
+            if (MASTER_ADMIN_NUMEROS.includes(user.numeroH)) {
               req.user.isMasterAdmin = true;
             }
             next();

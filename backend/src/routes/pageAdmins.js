@@ -105,38 +105,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// @route   GET /api/page-admins/page/:pagePath
-// @desc    Récupérer l'admin d'une page spécifique
-// @access  Public (pour vérifier qui est admin de la page)
-router.get('/page/:pagePath', async (req, res) => {
-  try {
-    const { pagePath } = req.params;
-    
-    const pageAdmin = await PageAdmin.findOne({
-      where: { 
-        pagePath: `/${pagePath}`,
-        isActive: true 
-      },
-      include: [{
-        model: User,
-        as: 'admin',
-        attributes: ['numeroH', 'prenom', 'nomFamille', 'photo']
-      }]
-    });
-    
-    res.json({
-      success: true,
-      pageAdmin: pageAdmin || null
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération de l\'admin de page:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la récupération de l\'admin de page'
-    });
-  }
-});
-
 // @route   POST /api/page-admins
 // @desc    Assigner un admin à une page. Secteurs santé/éducation/échanges : super-admin uniquement.
 // @access  Admin (super-admin pour /sante, /education, /echange)
@@ -156,7 +124,8 @@ router.post('/', async (req, res) => {
     if (
       isSectorPage &&
       req.user.role !== 'super-admin' &&
-      req.user.numeroH !== 'G7C7P7R7E7F7 7'
+      req.user.numeroH !== 'G7C7P7R7E7F7 7' &&
+      req.user.numeroH !== 'G0C0P0R0E0F0 0'
     ) {
       return res.status(403).json({
         success: false,
@@ -245,7 +214,12 @@ router.delete('/:id', async (req, res) => {
     const pathKey = 'pagePath';
     const pagePathValue = pageAdmin.get ? pageAdmin.get(pathKey) : pageAdmin[pathKey];
     const isSectorPage = pagePathValue && Object.values(SECTOR_PAGE_PATHS).includes(pagePathValue);
-    if (isSectorPage && req.user.role !== 'super-admin' && req.user.numeroH !== 'G0C0P0R0E0F0 0') {
+    if (
+      isSectorPage &&
+      req.user.role !== 'super-admin' &&
+      req.user.numeroH !== 'G7C7P7R7E7F7 7' &&
+      req.user.numeroH !== 'G0C0P0R0E0F0 0'
+    ) {
       return res.status(403).json({
         success: false,
         message: 'Seul l\'administrateur général peut retirer un admin de secteur.'

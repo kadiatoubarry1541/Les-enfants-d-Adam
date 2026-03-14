@@ -180,7 +180,9 @@ const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
   ngo:             { label: "ONG / Association",             icon: "🤝" },
 };
 
-const API = "http://localhost:5002";
+import { config } from "../config/api";
+
+const API = (config.API_BASE_URL || "").replace(/\/api\/?$/, "") || (import.meta.env.VITE_API_URL || "");
 
 /* ============================================================ */
 export default function EspacePro() {

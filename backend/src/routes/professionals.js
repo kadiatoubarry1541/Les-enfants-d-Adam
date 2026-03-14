@@ -361,4 +361,18 @@ router.delete('/admin/:id', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// DEBUG: Compter les comptes professionnels présents en base
+// GET /api/professionals/admin/debug-count
+router.get('/admin/debug-count', authenticate, async (req, res) => {
+  try {
+    const total = await ProfessionalAccount.count();
+    const active = await ProfessionalAccount.count({ where: { isActive: true } });
+    const approved = await ProfessionalAccount.count({ where: { status: 'approved', isActive: true } });
+    return res.json({ success: true, total, active, approved });
+  } catch (error) {
+    console.error('Erreur debug-count:', error);
+    return res.status(500).json({ success: false, message: 'Erreur debug-count' });
+  }
+});
+
 export default router;

@@ -49,6 +49,7 @@ const EchangeNourriture = lazy(() => import("./pages/EchangeNourriture"));
 const EchangeMedicament = lazy(() => import("./pages/EchangeMedicament"));
 const EchangeSecondaire = lazy(() => import("./pages/EchangeSecondaire"));
 const EchangeTertiaire = lazy(() => import("./pages/EchangeTertiaire"));
+const EchangePublier = lazy(() => import("./pages/EchangePublier"));
 const Science = lazy(() => import("./pages/Science"));
 const ProfesseurIA = lazy(() => import("./pages/ProfesseurIA"));
 const InscriptionPro = lazy(() => import("./pages/InscriptionPro"));
@@ -199,6 +200,7 @@ function App() {
             <Route path="/echange/medicament" element={<EchangeMedicament />} />
           <Route path="/echange/secondaire" element={<EchangeSecondaire />} />
           <Route path="/echange/tertiaire" element={<EchangeTertiaire />} />
+          <Route path="/echange/publier" element={<EchangePublier />} />
           <Route path="/ia-sc" element={<ProfesseurIA />} />
           <Route path="/professeur-ia" element={<ProfesseurIA />} />
           <Route path="/inscription-pro" element={<InscriptionPro />} />

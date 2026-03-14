@@ -49,10 +49,13 @@ const canPublish = async (req, res, next) => {
     const user = req.user;
     
     // L'admin peut toujours publier
+    // On aligne ici avec la logique du frontend qui considère
+    // à la fois le NumeroH "G0..." et éventuellement "G7..." comme comptes spéciaux.
     if (
       user.role === 'admin' ||
       user.role === 'super-admin' ||
-      user.numeroH === 'G7C7P7R7E7F7 7'
+      user.numeroH === 'G7C7P7R7E7F7 7' ||
+      user.numeroH === 'G0C0P0R0E0F0 0'
     ) {
       return next();
     }

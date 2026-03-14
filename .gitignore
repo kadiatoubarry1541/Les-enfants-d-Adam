@@ -4,16 +4,24 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-package-lock.json
 
 # Environment variables (IMPORTANT: Ne jamais commiter!)
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 config.env
 *.env
 backend/config.env
 backend/.env
+frontend/.env.production
+frontend/.env.local
+backend/.env.backup
+**/.env.backup
+**/config.env
+!**/*.env.example
+!**/config.env.example
 
 # Build outputs
 dist/
@@ -25,12 +33,18 @@ build/
 logs/
 *.log
 
-# Database files (ne jamais pousser la base locale)
+# Database - NE JAMAIS pousser les DONNÉES réelles (familles, utilisateurs) !
+# On garde les scripts de schéma/migration (*.sql) mais pas les dumps avec données
 *.db
 *.sqlite
 *.sqlite3
+*.dump
+*.sql.gz
+**/dumps/
+**/*-dump.sql
+**/*-backup.sql
+**/data-*.sql
 backend/dumps/
-backend/*.sql
 
 # Uploads (fichiers utilisateurs)
 uploads/

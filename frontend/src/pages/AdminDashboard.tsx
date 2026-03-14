@@ -113,6 +113,7 @@ export default function AdminDashboard() {
     | "/echange/primaire"
     | "/echange/secondaire"
     | "/echange/tertiaire"
+    | "/echange/tertiaire/demarcheurs"
     | "/securite"
     | "/journalisme"
   >("/sante");
@@ -259,14 +260,17 @@ export default function AdminDashboard() {
   const loadAllPros = async (filter: string) => {
     try {
       const token = localStorage.getItem("token");
-      const url = filter === "pending"
-        ? `${API_BASE}/api/professionals/admin/pending`
-        : `${API_BASE}/api/professionals/admin/all?status=${filter}`;
+      const url =
+        filter === "pending"
+          ? `${API_BASE}/api/professionals/admin/pending`
+          : filter === "all"
+          ? `${API_BASE}/api/professionals/admin/all`
+          : `${API_BASE}/api/professionals/admin/all?status=${filter}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) setAllPros(data.accounts || []);
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error("Erreur:", error);
     }
   };
 
@@ -346,6 +350,7 @@ export default function AdminDashboard() {
           "/echange/primaire",
           "/echange/secondaire",
           "/echange/tertiaire",
+          "/echange/tertiaire/demarcheurs",
           "/securite",
           "/journalisme",
         ];
@@ -376,6 +381,7 @@ export default function AdminDashboard() {
       "/echange/primaire": "Échanges - Primaire",
       "/echange/secondaire": "Échanges - Secondaire",
       "/echange/tertiaire": "Échanges - Tertiaire",
+      "/echange/tertiaire/demarcheurs": "Échanges - Tertiaire (Démarcheurs)",
       "/securite": "Sécurité",
       "/journalisme": "Journalisme",
     };
@@ -846,12 +852,24 @@ export default function AdminDashboard() {
                   )}
                 </h2>
                 <div className="flex gap-2">
-                  {["pending", "approved", "rejected"].map((f) => (
-                    <button key={f} onClick={() => { setProFilter(f); loadAllPros(f); }}
+                  {["pending", "approved", "rejected", "all"].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => {
+                        setProFilter(f);
+                        loadAllPros(f);
+                      }}
                       className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
                         proFilter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}>
-                      {f === "pending" ? "En attente" : f === "approved" ? "Approuvés" : "Rejetés"}
+                      }`}
+                    >
+                      {f === "pending"
+                        ? "En attente"
+                        : f === "approved"
+                        ? "Approuvés"
+                        : f === "rejected"
+                        ? "Rejetés"
+                        : "Tous"}
                     </button>
                   ))}
                 </div>
@@ -979,6 +997,7 @@ export default function AdminDashboard() {
                             | "/echange/primaire"
                             | "/echange/secondaire"
                             | "/echange/tertiaire"
+                            | "/echange/tertiaire/demarcheurs"
                             | "/securite"
                             | "/journalisme"
                         )
@@ -991,6 +1010,7 @@ export default function AdminDashboard() {
                       <option value="/echange/primaire">Échanges – Primaire</option>
                       <option value="/echange/secondaire">Échanges – Secondaire</option>
                       <option value="/echange/tertiaire">Échanges – Tertiaire</option>
+                      <option value="/echange/tertiaire/demarcheurs">Échanges – Tertiaire (Démarcheurs)</option>
                       <option value="/securite">Sécurité</option>
                       <option value="/journalisme">Journalisme</option>
                     </select>

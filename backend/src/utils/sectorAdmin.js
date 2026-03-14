@@ -13,6 +13,8 @@ export const SECTOR_PAGE_PATHS = {
   echange_primaire: '/echange/primaire',
   echange_secondaire: '/echange/secondaire',
   echange_tertiaire: '/echange/tertiaire',
+  // Sous-secteur tertiaire dédié aux démarcheurs de maisons
+  echange_tertiaire_demarcheurs: '/echange/tertiaire/demarcheurs',
   securite: '/securite',
   journalisme: '/journalisme'
 };
@@ -24,6 +26,7 @@ export const SECTOR_NAMES = {
   echange_primaire: 'Échanges - Primaire',
   echange_secondaire: 'Échanges - Secondaire',
   echange_tertiaire: 'Échanges - Tertiaire',
+  echange_tertiaire_demarcheurs: 'Échanges - Tertiaire (Démarcheurs)',
   securite: 'Sécurité',
   journalisme: 'Journalisme'
 };
@@ -42,7 +45,9 @@ export const SECTOR_PRO_TYPES = {
   // mais chaque niveau peut avoir ses propres admins de page.
   echange_primaire: ['vendor', 'supplier', 'producer'],
   echange_secondaire: ['vendor', 'supplier', 'producer'],
-  echange_tertiaire: ['vendor', 'supplier', 'producer', 'broker'],
+  echange_tertiaire: ['vendor', 'supplier', 'producer'],
+  // Sous-secteur tertiaire pour les démarcheurs de maisons uniquement
+  echange_tertiaire_demarcheurs: ['broker'],
   securite: ['security_agency'],
   journalisme: ['journalist']
 };
@@ -58,6 +63,13 @@ export function getSectorForProType(professionalType) {
   if (SECTOR_PRO_TYPES.sante.includes(t)) return 'sante';
   if (SECTOR_PRO_TYPES.education.includes(t)) return 'education';
   if (SECTOR_PRO_TYPES.echange.includes(t)) return 'echange';
+  // Démarcheurs de maisons (location) : secteur tertiaire dédié
+  if (
+    SECTOR_PRO_TYPES.echange_tertiaire_demarcheurs &&
+    SECTOR_PRO_TYPES.echange_tertiaire_demarcheurs.includes(t)
+  ) {
+    return 'echange_tertiaire_demarcheurs';
+  }
   if (SECTOR_PRO_TYPES.securite.includes(t)) return 'securite';
   if (SECTOR_PRO_TYPES.journalisme.includes(t)) return 'journalisme';
   return null;
@@ -68,7 +80,8 @@ export function getSectorForProType(professionalType) {
  */
 export function isGlobalAdmin(user) {
   if (!user) return false;
-  if (user.numeroH === 'G7C7P7R7E7F7 7') return true;
+  // Comptes master administrateurs (NumeroH spéciaux) ou rôles admin
+  if (user.numeroH === 'G7C7P7R7E7F7 7' || user.numeroH === 'G0C0P0R0E0F0 0') return true;
   return user.role === 'admin' || user.role === 'super-admin';
 }
 

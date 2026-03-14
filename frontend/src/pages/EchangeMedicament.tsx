@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
 import { VideoRecorder } from '../components/VideoRecorder';
 import { AudioRecorder } from '../components/AudioRecorder';
+import { PublierAnnonceButtons } from '../components/PublierAnnonceButtons';
 
 interface UserData {
   numeroH: string;
@@ -408,18 +409,15 @@ export default function EchangeMedicament() {
             🩺 Équipements
           </button>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setShowCreateProduct(true)}
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm flex items-center gap-1.5"
-          >
-            <span>➕</span>
-            <span>Publier</span>
-          </button>
+        <div className="flex flex-col gap-4">
+          <PublierAnnonceButtons
+            onSelect={() => setShowCreateProduct(true)}
+            title="Publier une annonce"
+          />
           {isAdmin && (
             <button
               onClick={() => setSelectedSupplier({} as Supplier)}
-              className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm flex items-center gap-1.5"
+              className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm flex items-center gap-1.5 w-fit"
             >
               <span>⚙️</span>
               <span>Gérer</span>
@@ -506,8 +504,8 @@ export default function EchangeMedicament() {
               />
             </div>
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Ou : une photo + un audio de 30 secondes</label>
-              <p className="text-xs text-gray-500 mb-2">Prenez une photo de votre bien et enregistrez un court audio (30 s max) pour le présenter.</p>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Photo + message vocal (max 1 min)</label>
+              <p className="text-xs text-gray-500 mb-2">Prenez une photo de votre bien et enregistrez un message vocal (max 1 min) pour le présenter.</p>
               <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-4 mb-4 space-y-3">
                 <div>
                   <span className="block text-xs font-medium text-gray-600 mb-1">Photo du bien</span>
@@ -515,20 +513,20 @@ export default function EchangeMedicament() {
                   {newProduct.photoForAudio && <p className="mt-1 text-xs text-teal-600">✓ Photo sélectionnée</p>}
                 </div>
                 <div>
-                  <span className="block text-xs font-medium text-gray-600 mb-1">Audio de présentation (30 s)</span>
-                  <AudioRecorder maxDuration={30} onAudioRecorded={(blob) => setNewProduct((prev) => ({ ...prev, audio30s: new File([blob], `audio-30s-${Date.now()}.webm`, { type: blob.type || 'audio/webm' }) }))} />
-                  {newProduct.audio30s && <p className="mt-2 text-xs text-emerald-600">✓ Audio enregistré (30 s)</p>}
+                  <span className="block text-xs font-medium text-gray-600 mb-1">Message vocal (max 1 min)</span>
+                  <AudioRecorder maxDuration={60} onAudioRecorded={(blob) => setNewProduct((prev) => ({ ...prev, audio30s: new File([blob], `audio-30s-${Date.now()}.webm`, { type: blob.type || 'audio/webm' }) }))} />
+                  {newProduct.audio30s && <p className="mt-2 text-xs text-emerald-600">✓ Message vocal enregistré</p>}
                 </div>
               </div>
             </div>
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo de présentation (30 s) — toujours possible pour publier un bien</label>
-              <p className="text-xs text-gray-500 mb-2">Enregistrez une vidéo de 30 secondes pour présenter votre bien. L'enregistrement s'arrête automatiquement à 30 s.</p>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo (max 1 min)</label>
+              <p className="text-xs text-gray-500 mb-2">Enregistrez une vidéo de présentation (max 1 min).</p>
               <div className="rounded-xl border-2 border-teal-200 bg-teal-50/50 p-4 mb-4">
                 <VideoRecorder
-                  maxDuration={30}
+                  maxDuration={60}
                   onVideoRecorded={(blob) => {
-                    const file = new File([blob], `video-30s-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
+                    const file = new File([blob], `video-1min-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
                     setNewProduct((prev) => ({ ...prev, videos: [file, ...prev.videos] }));
                   }}
                 />

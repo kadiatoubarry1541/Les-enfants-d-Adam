@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../utils/api'
-import { getAllCountries, getRegionsByCountry, getContinentAndRegionByCountry } from '../../utils/worldGeography'
+import { getAllCountries, getRegionsByCountry, getContinentAndRegionByCountry, getPrefecturesByRegion, WORLD_GEOGRAPHY } from '../../utils/worldGeography'
 import { ETHNIE_CODES, FAMILLE_CODES, ETHNIES, FAMILLES } from '../../utils/constants'
 
 interface WrittenData {
@@ -28,6 +28,7 @@ interface WrittenData {
   familleAutre?: string
   activiteDescription?: string   // Description facultative de la profession (Autre)
   activiteDoc?: File | null       // Document professionnel facultatif (diplôme, attestation…)
+  activitePreuve?: File | null    // Preuve d'activité : photo, PDF, document
   prenom: string
   telephone: string
   email: string
@@ -72,6 +73,7 @@ export function WrittenRegistration() {
     familleAutre: '',
     activiteDescription: '',
     activiteDoc: null,
+    activitePreuve: null,
     prenom: '',
     telephone: '',
     email: '',
@@ -96,13 +98,29 @@ export function WrittenRegistration() {
   const [loading, setLoading] = useState(false)
   const [hasShownReminder, setHasShownReminder] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set())
+  const [paysSectionExpanded, setPaysSectionExpanded] = useState(true)
   const navigate = useNavigate()
 
-  const countries = useMemo(() => getAllCountries(), [])
+  const countries = useMemo(
+    () =>
+      getAllCountries()
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })),
+    []
+  )
   const regions = useMemo(
     () => (data.paysCode ? getRegionsByCountry(data.paysCode) : []),
     [data.paysCode]
   )
+
+  const paysComplete = !!(data.paysCode && data.region?.trim() && data.prefecture?.trim() && data.sousPrefecture?.trim() && data.quartier?.trim())
+  const paysSummary = paysComplete
+    ? [countries.find((c) => c.code === data.paysCode)?.name || data.pays, data.region?.trim(), data.prefecture?.trim(), data.sousPrefecture?.trim(), data.quartier?.trim()].filter(Boolean).join(' › ')
+    : ''
+
+  useEffect(() => {
+    if (paysComplete) setPaysSectionExpanded(false)
+  }, [paysComplete])
 
   const calculateGeneration = (dateNaissance: string): string => {
     if (!dateNaissance) return ''
@@ -126,7 +144,8 @@ export function WrittenRegistration() {
       data.famille === 'Autre' ? !!(data.familleAutre && data.familleAutre.trim()) : !!data.famille
 
     if (!data.paysCode) errors.add('paysCode')
-    if (!data.regionCode) errors.add('regionCode')
+    if (!(data.region && data.region.trim())) errors.add('region')
+    if (!(data.prefecture && data.prefecture.trim())) errors.add('prefecture')
     if (!(data.sousPrefecture && data.sousPrefecture.trim())) errors.add('sousPrefecture')
     if (!(data.quartier && data.quartier.trim())) errors.add('quartier')
     if (!hasEthnie) errors.add('ethnie')
@@ -271,20 +290,40 @@ export function WrittenRegistration() {
 
     const numeroH = await generateNumeroH(normalizedForm)
 
-    // Région choisie dans la liste ; sous-préfecture et quartier en saisie libre pour regroupement
+    const { continentCode: infContinentCode } = normalizedForm.paysCode ? getContinentAndRegionByCountry(normalizedForm.paysCode) : { continentCode: 'C1' }
+    const continentName = WORLD_GEOGRAPHY.find((c) => c.code === (normalizedForm.continentCode || infContinentCode))?.name || ''
     const inferred = {
       paysCode: normalizedForm.paysCode,
       pays: countries.find((c) => c.code === normalizedForm.paysCode)?.name || normalizedForm.pays,
-      regionCode: normalizedForm.regionCode,
-      region: regions.find((r) => r.code === normalizedForm.regionCode)?.name || normalizedForm.region,
+      continent: continentName,
+      continentCode: normalizedForm.continentCode || infContinentCode,
+      regionCode: normalizedForm.regionCode || (normalizedForm.paysCode ? getContinentAndRegionByCountry(normalizedForm.paysCode).regionCode : 'R1'),
+      region: (normalizedForm.region && normalizedForm.region.trim()) || regions.find((r) => r.code === normalizedForm.regionCode)?.name || '',
+      regionOrigine: (normalizedForm.region && normalizedForm.region.trim()) || regions.find((r) => r.code === normalizedForm.regionCode)?.name || '',
+      prefecture: (normalizedForm.prefecture && normalizedForm.prefecture.trim()) || '',
       sousPrefecture: (normalizedForm.sousPrefecture && normalizedForm.sousPrefecture.trim()) || '',
       quartier: (normalizedForm.quartier && normalizedForm.quartier.trim()) || ''
     }
 
     setData((prev) => ({ ...prev, numeroH }))
 
+    const fileToBase64 = (file: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+    const activitePreuveBase64 = normalizedForm.activitePreuve
+      ? await fileToBase64(normalizedForm.activitePreuve)
+      : null
+    const activiteDocBase64 = normalizedForm.activiteDoc
+      ? await fileToBase64(normalizedForm.activiteDoc)
+      : null
+
+    const { activitePreuve: _p, activiteDoc: _d, photo, ...restForm } = normalizedForm
     const completeData = {
-      ...normalizedForm,
+      ...restForm,
       ...inferred,
       numeroH,
       password: normalizedForm.password,
@@ -297,6 +336,8 @@ export function WrittenRegistration() {
       genre: normalizedForm.genre,
       photo: normalizedForm.photoPreview,
       photoPreview: normalizedForm.photoPreview,
+      activitePreuve: activitePreuveBase64,
+      activiteDoc: activiteDocBase64,
       lieu1: (normalizedForm.quartier && normalizedForm.quartier.trim()) || normalizedForm.lieu1 || ''
     }
 
@@ -371,7 +412,7 @@ export function WrittenRegistration() {
   // Calcul indicateur d'étapes
   const totalSteps = 4
   const step1Done = !!data.dateNaissance
-  const step2Done = step1Done && !!data.paysCode && !!data.regionCode && !!(data.sousPrefecture?.trim()) && !!(data.quartier?.trim())
+  const step2Done = step1Done && !!data.paysCode && !!(data.region?.trim()) && !!(data.prefecture?.trim()) && !!(data.sousPrefecture?.trim()) && !!(data.quartier?.trim())
   const step3Done = step2Done && identiteOK && coordonneesOK
   const step4Done = step3Done && !!data.email && !!data.password && data.password === data.confirmPassword && data.password.length >= 6
   const currentStep = step4Done ? 4 : step3Done ? 3 : step2Done ? 2 : 1
@@ -379,7 +420,8 @@ export function WrittenRegistration() {
   const missingFields: string[] = []
   if (!data.dateNaissance) missingFields.push('Date de naissance')
   if (!data.paysCode) missingFields.push('Pays')
-  if (!data.regionCode) missingFields.push('Région')
+  if (!(data.region && data.region.trim())) missingFields.push('Région')
+  if (!(data.prefecture && data.prefecture.trim())) missingFields.push('Préfecture')
   if (!(data.sousPrefecture && data.sousPrefecture.trim())) missingFields.push('Sous-préfecture')
   if (!(data.quartier && data.quartier.trim())) missingFields.push('Quartier')
   if (!ethnieFilled) missingFields.push('Ethnie')
@@ -450,9 +492,6 @@ export function WrittenRegistration() {
                 required
                 className={getFieldClassName('dateNaissance', !!data.dateNaissance)}
               />
-              <small style={{ fontSize: '0.8rem', color: '#4b5563' }}>
-                Vous pouvez taper la date directement au clavier.
-              </small>
             </div>
           </div>
           <div className="col-6">
@@ -469,157 +508,129 @@ export function WrittenRegistration() {
           </div>
         </div>
 
-        {/* ══ SECTION 2 – Après la date : Pays ══ */}
+        {/* ══ SECTION 2 – Champ Pays (unifié) : contient Pays + Région + Préfecture + Sous-préfecture + Quartier ══ */}
         {data.dateNaissance && (
-          <div className="row" style={{ animation: 'fadeInDown 0.3s ease' }}>
-            <div className="col-12">
-              <div className="field">
-                <label>Pays *</label>
-                <select
-                  value={data.paysCode}
-                  onChange={(e) => {
-                    const selectedCountry = countries.find((c) => c.code === e.target.value)
-                    const inferred = e.target.value
-                      ? getContinentAndRegionByCountry(e.target.value)
-                      : { continentCode: '', regionCode: '' }
-                    setData((prev) => ({
-                      ...prev,
-                      pays: selectedCountry?.name || '',
-                      paysCode: e.target.value,
-                      continentCode: inferred.continentCode || prev.continentCode,
-                      continent: selectedCountry ? '' : prev.continent,
-                      region: '',
-                      regionCode: inferred.regionCode || '',
-                      sousPrefecture: '',
-                      quartier: ''
-                    }))
-                    if (e.target.value) {
-                      setValidationErrors((prev) => {
-                        const next = new Set(prev)
-                        next.delete('paysCode')
-                        return next
-                      })
-                    }
-                  }}
-                  required
-                  className={getFieldClassName('paysCode', !!data.paysCode)}
-                >
-                  <option value="">— Choisir un pays —</option>
-                  {countries.map((country) => (
-                    <option key={country.code} value={country.code}>
-                      {country.name}
-                    </option>
-                  ))}
-                </select>
+          <div className="field" style={{ animation: 'fadeInDown 0.3s ease' }}>
+            <label>Pays *</label>
+            {paysComplete && !paysSectionExpanded ? (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setPaysSectionExpanded(true)}
+                onKeyDown={(e) => e.key === 'Enter' && setPaysSectionExpanded(true)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-white cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 flex items-center justify-between transition-colors"
+              >
+                <span className="text-gray-800">{paysSummary}</span>
+                <span className="text-gray-400 text-sm">▼</span>
+              </div>
+            ) : (
+              <div className="space-y-3 p-4 border-2 border-gray-300 rounded-lg bg-white">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Pays</label>
+                  <select
+                    value={data.paysCode}
+                    onChange={(e) => {
+                      const selectedCountry = countries.find((c) => c.code === e.target.value)
+                      const inferred = e.target.value ? getContinentAndRegionByCountry(e.target.value) : { continentCode: '', regionCode: '' }
+                      setData((prev) => ({
+                        ...prev,
+                        pays: selectedCountry?.name || '',
+                        paysCode: e.target.value,
+                        continentCode: inferred.continentCode || prev.continentCode,
+                        continent: selectedCountry ? '' : prev.continent,
+                        region: '',
+                        regionCode: inferred.regionCode || '',
+                        prefecture: '',
+                        prefectureCode: '',
+                        sousPrefecture: '',
+                        quartier: ''
+                      }))
+                      if (e.target.value) setValidationErrors((prev) => { const n = new Set(prev); n.delete('paysCode'); return n })
+                    }}
+                    required
+                    className={getFieldClassName('paysCode', !!data.paysCode)}
+                  >
+                    <option value="">— Choisir un pays —</option>
+                    {countries.map((c) => (
+                      <option key={c.code} value={c.code}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
                 {data.paysCode && (
-                  <small className="text-green-600">
-                    ✓ {countries.find((c) => c.code === data.paysCode)?.name}
-                  </small>
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Région *</label>
+                      <input
+                        type="text"
+                        value={data.region}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          const matched = regions.find((r) => r.name.toLowerCase() === v.trim().toLowerCase())
+                          setData((prev) => ({ ...prev, region: v, regionCode: matched?.code || '' }))
+                          if (v.trim()) setValidationErrors((prev) => { const n = new Set(prev); n.delete('region'); return n })
+                        }}
+                        list="region-list"
+                        placeholder="Région"
+                        className={getFieldClassName('region', !!(data.region?.trim()))}
+                      />
+                      <datalist id="region-list">{regions.map((r) => <option key={r.code} value={r.name} />)}</datalist>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Préfecture *</label>
+                        <input
+                          type="text"
+                          value={data.prefecture}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            const prefectures = data.regionCode ? getPrefecturesByRegion(data.regionCode, data.paysCode, data.continentCode) : []
+                            const matched = prefectures.find((p) => p.name.toLowerCase() === v.trim().toLowerCase())
+                            setData((prev) => ({ ...prev, prefecture: v, prefectureCode: matched?.code || '' }))
+                            if (v.trim()) setValidationErrors((prev) => { const n = new Set(prev); n.delete('prefecture'); return n })
+                          }}
+                          list="prefecture-list"
+                          placeholder="Préfecture"
+                          className={getFieldClassName('prefecture', !!(data.prefecture?.trim()))}
+                        />
+                        <datalist id="prefecture-list">
+                          {(data.regionCode ? getPrefecturesByRegion(data.regionCode, data.paysCode, data.continentCode) : []).map((p) => (
+                            <option key={p.code} value={p.name} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Sous-préfecture *</label>
+                        <input
+                          type="text"
+                          value={data.sousPrefecture}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setData((prev) => ({ ...prev, sousPrefecture: v }))
+                            if (v.trim()) setValidationErrors((prev) => { const n = new Set(prev); n.delete('sousPrefecture'); return n })
+                          }}
+                          placeholder="Sous-préfecture"
+                          className={getFieldClassName('sousPrefecture', !!(data.sousPrefecture?.trim()))}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Quartier *</label>
+                      <input
+                        type="text"
+                        value={data.quartier}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setData((prev) => ({ ...prev, quartier: v }))
+                          if (v.trim()) setValidationErrors((prev) => { const n = new Set(prev); n.delete('quartier'); return n })
+                        }}
+                        placeholder="Quartier"
+                        className={getFieldClassName('quartier', !!(data.quartier?.trim()))}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ SECTION 3 – Après le pays : Région ══ */}
-        {data.paysCode && (
-          <div className="row" style={{ animation: 'fadeInDown 0.3s ease' }}>
-            <div className="col-12">
-              <div className="field">
-                <label>Région *</label>
-                <select
-                  value={data.regionCode}
-                  onChange={(e) => {
-                    const selected = regions.find((r) => r.code === e.target.value)
-                    setData((prev) => ({
-                      ...prev,
-                      region: selected?.name || '',
-                      regionCode: e.target.value
-                    }))
-                    if (e.target.value) {
-                      setValidationErrors((prev) => {
-                        const next = new Set(prev)
-                        next.delete('regionCode')
-                        return next
-                      })
-                    }
-                  }}
-                  required
-                  className={getFieldClassName('regionCode', !!data.regionCode)}
-                >
-                  <option value="">— Choisir une région ({regions.length} disponibles) —</option>
-                  {regions.map((r) => (
-                    <option key={r.code} value={r.code}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-                {data.regionCode && (
-                  <small className="text-green-600">
-                    ✓ {regions.find((r) => r.code === data.regionCode)?.name}
-                  </small>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ SECTION 4 – Après le pays : Sous-préfecture + Quartier ══ */}
-        {data.paysCode && (
-          <div className="row" style={{ animation: 'fadeInDown 0.3s ease' }}>
-            <div className="col-6">
-              <div className="field">
-                <label>Sous-préfecture *</label>
-                <input
-                  type="text"
-                  value={data.sousPrefecture}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setData((prev) => ({ ...prev, sousPrefecture: v }))
-                    if (v.trim()) {
-                      setValidationErrors((prev) => {
-                        const next = new Set(prev)
-                        next.delete('sousPrefecture')
-                        return next
-                      })
-                    }
-                  }}
-                  placeholder="Ex. Kaloum, Ratoma..."
-                  className={getFieldClassName('sousPrefecture', !!(data.sousPrefecture?.trim()))}
-                />
-                {data.sousPrefecture?.trim() && (
-                  <small className="text-green-600">✓ {data.sousPrefecture.trim()}</small>
-                )}
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="field">
-                <label>Quartier *</label>
-                <input
-                  type="text"
-                  value={data.quartier}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setData((prev) => ({ ...prev, quartier: v }))
-                    if (v.trim()) {
-                      setValidationErrors((prev) => {
-                        const next = new Set(prev)
-                        next.delete('quartier')
-                        return next
-                      })
-                    }
-                  }}
-                  placeholder="Ex. Hamdallaye, Taouyah..."
-                  className={getFieldClassName('quartier', !!(data.quartier?.trim()))}
-                />
-                <small className="text-gray-500">
-                  Permet de vous regrouper avec les personnes du même quartier.
-                </small>
-                {data.quartier?.trim() && (
-                  <small className="text-green-600">✓ {data.quartier.trim()}</small>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -758,22 +769,85 @@ export function WrittenRegistration() {
                 {data.activite1 && data.activite1 !== 'Autre' && (
                   <small className="text-green-600">✓ Activité : {data.activite1}</small>
                 )}
+
+                {/* Champ Preuve (photo, PDF, document) — pour toutes les activités */}
+                {data.activite1 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Preuve (photo, PDF, document)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      id="activite-preuve-capture"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        setData((prev) => ({ ...prev, activitePreuve: file }))
+                      }}
+                    />
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      id="activite-preuve-choose"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        setData((prev) => ({ ...prev, activitePreuve: file }))
+                      }}
+                    />
+                    <div className="flex gap-3 flex-wrap">
+                      <label
+                        htmlFor="activite-preuve-capture"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg cursor-pointer hover:bg-green-700 transition-colors text-sm font-medium"
+                      >
+                        <span>📷</span>
+                        <span>Prendre une photo</span>
+                      </label>
+                      <label
+                        htmlFor="activite-preuve-choose"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        <span>🖼️</span>
+                        <span>Choisir depuis galerie / fichier</span>
+                      </label>
+                    </div>
+                    {data.activitePreuve && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-sm text-green-600">✓ {data.activitePreuve.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setData((prev) => ({ ...prev, activitePreuve: null }))}
+                          className="text-xs text-red-500 hover:underline"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* ══ SECTION 6 – Après le pays : Ethnie + Famille ══ */}
+        {/* ══ SECTION 6 – Après le pays : Ethnie + Famille (saisie libre avec suggestions) ══ */}
         {data.paysCode && (
           <div className="row" style={{ animation: 'fadeInDown 0.3s ease' }}>
             <div className="col-6">
               <div className="field">
                 <label>Ethnie *</label>
-                <select
-                  value={data.ethnie}
+                <input
+                  type="text"
+                  value={data.ethnie === 'Autre' ? (data.ethnieAutre || '') : data.ethnie}
                   onChange={(e) => {
-                    setData((prev) => ({ ...prev, ethnie: e.target.value, ethnieAutre: '' }))
-                    if (e.target.value) {
+                    const v = e.target.value
+                    const fromList = ETHNIES.includes(v)
+                    setData((prev) => ({
+                      ...prev,
+                      ethnie: fromList ? v : 'Autre',
+                      ethnieAutre: fromList ? '' : v
+                    }))
+                    if (v.trim()) {
                       setValidationErrors((prev) => {
                         const next = new Set(prev)
                         next.delete('ethnie')
@@ -781,42 +855,35 @@ export function WrittenRegistration() {
                       })
                     }
                   }}
-                  required
-                  className={getFieldClassName('ethnie', !!data.ethnie)}
-                >
-                  <option value="">— Ethnie —</option>
-                  {ETHNIES.map((ethnie) => (
-                    <option key={ethnie} value={ethnie}>{ethnie}</option>
+                  list="ethnie-list"
+                  placeholder="Ex. Soninké, Peuls, Malinkés..."
+                  className={getFieldClassName('ethnie', ethnieFilled)}
+                />
+                <datalist id="ethnie-list">
+                  {ETHNIES.map((e) => (
+                    <option key={e} value={e} />
                   ))}
-                  <option value="Autre">✏️ Autre</option>
-                </select>
-                {data.ethnie === 'Autre' && (
-                  <div className="mt-2">
-                    <input
-                      type="text"
-                      value={data.ethnieAutre || ''}
-                      onChange={(e) => setData((prev) => ({ ...prev, ethnieAutre: e.target.value }))}
-                      placeholder="Saisissez votre ethnie"
-                      className={getFieldClassName('ethnie', !!(data.ethnieAutre?.trim()))}
-                    />
-                    <small className="text-gray-500 block mt-1">
-                      Votre ethnie n&apos;est pas dans la liste ? Écrivez-la ici.
-                    </small>
-                  </div>
-                )}
-                {data.ethnie && data.ethnie !== 'Autre' && (
-                  <small className="text-green-600">✓ {data.ethnie}</small>
+                </datalist>
+                {ethnieFilled && (
+                  <small className="text-green-600 block mt-1">✓ {data.ethnie === 'Autre' ? data.ethnieAutre : data.ethnie}</small>
                 )}
               </div>
             </div>
             <div className="col-6">
               <div className="field">
                 <label>Famille (Nom) *</label>
-                <select
-                  value={data.famille}
+                <input
+                  type="text"
+                  value={data.famille === 'Autre' ? (data.familleAutre || '') : data.famille}
                   onChange={(e) => {
-                    setData((prev) => ({ ...prev, famille: e.target.value, familleAutre: '' }))
-                    if (e.target.value) {
+                    const v = e.target.value
+                    const fromList = FAMILLES.includes(v)
+                    setData((prev) => ({
+                      ...prev,
+                      famille: fromList ? v : 'Autre',
+                      familleAutre: fromList ? '' : v
+                    }))
+                    if (v.trim()) {
                       setValidationErrors((prev) => {
                         const next = new Set(prev)
                         next.delete('famille')
@@ -824,31 +891,17 @@ export function WrittenRegistration() {
                       })
                     }
                   }}
-                  required
-                  className={getFieldClassName('famille', !!data.famille)}
-                >
-                  <option value="">— Nom de famille —</option>
-                  {FAMILLES.map((famille) => (
-                    <option key={famille} value={famille}>{famille}</option>
+                  list="famille-list"
+                  placeholder="Ex. Keita, Diallo, Barry..."
+                  className={getFieldClassName('famille', familleFilled)}
+                />
+                <datalist id="famille-list">
+                  {FAMILLES.map((f) => (
+                    <option key={f} value={f} />
                   ))}
-                  <option value="Autre">✏️ Autre</option>
-                </select>
-                {data.famille === 'Autre' && (
-                  <div className="mt-2">
-                    <input
-                      type="text"
-                      value={data.familleAutre || ''}
-                      onChange={(e) => setData((prev) => ({ ...prev, familleAutre: e.target.value }))}
-                      placeholder="Saisissez votre nom de famille"
-                      className={getFieldClassName('famille', !!(data.familleAutre?.trim()))}
-                    />
-                    <small className="text-gray-500 block mt-1">
-                      Votre nom de famille n&apos;est pas dans la liste ? Écrivez-le ici.
-                    </small>
-                  </div>
-                )}
-                {data.famille && data.famille !== 'Autre' && (
-                  <small className="text-green-600">✓ {data.famille}</small>
+                </datalist>
+                {familleFilled && (
+                  <small className="text-green-600 block mt-1">✓ {data.famille === 'Autre' ? data.familleAutre : data.famille}</small>
                 )}
               </div>
             </div>

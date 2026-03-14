@@ -3,6 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { config } from '../config/api';
 import { VideoRecorder } from '../components/VideoRecorder';
 import { AudioRecorder } from '../components/AudioRecorder';
+import { PublierAnnonceButtons } from '../components/PublierAnnonceButtons';
+
+function getMediaDuration(file: File, type: 'audio' | 'video'): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const el = document.createElement(type);
+    el.onloadedmetadata = () => {
+      const dur = el.duration;
+      URL.revokeObjectURL(url);
+      resolve(dur);
+    };
+    el.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Impossible de lire le fichier'));
+    };
+    el.src = url;
+  });
+}
 
 interface UserData {
   numeroH: string;
@@ -62,6 +80,7 @@ export default function EchangePrimaire() {
   const [activeNourritureTab] = useState<'aliments-base'>('aliments-base');
   const navigate = useNavigate();
 
+  const [publishMode, setPublishMode] = useState<null | 'ecrit' | 'photo_audio' | 'video'>(null);
   const [newProduct, setNewProduct] = useState({
     title: '',
     description: '',
@@ -235,10 +254,16 @@ export default function EchangePrimaire() {
         alert("Remplissez au minimum le titre, la catégorie, le prix et la localisation.");
         return;
       }
-      const hasVideo = newProduct.videos.length > 0;
-      const hasImage = newProduct.images.length > 0 || !!newProduct.photoForAudio;
-      if (!hasVideo && !hasImage) {
-        alert("Ajoutez au moins une photo du produit ou une vidéo de présentation.");
+      if (publishMode === 'ecrit' && newProduct.images.length === 0) {
+        alert("Ajoutez au moins une photo.");
+        return;
+      }
+      if (publishMode === 'photo_audio' && (!newProduct.photoForAudio || !newProduct.audio30s)) {
+        alert("Ajoutez une photo et enregistrez un message vocal (max 1 min).");
+        return;
+      }
+      if (publishMode === 'video' && newProduct.videos.length === 0) {
+        alert("Enregistrez une vidéo de présentation.");
         return;
       }
 
@@ -254,16 +279,9 @@ export default function EchangePrimaire() {
       formData.append('seller', userData?.numeroH || '');
       formData.append('sellerName', `${userData?.prenom} ${userData?.nomFamille}`);
       
-      // Ajouter les images
-      newProduct.images.forEach((image, index) => {
-        formData.append(`image_${index}`, image);
-      });
-      
-      // Ajouter les vidéos
-      newProduct.videos.forEach((video, index) => {
-        formData.append(`video_${index}`, video);
-      });
+      newProduct.images.forEach((image, index) => formData.append(`image_${index}`, image));
       if (newProduct.photoForAudio) formData.append(`image_${newProduct.images.length}`, newProduct.photoForAudio);
+      newProduct.videos.forEach((video, index) => formData.append(`video_${index}`, video));
       if (newProduct.audio30s) formData.append('audio_0', newProduct.audio30s);
       
       const token = localStorage.getItem("token");
@@ -279,6 +297,7 @@ export default function EchangePrimaire() {
       if (response.ok) {
         alert('Produit créé avec succès !');
         setShowCreateProduct(false);
+        setPublishMode(null);
         setNewProduct({
           title: '',
           description: '',
@@ -434,187 +453,218 @@ export default function EchangePrimaire() {
         ← Retour
       </button>
 
-      {/* Actions rapides */}
+      {/* Actions rapides : 3 boutons Publier une annonce + Gérer Fournisseurs */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-8">
-        <div className="flex gap-4 flex-wrap">
-        <button
-          onClick={() => setShowCreateProduct(true)}
-            className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
-        >
-          <span className="text-xl">➕</span>
-          <span className="font-semibold">Publier un Produit</span>
-        </button>
-        {isAdmin && (
-          <button
-            onClick={() => setSelectedSupplier({} as Supplier)}
-              className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
-          >
-            <span className="text-xl">⚙️</span>
-            <span className="font-semibold">Gérer Fournisseurs</span>
-          </button>
-        )}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1">
+            <PublierAnnonceButtons
+              onSelect={(mode) => { setShowCreateProduct(true); setPublishMode(mode); }}
+              title="Publier une annonce"
+            />
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => setSelectedSupplier({} as Supplier)}
+              className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all duration-200 flex items-center gap-2 shadow-lg shrink-0"
+            >
+              <span className="text-xl">⚙️</span>
+              <span className="font-semibold">Gérer Fournisseurs</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Formulaire de création de produit */}
-      {showCreateProduct && (
+      {showCreateProduct && publishMode !== null && (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8">
           <div className="flex items-center gap-4 mb-6">
+            <button onClick={() => { setPublishMode(null); setShowCreateProduct(false); }} className="text-gray-500 hover:text-gray-700">←</button>
             <div className="text-3xl">📦</div>
-            <h3 className="text-2xl font-bold text-gray-900">Publier un produit primaire</h3>
+            <h3 className="text-2xl font-bold text-gray-900">
+              {publishMode === 'ecrit' && 'Publier par écrit (champs + photo)'}
+              {publishMode === 'photo_audio' && 'Publier par photo + audio'}
+              {publishMode === 'video' && 'Publier par vidéo'}
+            </h3>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">Titre du produit</label>
-              <input
-                type="text"
-                value={newProduct.title}
-                onChange={(e) => setNewProduct({...newProduct, title: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
-                placeholder="Ex: Riz Local Premium"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">Catégorie</label>
-              <select
-                value={newProduct.category}
-                onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
-              >
-                <option value="">Sélectionner une catégorie</option>
-                <option value="Alimentation">Alimentation</option>
-                <option value="Aliments">Aliments</option>
-                <option value="Textile">Textile</option>
-                <option value="Agriculture">Agriculture</option>
-                <option value="Artisanat">Artisanat</option>
-                <option value="Matières Premières">Matières Premières</option>
-                <option value="Autre">Autre</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">Prix</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={newProduct.price}
-                  onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
-                  placeholder="15000"
-                />
-                <select
-                  value={newProduct.currency}
-                  onChange={(e) => setNewProduct({...newProduct, currency: e.target.value})}
-                  className="px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
-                >
-                  <option value="FG">FG</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">État</label>
-              <select
-                value={newProduct.condition}
-                onChange={(e) => setNewProduct({...newProduct, condition: e.target.value as any})}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
-              >
-                <option value="neuf">Neuf</option>
-                <option value="bon">Bon état</option>
-                <option value="moyen">État moyen</option>
-                <option value="usé">Usé</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">Localisation</label>
-              <input
-                type="text"
-                value={newProduct.location}
-                onChange={(e) => setNewProduct({...newProduct, location: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
-                placeholder="Ex: Ville Principale"
-              />
-            </div>
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Ou : une photo + un audio de 30 secondes</label>
-              <p className="text-xs text-gray-500 mb-2">Prenez une photo de votre bien et enregistrez un court audio (30 s max) pour le présenter.</p>
-              <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-4 mb-4 space-y-3">
                 <div>
-                  <span className="block text-xs font-medium text-gray-600 mb-1">Photo du bien</span>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Titre du produit</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => setNewProduct((prev) => ({ ...prev, photoForAudio: e.target.files?.[0] || null }))}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-green-100 file:text-green-800"
+                    type="text"
+                    value={newProduct.title}
+                    onChange={(e) => setNewProduct({...newProduct, title: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    placeholder="Ex: Riz Local Premium"
                   />
-                  {newProduct.photoForAudio && <p className="mt-1 text-xs text-green-600">✓ Photo sélectionnée</p>}
                 </div>
                 <div>
-                  <span className="block text-xs font-medium text-gray-600 mb-1">Audio de présentation (30 s)</span>
-                  <AudioRecorder
-                    maxDuration={30}
-                    onAudioRecorded={(blob) => {
-                      const file = new File([blob], `audio-30s-${Date.now()}.webm`, { type: blob.type || 'audio/webm' });
-                      setNewProduct((prev) => ({ ...prev, audio30s: file }));
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Catégorie</label>
+                  <select
+                    value={newProduct.category}
+                    onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                  >
+                    <option value="">Sélectionner une catégorie</option>
+                    <option value="Alimentation">Alimentation</option>
+                    <option value="Aliments">Aliments</option>
+                    <option value="Textile">Textile</option>
+                    <option value="Agriculture">Agriculture</option>
+                    <option value="Artisanat">Artisanat</option>
+                    <option value="Matières Premières">Matières Premières</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Prix</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={newProduct.price}
+                      onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                      className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                      placeholder="15000"
+                    />
+                    <select
+                      value={newProduct.currency}
+                      onChange={(e) => setNewProduct({...newProduct, currency: e.target.value})}
+                      className="px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    >
+                      <option value="FG">FG</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">État</label>
+                  <select
+                    value={newProduct.condition}
+                    onChange={(e) => setNewProduct({...newProduct, condition: e.target.value as any})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                  >
+                    <option value="neuf">Neuf</option>
+                    <option value="bon">Bon état</option>
+                    <option value="moyen">État moyen</option>
+                    <option value="usé">Usé</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Localisation</label>
+                  <input
+                    type="text"
+                    value={newProduct.location}
+                    onChange={(e) => setNewProduct({...newProduct, location: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    placeholder="Ex: Ville Principale"
+                  />
+                </div>
+
+            {publishMode === 'photo_audio' && (
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Photo + message vocal (max 1 min)</label>
+              <div className="rounded-xl border-2 border-amber-200 bg-amber-50/50 p-4 space-y-3">
+                <div>
+                  <input type="file" id="photo-audio-capture-pr" accept="image/*" capture="environment" className="hidden"
+                    onChange={(e) => setNewProduct(p => ({ ...p, photoForAudio: e.target.files?.[0] || null }))}
+                  />
+                  <input type="file" id="photo-audio-gallery-pr" accept="image/*" className="hidden"
+                    onChange={(e) => setNewProduct(p => ({ ...p, photoForAudio: e.target.files?.[0] || null }))}
+                  />
+                  <div className="flex gap-3">
+                    <label htmlFor="photo-audio-capture-pr" className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 cursor-pointer text-center font-medium">
+                      📷 Prendre une photo
+                    </label>
+                    <label htmlFor="photo-audio-gallery-pr" className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 cursor-pointer text-center font-medium">
+                      🖼️ Choisir depuis galerie
+                    </label>
+                  </div>
+                  {newProduct.photoForAudio && <p className="mt-2 text-sm text-green-600 font-medium">✓ Photo sélectionnée</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Message vocal (max 1 min)</label>
+                  <input type="file" id="audio-choose-pr" accept="audio/*" className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const dur = await getMediaDuration(file, 'audio');
+                        if (dur > 60) { alert('L\'audio ne doit pas dépasser 1 minute.'); return; }
+                        setNewProduct(p => ({ ...p, audio30s: file }));
+                      } catch { alert('Impossible de lire le fichier audio.'); }
+                      e.target.value = '';
                     }}
                   />
-                  {newProduct.audio30s && <p className="mt-2 text-xs text-emerald-600">✓ Audio enregistré (30 s)</p>}
+                  <div className="flex gap-3 mb-3">
+                    <label htmlFor="audio-choose-pr" className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 cursor-pointer text-center font-medium">
+                      🎵 Choisir depuis l'appareil
+                    </label>
+                  </div>
+                  <AudioRecorder maxDuration={60} onAudioRecorded={(blob) => {
+                    const file = new File([blob], `audio-${Date.now()}.webm`, { type: blob.type || 'audio/webm' });
+                    setNewProduct(p => ({ ...p, audio30s: file }));
+                  }} />
+                  {newProduct.audio30s && <p className="mt-2 text-sm text-green-600 font-medium">✓ Audio prêt</p>}
                 </div>
               </div>
             </div>
+            )}
+            {publishMode === 'video' && (
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Vidéo de présentation (jusqu'à 1 minute)</label>
-              <p className="text-xs text-gray-500 mb-2">Enregistrez une courte vidéo (30 secondes à 1 minute) pour présenter votre bien.</p>
-              <div className="rounded-xl border-2 border-green-200 bg-green-50/50 p-4 mb-4">
-                <VideoRecorder
-                  maxDuration={60}
-                  onVideoRecorded={(blob) => {
-                    const file = new File([blob], `video-30s-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
-                    setNewProduct((prev) => ({ ...prev, videos: [file, ...prev.videos] }));
+              <label className="block text-sm font-semibold text-gray-700 mb-2">🎥 Vidéo (max 1 min)</label>
+              <div className="rounded-xl border-2 border-blue-200 bg-blue-50/50 p-4 space-y-4">
+                <input type="file" id="video-choose-pr" accept="video/*" className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const dur = await getMediaDuration(file, 'video');
+                      if (dur > 60) { alert('La vidéo ne doit pas dépasser 1 minute.'); return; }
+                      setNewProduct(p => ({ ...p, videos: [file, ...p.videos] }));
+                    } catch { alert('Impossible de lire le fichier vidéo.'); }
+                    e.target.value = '';
                   }}
                 />
+                <div className="flex gap-3">
+                  <label htmlFor="video-choose-pr" className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 cursor-pointer text-center font-medium">
+                    🖼️ Choisir depuis l'appareil
+                  </label>
+                </div>
+                <VideoRecorder maxDuration={60} onVideoRecorded={(blob) => {
+                  const file = new File([blob], `video-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
+                  setNewProduct(p => ({ ...p, videos: [file, ...p.videos] }));
+                }} />
+                {newProduct.videos.length > 0 && <p className="mt-2 text-sm text-green-600 font-medium">✓ Vidéo prête</p>}
               </div>
             </div>
+            )}
+            {publishMode === 'ecrit' && (
+            <>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">📷 Photos et Vidéos</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">📷 Photos</label>
               <div className="space-y-3">
-                {/* Bouton pour prendre une photo/vidéo avec caméra (mobile) */}
                 <input
                   type="file"
                   id="media-capture"
-                  accept="image/*,video/*,audio/*"
+                  accept="image/*"
                   capture="environment"
                   multiple
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     const images = files.filter(f => f.type.startsWith('image/'));
-                    const videos = files.filter(f => f.type.startsWith('video/'));
-                    setNewProduct({
-                      ...newProduct,
-                      images: [...newProduct.images, ...images],
-                      videos: [...newProduct.videos, ...videos]
-                    });
+                    setNewProduct({ ...newProduct, images: [...newProduct.images, ...images] });
                   }}
                   className="hidden"
                 />
-                {/* Bouton pour galerie (desktop + mobile) */}
                 <input
                   type="file"
                   id="media-gallery"
-                  accept="image/*,video/*,audio/*"
-                  capture="environment"
+                  accept="image/*"
                   multiple
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     const images = files.filter(f => f.type.startsWith('image/'));
-                    const videos = files.filter(f => f.type.startsWith('video/'));
-                    setNewProduct({
-                      ...newProduct,
-                      images: [...newProduct.images, ...images],
-                      videos: [...newProduct.videos, ...videos]
-                    });
+                    setNewProduct({ ...newProduct, images: [...newProduct.images, ...images] });
                   }}
                   className="hidden"
                 />
@@ -624,7 +674,7 @@ export default function EchangePrimaire() {
                     htmlFor="media-capture"
                     className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors duration-200 cursor-pointer text-center font-medium flex items-center justify-center gap-2"
                   >
-                    📷 Prendre une photo/vidéo
+                    📷 Prendre une photo
                   </label>
                   <label
                     htmlFor="media-gallery"
@@ -634,11 +684,10 @@ export default function EchangePrimaire() {
                   </label>
                 </div>
                 
-                {/* Aperçu des médias sélectionnés */}
-                {(newProduct.images.length > 0 || newProduct.videos.length > 0) && (
+                {newProduct.images.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm text-green-600 font-medium mb-3">
-                      ✅ {newProduct.images.length} photo(s) et {newProduct.videos.length} vidéo(s) sélectionnée(s)
+                      ✅ {newProduct.images.length} photo(s) sélectionnée(s)
                     </p>
                     <div className="grid grid-cols-3 gap-3">
                       {newProduct.images.map((img, idx) => (
@@ -659,29 +708,12 @@ export default function EchangePrimaire() {
                           </button>
                         </div>
                       ))}
-                      {newProduct.videos.map((vid, idx) => (
-                        <div key={`vid-${idx}`} className="relative">
-                          <video 
-                            src={URL.createObjectURL(vid)} 
-                            className="w-full h-24 object-cover rounded-lg border-2 border-blue-300"
-                            muted
-                          />
-                          <button
-                            onClick={() => {
-                              const newVideos = newProduct.videos.filter((_, i) => i !== idx);
-                              setNewProduct({...newProduct, videos: newVideos});
-                            }}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 )}
               </div>
             </div>
+
             <div className="lg:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-3">Description</label>
               <textarea
@@ -692,6 +724,8 @@ export default function EchangePrimaire() {
                 placeholder="Décrivez votre produit en détail..."
               />
             </div>
+            </>
+            )}
           </div>
           
           <div className="flex gap-4 mt-8">
