@@ -150,6 +150,52 @@ export function ArbreGenealogique({ userData, cercleCounts, treeHidden = [], onT
     return generationMap[relation] || 'G1'
   }
 
+  // Helper : forme du carreau selon le genre (Femme = hexagone léger, Homme = rectangle)
+  // Hexagone subtil : haut et bas horizontaux, côtés gauche/droit légèrement rentrés (comme sur la maquette)
+  const isFemme = (genre?: string) => genre?.toUpperCase() === 'FEMME'
+  const hexagonPoints = (x: number, y: number, w: number, h: number) => {
+    const inset = w / 10 // léger rentré des côtés (au lieu de w/4)
+    return `${x},${y + h / 2} ${x + inset},${y} ${x + w - inset},${y} ${x + w},${y + h / 2} ${x + w - inset},${y + h} ${x + inset},${y + h}`
+  }
+
+  const renderNodeShape = (
+    genre: 'HOMME' | 'FEMME' | 'AUTRE',
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    stroke: string,
+    strokeWidth: number,
+    fill: string,
+    onClick?: () => void,
+    extraProps?: Record<string, unknown>
+  ) =>
+    isFemme(genre) ? (
+      <polygon
+        points={hexagonPoints(x, y, w, h)}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        onClick={onClick}
+        style={{ cursor: onClick ? 'pointer' : undefined }}
+        {...extraProps}
+      />
+    ) : (
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={h}
+        rx={6}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        onClick={onClick}
+        style={{ cursor: onClick ? 'pointer' : undefined }}
+        {...extraProps}
+      />
+    )
+
   // Helper pour dessiner un nœud personne avec photo + nom complet + NumeroH
   const renderPersonNode = (
     person: Partial<FamilyMember> & { prenom?: string; nomFamille?: string; numeroH?: string; photo?: string; genre?: 'HOMME' | 'FEMME' | 'AUTRE' },
@@ -174,7 +220,7 @@ export function ArbreGenealogique({ userData, cercleCounts, treeHidden = [], onT
 
     return (
       <g>
-        <rect x={x} y={y} width={w} height={h} rx={6} fill="white" stroke={stroke} strokeWidth={3} />
+        {renderNodeShape(person.genre || 'HOMME', x, y, w, h, stroke, 3, 'white')}
 
         {/* Photo circulaire */}
         {person.photo ? (
@@ -388,128 +434,122 @@ export function ArbreGenealogique({ userData, cercleCounts, treeHidden = [], onT
            */}
 
           {/* ── G-1 : Grands-parents (affiché seulement si présents) ── */}
-          {familyMembers.filter(m => m.generation === 'G-1').length > 0 && (
+          {familyMembers.filter(m => m.generation === 'G-1').length > 0 && (() => {
+            const gpp = familyMembers.filter(m => m.relation === 'grand-pere' && m.generation === 'G-1')[0]
+            const gmp = familyMembers.filter(m => m.relation === 'grand-mere' && m.generation === 'G-1')[0]
+            const gpm = familyMembers.filter(m => m.relation === 'grand-pere' && m.generation === 'G-1')[1]
+            const gmm = familyMembers.filter(m => m.relation === 'grand-mere' && m.generation === 'G-1')[1]
+            return (
             <g className="generation-g-1">
 
-              {/* Grand-père paternel  [x=190..350, y=40..110, cx=270, cy=75] */}
-              <rect x="190" y="40" width="160" height="70" rx="6"
-                fill="white" stroke="#A0522D" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '4') || null)}
-                style={{ cursor: 'pointer' }} />
+              {/* Grand-père paternel  [x=190..350, y=40..110] — HOMME = rectangle */}
+              {renderNodeShape('HOMME', 190, 40, 160, 70, '#A0522D', 3, 'white',
+                () => setSelectedMember(gpp || null))}
               <circle cx="218" cy="75" r="20" fill="#A0522D" opacity="0.25" />
-              {familyMembers.find(m => m.id === '4')?.photo && (
-                <image href={familyMembers.find(m => m.id === '4')?.photo}
+              {gpp?.photo && (
+                <image href={gpp.photo}
                   x="198" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
                   clipPath="url(#c-gpp)" />
               )}
               <defs><clipPath id="c-gpp"><circle cx="218" cy="75" r="20"/></clipPath></defs>
               <text x="246" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Père</text>
-              <text x="246" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '4')?.prenom || 'Grand-père'}</text>
-              <text x="246" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '4')?.numeroH || ''}</text>
+              <text x="246" y="80" fontSize="11" fill="#555">{gpp?.prenom || 'Grand-père'}</text>
+              <text x="246" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{gpp?.numeroH || ''}</text>
 
               {/* Connecteur horizontal couple paternel — dans le gap x=350..390 */}
               <line x1="350" y1="75" x2="390" y2="75" stroke="#A0522D" strokeWidth="2"/>
 
-              {/* Grand-mère paternelle  [x=390..550] */}
-              <rect x="390" y="40" width="160" height="70" rx="6"
-                fill="white" stroke="#A0522D" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '5') || null)}
-                style={{ cursor: 'pointer' }} />
+              {/* Grand-mère paternelle  [x=390..550] — FEMME = hexagone */}
+              {renderNodeShape('FEMME', 390, 40, 160, 70, '#A0522D', 3, 'white',
+                () => setSelectedMember(gmp || null))}
               <circle cx="418" cy="75" r="20" fill="#A0522D" opacity="0.25" />
-              {familyMembers.find(m => m.id === '5')?.photo && (
-                <image href={familyMembers.find(m => m.id === '5')?.photo}
+              {gmp?.photo && (
+                <image href={gmp.photo}
                   x="398" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
                   clipPath="url(#c-gmp)" />
               )}
               <defs><clipPath id="c-gmp"><circle cx="418" cy="75" r="20"/></clipPath></defs>
               <text x="446" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Mère</text>
-              <text x="446" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '5')?.prenom || 'Grand-mère'}</text>
-              <text x="446" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '5')?.numeroH || ''}</text>
+              <text x="446" y="80" fontSize="11" fill="#555">{gmp?.prenom || 'Grand-mère'}</text>
+              <text x="446" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{gmp?.numeroH || ''}</text>
 
               {/* Vertical couple paternel → Père G0
                   x=370 est dans le gap 350..390, y=75..190 ne croise aucune boîte */}
               <line x1="370" y1="75" x2="370" y2="190" stroke="#A0522D" strokeWidth="2"/>
 
-              {/* Grand-père maternel  [x=630..790] */}
-              <rect x="630" y="40" width="160" height="70" rx="6"
-                fill="white" stroke="#A0522D" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '8') || null)}
-                style={{ cursor: 'pointer' }} />
+              {/* Grand-père maternel  [x=630..790] — HOMME = rectangle */}
+              {renderNodeShape('HOMME', 630, 40, 160, 70, '#A0522D', 3, 'white',
+                () => setSelectedMember(gpm || null))}
               <circle cx="658" cy="75" r="20" fill="#A0522D" opacity="0.25" />
-              {familyMembers.find(m => m.id === '8')?.photo && (
-                <image href={familyMembers.find(m => m.id === '8')?.photo}
+              {gpm?.photo && (
+                <image href={gpm.photo}
                   x="638" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
                   clipPath="url(#c-gpm)" />
               )}
               <defs><clipPath id="c-gpm"><circle cx="658" cy="75" r="20"/></clipPath></defs>
               <text x="686" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Père</text>
-              <text x="686" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '8')?.prenom || 'Grand-père'}</text>
-              <text x="686" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '8')?.numeroH || ''}</text>
+              <text x="686" y="80" fontSize="11" fill="#555">{gpm?.prenom || 'Grand-père'}</text>
+              <text x="686" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{gpm?.numeroH || ''}</text>
 
               {/* Connecteur horizontal couple maternel — dans le gap x=790..830 */}
               <line x1="790" y1="75" x2="830" y2="75" stroke="#A0522D" strokeWidth="2"/>
 
-              {/* Grand-mère maternelle  [x=830..990] */}
-              <rect x="830" y="40" width="160" height="70" rx="6"
-                fill="white" stroke="#A0522D" strokeWidth="3"
-                onClick={() => setSelectedMember(familyMembers.find(m => m.id === '9') || null)}
-                style={{ cursor: 'pointer' }} />
+              {/* Grand-mère maternelle  [x=830..990] — FEMME = hexagone */}
+              {renderNodeShape('FEMME', 830, 40, 160, 70, '#A0522D', 3, 'white',
+                () => setSelectedMember(gmm || null))}
               <circle cx="858" cy="75" r="20" fill="#A0522D" opacity="0.25" />
-              {familyMembers.find(m => m.id === '9')?.photo && (
-                <image href={familyMembers.find(m => m.id === '9')?.photo}
+              {gmm?.photo && (
+                <image href={gmm.photo}
                   x="838" y="55" width="40" height="40" preserveAspectRatio="xMidYMid slice"
                   clipPath="url(#c-gmm)" />
               )}
               <defs><clipPath id="c-gmm"><circle cx="858" cy="75" r="20"/></clipPath></defs>
               <text x="886" y="66" fontSize="11" fontWeight="bold" fill="#2c5530">Mère</text>
-              <text x="886" y="80" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '9')?.prenom || 'Grand-mère'}</text>
-              <text x="886" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{familyMembers.find(m => m.id === '9')?.numeroH || ''}</text>
+              <text x="886" y="80" fontSize="11" fill="#555">{gmm?.prenom || 'Grand-mère'}</text>
+              <text x="886" y="94" fontSize="10" fill="#A0522D" fontWeight="bold">{gmm?.numeroH || ''}</text>
 
               {/* Vertical couple maternel → Mère G0
                   x=810 dans le gap 790..830 */}
               <line x1="810" y1="75" x2="810" y2="190" stroke="#A0522D" strokeWidth="2"/>
             </g>
-          )}
+            )
+          })()}
 
           {/* ── G0 : Parents ── */}
           <g className="generation-g0">
 
-            {/* Père  [x=290..450, cy=225] */}
-            <rect x="290" y="190" width="160" height="70" rx="6"
-              fill="white" stroke="#CD853F" strokeWidth="3"
-              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '2') || null)}
-              style={{ cursor: 'pointer' }} />
+            {/* Père  [x=290..450, cy=225] — HOMME = rectangle */}
+            {renderNodeShape('HOMME', 290, 190, 160, 70, '#CD853F', 3, 'white',
+              () => setSelectedMember(familyMembers.find(m => m.relation === 'pere') || null))}
             <circle cx="318" cy="225" r="20" fill="#CD853F" opacity="0.25" />
-            {familyMembers.find(m => m.id === '2')?.photo && (
-              <image href={familyMembers.find(m => m.id === '2')?.photo}
+            {familyMembers.find(m => m.relation === 'pere')?.photo && (
+                <image href={familyMembers.find(m => m.relation === 'pere')?.photo}
                 x="298" y="205" width="40" height="40" preserveAspectRatio="xMidYMid slice"
                 clipPath="url(#c-pere)" />
             )}
             <defs><clipPath id="c-pere"><circle cx="318" cy="225" r="20"/></clipPath></defs>
             <text x="346" y="216" fontSize="11" fontWeight="bold" fill="#2c5530">Mari / Père</text>
-            <text x="346" y="230" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '2')?.prenom || userData.prenomPere || 'Père'}</text>
-            <text x="346" y="244" fontSize="10" fill="#CD853F" fontWeight="bold">{familyMembers.find(m => m.id === '2')?.numeroH || userData.numeroHPere || ''}</text>
+            <text x="346" y="230" fontSize="11" fill="#555">{familyMembers.find(m => m.relation === 'pere')?.prenom || userData.prenomPere || 'Père'}</text>
+            <text x="346" y="244" fontSize="10" fill="#CD853F" fontWeight="bold">{familyMembers.find(m => m.relation === 'pere')?.numeroH || userData.numeroHPere || ''}</text>
 
             {/* Connecteur horizontal Père ↔ Mère — dans le gap x=450..730
                 Vertical de descente part du milieu (x=590) — x=590 hors de toute boîte G0 */}
             <line x1="450" y1="225" x2="730" y2="225" stroke="#CD853F" strokeWidth="2"/>
             <text x="590" y="217" textAnchor="middle" fontSize="11" fill="#FF9800" fontWeight="bold">Conjoints</text>
 
-            {/* Mère  [x=730..890, cy=225] */}
-            <rect x="730" y="190" width="160" height="70" rx="6"
-              fill="white" stroke="#CD853F" strokeWidth="3"
-              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '3') || null)}
-              style={{ cursor: 'pointer' }} />
+            {/* Mère  [x=730..890, cy=225] — FEMME = hexagone */}
+            {renderNodeShape('FEMME', 730, 190, 160, 70, '#CD853F', 3, 'white',
+              () => setSelectedMember(familyMembers.find(m => m.relation === 'mere') || null))}
             <circle cx="758" cy="225" r="20" fill="#CD853F" opacity="0.25" />
-            {familyMembers.find(m => m.id === '3')?.photo && (
-              <image href={familyMembers.find(m => m.id === '3')?.photo}
+            {familyMembers.find(m => m.relation === 'mere')?.photo && (
+                <image href={familyMembers.find(m => m.relation === 'mere')?.photo}
                 x="738" y="205" width="40" height="40" preserveAspectRatio="xMidYMid slice"
                 clipPath="url(#c-mere)" />
             )}
             <defs><clipPath id="c-mere"><circle cx="758" cy="225" r="20"/></clipPath></defs>
             <text x="786" y="216" fontSize="11" fontWeight="bold" fill="#2c5530">Femme / Mère</text>
-            <text x="786" y="230" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '3')?.prenom || userData.prenomMere || 'Mère'}</text>
-            <text x="786" y="244" fontSize="10" fill="#CD853F" fontWeight="bold">{familyMembers.find(m => m.id === '3')?.numeroH || userData.numeroHMere || ''}</text>
+            <text x="786" y="230" fontSize="11" fill="#555">{familyMembers.find(m => m.relation === 'mere')?.prenom || userData.prenomMere || 'Mère'}</text>
+            <text x="786" y="244" fontSize="10" fill="#CD853F" fontWeight="bold">{familyMembers.find(m => m.relation === 'mere')?.numeroH || userData.numeroHMere || ''}</text>
 
             {/* Vertical G0 → barre G1  (x=590 dans le gap père..mère, y=225→310) */}
             <line x1="590" y1="225" x2="590" y2="310" stroke="#CD853F" strokeWidth="2"/>
@@ -526,11 +566,9 @@ export function ArbreGenealogique({ userData, cercleCounts, treeHidden = [], onT
           {/* ── G1 : Fratrie + VOUS + Conjoint(e) ── */}
           <g className="generation-g1">
 
-            {/* Frère  [x=310..470, cx=390] */}
-            <rect x="310" y="350" width="160" height="70" rx="6"
-              fill="white" stroke="#667eea" strokeWidth="3"
-              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '6') || null)}
-              style={{ cursor: 'pointer' }} />
+            {/* Frère  [x=310..470, cx=390] — HOMME = rectangle */}
+            {renderNodeShape('HOMME', 310, 350, 160, 70, '#667eea', 3, 'white',
+              () => setSelectedMember(familyMembers.find(m => m.relation === 'frere') || null))}
             <circle cx="338" cy="385" r="20" fill="#667eea" opacity="0.25" />
             {familyMembers.find(m => m.id === '6')?.photo && (
               <image href={familyMembers.find(m => m.id === '6')?.photo}
@@ -539,31 +577,27 @@ export function ArbreGenealogique({ userData, cercleCounts, treeHidden = [], onT
             )}
             <defs><clipPath id="c-frere"><circle cx="338" cy="385" r="20"/></clipPath></defs>
             <text x="366" y="377" fontSize="11" fontWeight="bold" fill="#2c5530">Frère</text>
-            <text x="366" y="391" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '6')?.prenom || 'Frère'}</text>
-            <text x="366" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{familyMembers.find(m => m.id === '6')?.numeroH || ''}</text>
+            <text x="366" y="391" fontSize="11" fill="#555">{familyMembers.find(m => m.relation === 'frere')?.prenom || 'Frère'}</text>
+            <text x="366" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{familyMembers.find(m => m.relation === 'frere')?.numeroH || ''}</text>
 
-            {/* Sœur  [x=510..670, cx=590] */}
-            <rect x="510" y="350" width="160" height="70" rx="6"
-              fill="white" stroke="#667eea" strokeWidth="3"
-              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '7') || null)}
-              style={{ cursor: 'pointer' }} />
+            {/* Sœur  [x=510..670, cx=590] — FEMME = hexagone */}
+            {renderNodeShape('FEMME', 510, 350, 160, 70, '#667eea', 3, 'white',
+              () => setSelectedMember(familyMembers.find(m => m.relation === 'soeur') || null))}
             <circle cx="538" cy="385" r="20" fill="#667eea" opacity="0.25" />
-            {familyMembers.find(m => m.id === '7')?.photo && (
-              <image href={familyMembers.find(m => m.id === '7')?.photo}
+            {familyMembers.find(m => m.relation === 'soeur')?.photo && (
+                <image href={familyMembers.find(m => m.relation === 'soeur')?.photo}
                 x="518" y="365" width="40" height="40" preserveAspectRatio="xMidYMid slice"
                 clipPath="url(#c-soeur)" />
             )}
             <defs><clipPath id="c-soeur"><circle cx="538" cy="385" r="20"/></clipPath></defs>
             <text x="566" y="377" fontSize="11" fontWeight="bold" fill="#2c5530">Sœur</text>
-            <text x="566" y="391" fontSize="11" fill="#555">{familyMembers.find(m => m.id === '7')?.prenom || 'Sœur'}</text>
-            <text x="566" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{familyMembers.find(m => m.id === '7')?.numeroH || ''}</text>
+            <text x="566" y="391" fontSize="11" fill="#555">{familyMembers.find(m => m.relation === 'soeur')?.prenom || 'Sœur'}</text>
+            <text x="566" y="405" fontSize="10" fill="#667eea" fontWeight="bold">{familyMembers.find(m => m.relation === 'soeur')?.numeroH || ''}</text>
 
-            {/* VOUS  [x=710..870, cx=790] */}
-            <rect x="710" y="350" width="160" height="70" rx="6"
-              fill="white" stroke="#667eea" strokeWidth="4"
-              className="current-user"
-              onClick={() => setSelectedMember(familyMembers.find(m => m.id === '1') || null)}
-              style={{ cursor: 'pointer' }} />
+            {/* VOUS  [x=710..870, cx=790] — forme selon userData.genre */}
+            {renderNodeShape((userData.genre?.toUpperCase() || 'HOMME') as 'HOMME' | 'FEMME' | 'AUTRE', 710, 350, 160, 70, '#667eea', 4, 'white',
+              () => setSelectedMember(familyMembers.find(m => m.numeroH === userData.numeroH) || null),
+              { className: 'current-user' })}
             <circle cx="738" cy="385" r="20" fill="#667eea" opacity="0.4" />
             {userData.photo && (
               <image href={userData.photo}
@@ -584,10 +618,9 @@ export function ArbreGenealogique({ userData, cercleCounts, treeHidden = [], onT
                 <line x1="870" y1="385" x2="910" y2="385" stroke="#4CAF50" strokeWidth="2"/>
                 <text x="890" y="377" textAnchor="middle" fontSize="10" fill="#FF9800" fontWeight="bold">♥</text>
 
-                {/* Conjoint(e)  [x=910..1070, cx=990] */}
-                <rect x="910" y="350" width="160" height="70" rx="6"
-                  fill="white" stroke="#667eea" strokeWidth="3"
-                  style={{ cursor: 'pointer' }} />
+                {/* Conjoint(e)  [x=910..1070, cx=990] — forme selon conjointGenre */}
+                {renderNodeShape((userData.conjointGenre?.toUpperCase() === 'FEMME' ? 'FEMME' : 'HOMME') as 'HOMME' | 'FEMME' | 'AUTRE', 910, 350, 160, 70, '#667eea', 3, 'white',
+                  () => setSelectedMember(familyMembers.find(m => m.relation === 'conjoint') || null))}
                 <circle cx="938" cy="385" r="20" fill="#667eea" opacity="0.25" />
                 {userData.conjointPhoto && (
                   <image href={userData.conjointPhoto}
