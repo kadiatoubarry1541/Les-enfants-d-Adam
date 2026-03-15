@@ -457,8 +457,12 @@ export default function Parents() {
                   className="w-full text-left"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-2xl">
-                      {link.parentType === 'mere' ? '👩' : '👨'}
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-2xl flex-shrink-0 border-2 border-white shadow">
+                      {link.parent?.photo ? (
+                        <img src={link.parent.photo.startsWith('http') ? link.parent.photo : (link.parent.photo.startsWith('/') ? link.parent.photo : '/' + link.parent.photo)} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        link.parentType === 'mere' ? '👩' : '👨'
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-800">
@@ -504,8 +508,12 @@ export default function Parents() {
                         </span>
                       </p>
                     </div>
-                    <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl border border-white/30 shadow-inner flex-shrink-0">
-                      {selectedParent.parentType === 'mere' ? '👩' : '👨'}
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl border border-white/30 shadow-inner flex-shrink-0">
+                      {selectedParent.parent?.photo ? (
+                        <img src={selectedParent.parent.photo.startsWith('http') ? selectedParent.parent.photo : (selectedParent.parent.photo.startsWith('/') ? selectedParent.parent.photo : '/' + selectedParent.parent.photo)} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        selectedParent.parentType === 'mere' ? '👩' : '👨'
+                      )}
                     </div>
                   </div>
                 </div>

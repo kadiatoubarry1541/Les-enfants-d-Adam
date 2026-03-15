@@ -1,10 +1,30 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { authenticate } from '../middleware/auth.js';
 import User from '../models/User.js';
 import ParentChildLink from '../models/ParentChildLink.js';
 import ParentChildActivity from '../models/ParentChildActivity.js';
 import ParentChildRating from '../models/ParentChildRating.js';
 import { sequelize } from '../config/database.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const childStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../../uploads/enfants');
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `enfant-${uniqueSuffix}${path.extname(file.originalname) || ''}`);
+  }
+});
+const uploadChild = multer({ storage: childStorage, limits: { fileSize: 50 * 1024 * 1024 } });
 
 const router = express.Router();
 router.use(authenticate);
@@ -727,6 +747,71 @@ router.get('/admin/all-links', async (req, res) => {
     res.json({ success: true, links: withUsers });
   } catch (error) {
     console.error('Erreur admin all-links parent-child:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/parent-child/activity/upload
+ * Enregistre une activité parent-enfant avec fichier média via multer.
+ */
+router.post('/activity/upload', uploadChild.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
+  { name: 'audio', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    await ensureParentChildActivityTable();
+    const user = req.user;
+    const { parentNumeroH, childNumeroH, toNumeroH, type, content } = req.body;
+
+    if (!parentNumeroH || !childNumeroH || !toNumeroH) {
+      return res.status(400).json({
+        success: false,
+        message: 'parentNumeroH, childNumeroH et toNumeroH sont requis'
+      });
+    }
+
+    const link = await ParentChildLink.findOne({
+      where: { parentNumeroH, childNumeroH, status: 'active', isActive: true }
+    });
+    if (!link) {
+      return res.status(403).json({ success: false, message: 'Lien parent-enfant non trouvé ou inactif' });
+    }
+
+    const isParent = user.numeroH === parentNumeroH;
+    const isChild = user.numeroH === childNumeroH;
+    if (!isParent && !isChild && !isAdmin(user)) {
+      return res.status(403).json({ success: false, message: 'Vous ne faites pas partie de cette liaison' });
+    }
+
+    let mediaUrl = null;
+    const files = req.files || {};
+    const uploadedFile = (files.image && files.image[0]) || (files.video && files.video[0]) || (files.audio && files.audio[0]);
+    if (uploadedFile) {
+      mediaUrl = `/uploads/enfants/${uploadedFile.filename}`;
+    }
+
+    const activity = await ParentChildActivity.create({
+      parentNumeroH,
+      childNumeroH,
+      fromNumeroH: user.numeroH,
+      toNumeroH,
+      type: type || 'media',
+      content: content || null,
+      mediaUrl
+    });
+
+    res.json({
+      success: true,
+      message: 'Activité enregistrée',
+      activity: {
+        ...activity.toJSON(),
+        fromName: `${user.prenom} ${user.nomFamille}`
+      }
+    });
+  } catch (error) {
+    console.error('Erreur upload activité parent-enfant:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

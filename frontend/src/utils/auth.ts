@@ -140,18 +140,22 @@ export function getPhotoUrl(photo?: string | null): string | null {
 
 /**
  * RÈGLE : Le compteur du NumeroH (chiffre après l'espace) est confidentiel.
- * On ne montre à personne le compteur d'un autre — uniquement au titulaire du compte.
- * Pour les autres, on n'affiche que la partie avant l'espace (identification sans le compteur).
+ * Il ne doit apparaître que sur la page Identité de l'utilisateur (sécurité).
+ * Partout ailleurs (tableau de bord, profil, modale, etc.) on n'affiche que la partie avant l'espace.
+ * Pour les autres utilisateurs, on n'affiche jamais le compteur.
+ * @param showCompteur - true uniquement sur la page Identité (/identite), false partout ailleurs
  */
 export function getNumeroHForDisplay(
   numeroH: string | null | undefined,
-  isOwner: boolean
+  isOwner: boolean,
+  showCompteur: boolean = false
 ): string {
   if (!numeroH || typeof numeroH !== "string") return "";
   const trimmed = numeroH.trim();
   if (!trimmed) return "";
-  if (isOwner) return trimmed;
   const parts = trimmed.split(/\s+/);
-  return parts[0] ?? trimmed;
+  const sansCompteur = parts[0] ?? trimmed;
+  if (showCompteur && isOwner) return trimmed;
+  return sansCompteur;
 }
 

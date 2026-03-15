@@ -232,32 +232,25 @@ export default function InscriptionPro() {
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Image ou vidéo de présentation (max ~30s)
+                  Photo de présentation (optionnel)
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  Choisissez une photo ou une courte vidéo (≈ 30 secondes). Le fichier sera converti automatiquement.
+                  Choisissez une photo (max 5 Mo). Images uniquement.
                 </p>
                 <input
                   type="file"
-                  accept="image/*,video/*"
+                  accept="image/*"
                   onChange={e => {
                     const file = e.target.files?.[0];
-                    if (!file) {
-                      setForm(f => ({ ...f, mediaUrl: "" }));
-                      return;
-                    }
-                    // Option simple: limiter la taille (ex. 20 Mo) pour éviter les fichiers trop lourds
-                    if (file.size > 20 * 1024 * 1024) {
-                      setError("Le fichier ne doit pas dépasser 20 Mo.");
+                    if (!file) { setForm(f => ({ ...f, mediaUrl: "" })); return; }
+                    if (file.size > 5 * 1024 * 1024) {
+                      setError("La photo ne doit pas dépasser 5 Mo.");
                       setForm(f => ({ ...f, mediaUrl: "" }));
                       return;
                     }
                     setError("");
                     const reader = new FileReader();
-                    reader.onload = () => {
-                      // on stocke le base64 dans mediaUrl, comme prévu côté backend
-                      setForm(f => ({ ...f, mediaUrl: String(reader.result) }));
-                    };
+                    reader.onload = () => setForm(f => ({ ...f, mediaUrl: String(reader.result) }));
                     reader.readAsDataURL(file);
                   }}
                   className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-300"

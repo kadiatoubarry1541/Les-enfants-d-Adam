@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getNumeroHForDisplay } from '../utils/auth'
 import './Marcher.css'
 
 interface MarcherProps {
@@ -19,7 +20,7 @@ export function Marcher({ userData }: MarcherProps) {
     <div className="marcher-page">
       <div className="marcher-header">
         <h3>🛒 Marché de {userData.prenom} {userData.nomFamille}</h3>
-        <p className="numero-h">NumeroH: {userData.numeroH}</p>
+        <p className="numero-h">NumeroH: {getNumeroHForDisplay(userData.numeroH, true, false)}</p>
       </div>
 
       <div className="marcher-tabs">

@@ -55,18 +55,6 @@ function getToken() {
   return localStorage.getItem('token')
 }
 
-async function toDataUrl(url: string): Promise<string> {
-  if (!url) return ''
-  if (url.startsWith('data:')) return url
-  const response = await fetch(url)
-  const blob = await response.blob()
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('Erreur conversion média'))
-    reader.readAsDataURL(blob)
-  })
-}
 
 type SessionId = 'avant' | 'paradis' | 'objectif'
 
@@ -151,15 +139,29 @@ export default function Partenaire() {
           if (!act.mediaUrl || !act.type || !act.type.startsWith('souvenir_')) continue
           const key = act.type.replace('souvenir_', '') as SessionId
           if (!sessions[key]) continue
-          const mediaType: 'photo' | 'video' | 'audio' =
-            act.mediaUrl.startsWith('data:video') ? 'video'
-            : act.mediaUrl.startsWith('data:audio') ? 'audio'
-            : 'photo'
+          // Déterminer le type de média et la légende
+          let mediaType: 'photo' | 'video' | 'audio' = 'photo'
+          let caption = act.content
+          if (act.content) {
+            try {
+              const parsed = JSON.parse(act.content)
+              mediaType = parsed.mediaType || 'photo'
+              caption = parsed.caption || undefined
+            } catch {
+              // ancien format base64 : détecter depuis l'URL
+              mediaType = act.mediaUrl.startsWith('data:video') ? 'video'
+                : act.mediaUrl.startsWith('data:audio') ? 'audio'
+                : 'photo'
+            }
+          }
+          const displayUrl = act.mediaUrl.startsWith('data:') || act.mediaUrl.startsWith('http')
+            ? act.mediaUrl
+            : `${API_BASE}${act.mediaUrl}`
           sessions[key].push({
             id: act.id,
             type: mediaType,
-            url: act.mediaUrl,
-            caption: act.content,
+            url: displayUrl,
+            caption: caption || undefined,
             date: act.created_at
           })
         }
@@ -395,18 +397,20 @@ export default function Partenaire() {
       try {
         const token = getToken()
         if (!token) return
-        const dataUrl = await toDataUrl(mediaData.url)
-        const res = await fetch(`${API_BASE}/api/couple/activity`, {
+        // Convertir l'URL (blob: ou data:) en File pour upload multipart
+        const response = await fetch(mediaData.url)
+        const blob = await response.blob()
+        const ext = mediaData.type === 'photo' ? 'jpg' : mediaData.type === 'video' ? 'webm' : 'ogg'
+        const file = new File([blob], `media.${ext}`, { type: blob.type })
+        const formData = new FormData()
+        const fieldName = mediaData.type === 'photo' ? 'image' : mediaData.type === 'video' ? 'video' : 'audio'
+        formData.append(fieldName, file)
+        formData.append('type', `souvenir_${session}`)
+        formData.append('content', JSON.stringify({ caption: mediaData.caption || '', mediaType: mediaData.type }))
+        const res = await fetch(`${API_BASE}/api/couple/activity/upload`, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            type: `souvenir_${session}`,
-            content: mediaData.caption,
-            mediaUrl: dataUrl
-          })
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
         })
         const data = await res.json()
         if (!data.success) {

@@ -1,6 +1,7 @@
 // Configuration de l'application
+// En dev, utiliser une URL relative pour passer par le proxy Vite (évite "Route non trouvée")
 export const config = {
-  API_BASE_URL: (import.meta.env.MODE === 'production' ? '' : 'http://localhost:5002') + '/api',
+  API_BASE_URL: (import.meta.env.VITE_API_URL || (import.meta.env.MODE === 'production' ? '' : '')) + '/api',
   APP_NAME: "VivasAr",
   APP_VERSION: "1.0.0",
   FRONTEND_URL: "http://localhost:5173",

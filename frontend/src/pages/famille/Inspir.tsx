@@ -165,7 +165,12 @@ export default function Inspir() {
         }
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Erreur lors de l\'envoi du message' }));
-        alert(errorData.message || `Erreur ${response.status}: ${response.statusText}`);
+        const msg = errorData.message || `Erreur ${response.status}: ${response.statusText}`;
+        if (response.status === 404 && (msg.includes('Route non trouvée') || msg.includes('non trouv'))) {
+          alert('Route API non trouvée. Vérifiez que le backend est bien démarré (npm run start dans le dossier backend) et redémarrez la page.');
+        } else {
+          alert(msg);
+        }
       }
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi du message:', error);
@@ -277,14 +282,20 @@ export default function Inspir() {
         </div>
       )}
 
-      {/* Titre de la section */}
+      {/* Titre de la section — photo de profil si disponible, sinon icône */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center">
-          <span className="text-4xl mr-4">
-            {currentOrgSubTab === 'hommes' && '\uD83D\uDC68\u200D\uD83D\uDC68'}
-            {currentOrgSubTab === 'femmes' && '\uD83E\uDDD5\uD83C\uDFFF\uD83E\uDDD5\uD83C\uDFFB'}
-            {currentOrgSubTab === 'enfants' && '\uD83D\uDC6B\uD83C\uDFFF'}
-          </span>
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-3xl mr-4 flex-shrink-0 border-2 border-white shadow-md">
+            {userData?.photo ? (
+              <img src={userData.photo.startsWith('http') ? userData.photo : (userData.photo.startsWith('/') ? userData.photo : '/' + userData.photo)} alt="Profil" className="w-full h-full object-cover" />
+            ) : (
+              <span>
+                {currentOrgSubTab === 'hommes' && '\uD83D\uDC68\u200D\uD83D\uDC68'}
+                {currentOrgSubTab === 'femmes' && '\uD83E\uDDD5\uD83C\uDFFF\uD83E\uDDD5\uD83C\uDFFB'}
+                {currentOrgSubTab === 'enfants' && '\uD83D\uDC6B\uD83C\uDFFF'}
+              </span>
+            )}
+          </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
               {currentOrgSubTab === 'hommes' && 'Hommes'}

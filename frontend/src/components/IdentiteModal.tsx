@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getPhotoUrl } from "../utils/auth";
+import { getPhotoUrl, getNumeroHForDisplay } from "../utils/auth";
 import { api } from "../utils/api";
 
 interface UserData {
@@ -120,7 +120,7 @@ export default function IdentiteModal({
             <div className="mt-2 text-sm">
               NuméroH:{" "}
               <span className="font-semibold text-blue-700">
-                {userData!.numeroH}
+                {getNumeroHForDisplay(userData!.numeroH, true, false)}
               </span>
             </div>
 

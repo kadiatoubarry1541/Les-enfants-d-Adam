@@ -4,7 +4,7 @@ import IdentiteModal from "../components/IdentiteModal";
 import EditProfileModal from "../components/EditProfileModal";
 import { AdminPanel } from "../components/AdminPanel";
 import { config } from "../config/api";
-import { getPhotoUrl, isMasterAdmin } from "../utils/auth";
+import { getPhotoUrl, isMasterAdmin, getNumeroHForDisplay } from "../utils/auth";
 
 interface UserLogo {
   id: string;
@@ -177,7 +177,7 @@ export default function MonProfil() {
               <div className="text-slate-600">
                 <span className="font-medium">NuméroH:</span>{" "}
                 <span className="text-blue-600 font-semibold">
-                  {userData.numeroH}
+                  {getNumeroHForDisplay(userData.numeroH, true, false)}
                 </span>
               </div>
               {userData.handicap && (

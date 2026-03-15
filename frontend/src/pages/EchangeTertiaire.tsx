@@ -438,15 +438,7 @@ export default function EchangeTertiaire() {
                   {product.subcategory || 'Tertiaire'}
                 </span>
               </div>
-              {product.images?.[0] && (
-                <div className="w-full h-40 rounded-xl overflow-hidden mb-3 bg-gray-100 dark:bg-gray-700">
-                  <img
-                    src={buildImageUrl(product.images[0])}
-                    alt={product.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+
               <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2 mb-4">{product.description}</p>
               <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
                 <span className="text-xl font-bold text-amber-700 dark:text-amber-400">

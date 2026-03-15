@@ -1,10 +1,30 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { authenticate } from '../middleware/auth.js';
 import User from '../models/User.js';
 import CoupleLink from '../models/CoupleLink.js';
 import CoupleActivity from '../models/CoupleActivity.js';
 import PartnerRating from '../models/PartnerRating.js';
 import { sequelize } from '../config/database.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const coupleStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../../uploads/couple');
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `couple-${uniqueSuffix}${path.extname(file.originalname) || ''}`);
+  }
+});
+const uploadCouple = multer({ storage: coupleStorage, limits: { fileSize: 50 * 1024 * 1024 } });
 
 const router = express.Router();
 router.use(authenticate);
@@ -491,6 +511,61 @@ router.post('/activity', async (req, res) => {
       success: false,
       message: 'Erreur serveur'
     });
+  }
+});
+
+/**
+ * POST /api/couple/activity/upload
+ * Enregistre une activité couple avec fichier média (image/vidéo/audio) via multer.
+ */
+router.post('/activity/upload', uploadCouple.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
+  { name: 'audio', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    await ensureCoupleActivityTable();
+    const user = req.user;
+    const { type, content } = req.body;
+
+    const link = await CoupleLink.getMyPartner(user.numeroH);
+    if (!link) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas lié(e) à un partenaire.'
+      });
+    }
+
+    const toNumeroH = link.numeroH1 === user.numeroH ? link.numeroH2 : link.numeroH1;
+
+    let mediaUrl = null;
+    const files = req.files || {};
+    const uploadedFile = (files.image && files.image[0]) || (files.video && files.video[0]) || (files.audio && files.audio[0]);
+    if (uploadedFile) {
+      mediaUrl = `/uploads/couple/${uploadedFile.filename}`;
+    }
+
+    const activity = await CoupleActivity.create({
+      numeroH1: link.numeroH1,
+      numeroH2: link.numeroH2,
+      fromNumeroH: user.numeroH,
+      toNumeroH,
+      type: type || 'media',
+      content: content || null,
+      mediaUrl
+    });
+
+    res.json({
+      success: true,
+      message: 'Activité enregistrée.',
+      activity: {
+        ...activity.toJSON(),
+        fromName: `${user.prenom} ${user.nomFamille}`
+      }
+    });
+  } catch (error) {
+    console.error('Erreur upload activité couple:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

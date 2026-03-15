@@ -157,6 +157,15 @@ iframe {
     }
 }
 
+/* Masquer la scrollbar tout en gardant le scroll fonctionnel */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
 /* Scrollbar personnalisé */
 .custom-scrollbar {
     scrollbar-width: thin;

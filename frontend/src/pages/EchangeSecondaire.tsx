@@ -18,11 +18,13 @@ interface ExchangeProduct {
   title: string;
   description: string;
   category: string;
+  subcategory?: string;
   level: 'secondaire';
   price: number;
   currency: string;
   images: string[];
   videos: string[];
+  audio?: string[];
   condition: 'neuf' | 'bon' | 'moyen' | 'usé';
   location: string;
   seller: string;
@@ -48,6 +50,14 @@ interface Supplier {
   rating: number;
   totalSales: number;
   createdAt: string;
+}
+
+const API_ORIGIN = (config.API_BASE_URL || '').replace(/\/api\/?$/, '') || '';
+
+function buildImageUrl(p: string | undefined): string | undefined {
+  if (!p) return undefined;
+  if (p.startsWith('http')) return p;
+  return `${API_ORIGIN}${p.startsWith('/') ? '' : '/'}${p}`;
 }
 
 export default function EchangeSecondaire() {
@@ -881,48 +891,54 @@ export default function EchangeSecondaire() {
             </div>
           ) : (
             getFilteredProducts().map((product) => (
-          <div key={product.id} className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-blue-300 transform hover:-translate-y-2">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-900 text-lg mb-1">{product.title}</h3>
-                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
-                  {product.category}
-                </span>
+          <div key={product.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 border border-blue-100 hover:border-blue-300">
+            {product.images && product.images.length > 0 ? (
+              <img src={buildImageUrl(product.images[0])} alt={product.title}
+                className="w-full h-48 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+            ) : product.videos && product.videos.length > 0 ? (
+              <video src={buildImageUrl(product.videos[0])} className="w-full h-48 object-cover" controls />
+            ) : product.audio && product.audio.length > 0 ? (
+              <div className="w-full h-48 bg-amber-50 flex flex-col items-center justify-center gap-2">
+                <span className="text-4xl">🎙️</span>
+                <audio src={buildImageUrl(product.audio[0])} controls className="w-full px-4" />
               </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-bold animate-pulse ${
-                product.condition === 'neuf' ? 'bg-green-100 text-green-800 shadow-lg shadow-green-200' :
-                product.condition === 'bon' ? 'bg-blue-100 text-blue-800 shadow-lg shadow-blue-200' :
-                product.condition === 'moyen' ? 'bg-yellow-100 text-yellow-800 shadow-lg shadow-yellow-200' :
-                'bg-red-100 text-red-800 shadow-lg shadow-red-200'
-              }`}>
-                {product.condition}
+            ) : (
+              <div className="w-full h-48 bg-blue-50 flex items-center justify-center">
+                <span className="text-5xl">🛍️</span>
               </div>
-            </div>
-            
-            <p className="text-gray-700 mb-4 text-sm leading-relaxed line-clamp-2">{product.description}</p>
-            
-            <div className="mb-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
-              <div className="text-xs uppercase tracking-wide mb-1">Prix</div>
-              <div className="text-2xl font-black">
-                {product.price.toLocaleString()} {product.currency}
+            )}
+            <div className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-900 text-base mb-1">{product.title}</h3>
+                  <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
+                    {product.subcategory || product.category}
+                  </span>
+                </div>
+                <div className={`px-2 py-1 rounded-full text-xs font-bold ${
+                  product.condition === 'neuf' ? 'bg-green-100 text-green-800' :
+                  product.condition === 'bon' ? 'bg-blue-100 text-blue-800' :
+                  product.condition === 'moyen' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {product.condition}
+                </div>
               </div>
-            </div>
-            
-            <div className="text-sm text-gray-600 mb-4 flex items-center gap-2">
-              <span className="text-lg">📍</span>
-              <span className="font-medium">{product.location}</span>
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedProduct(product)}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 text-sm font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                📞 Contacter
-              </button>
-              <button className="px-4 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                ❤️
-              </button>
+              {product.description && <p className="text-gray-600 mb-3 text-sm line-clamp-2">{product.description}</p>}
+              <div className="mb-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-3 text-white">
+                <div className="text-xl font-black">{product.price.toLocaleString()} {product.currency}</div>
+              </div>
+              <div className="text-sm text-gray-600 mb-3 flex items-center gap-1">
+                <span>📍</span><span>{product.location}</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedProduct(product)}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold"
+                >
+                  📞 Contacter
+                </button>
+              </div>
             </div>
           </div>
             ))
